@@ -158,3 +158,54 @@ git commit -m "Update CHANGELOG.md with NewFeature entry"
 - ✅ Adding new configuration options
 - ❌ Internal refactoring without user-facing changes
 - ❌ Fixing typos in comments (unless in public documentation)
+
+### Creating Version Tags
+
+**IMPORTANT: Create Git tags when releasing versions**
+
+Git tags are required for CHANGELOG.md links to work properly. Tags mark specific commits as releases.
+
+**When to create tags**:
+- After completing a version's changes and updating CHANGELOG.md
+- When you're ready to release a new version to users
+- Tags should match the version numbers in CHANGELOG.md (e.g., `v0.2.0`)
+
+**How to create and push tags**:
+```bash
+# Create an annotated tag for the current commit
+git tag -a v0.2.0 -m "Release v0.2.0: Complete Anthropic Claude API integration"
+
+# Or tag a specific commit
+git tag -a v0.1.0 96b0b91 -m "Release v0.1.0: Initial project structure"
+
+# Push tags to GitHub
+git push origin --tags
+
+# Verify tags were created
+git tag -l
+```
+
+**Tag naming convention**:
+- Use semantic versioning: `v<major>.<minor>.<patch>`
+- Examples: `v0.1.0`, `v0.2.0`, `v1.0.0`
+- Always prefix with `v`
+
+**Why tags matter**:
+- CHANGELOG.md links rely on tags to show version comparisons
+- GitHub releases are created from tags
+- Users can checkout specific versions using tags
+- Tags provide permanent markers in Git history
+
+**Example: Releasing v0.2.0**:
+```bash
+# 1. Update CHANGELOG.md with version and date
+git add CHANGELOG.md
+git commit -m "Update CHANGELOG.md for version 0.2.0"
+
+# 2. Create the tag
+git tag -a v0.2.0 -m "Release v0.2.0: Complete Anthropic Claude API integration"
+
+# 3. Push everything
+git push origin main
+git push origin --tags
+```
