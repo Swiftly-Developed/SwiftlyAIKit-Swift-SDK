@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Complete OpenAI GPT API integration** (~963 lines total)
+  - OpenAIModels.swift with full type definitions (639 lines) for all OpenAI API features
+  - OpenAIProvider implementation (324 lines) with sendMessage and streaming support
+  - Support for GPT-4o, GPT-4o Mini, GPT-4 Turbo, GPT-4, and GPT-3.5 Turbo models
+  - Complete request/response mapping between AIRequest and OpenAI's chat completion format
+  - SSE streaming support with delta accumulation for real-time responses
+  - Vision support for GPT-4o models (image URLs and base64 data URLs)
+  - System prompt handling (prepended to messages array per OpenAI conventions)
+  - Content block mapping for text and images
+  - Finish reason mapping (stop, length, content_filter, tool_calls)
+  - Bearer token authentication with optional organization ID support
+  - Context windows: 128K tokens for GPT-4o/Mini, 128K for GPT-4 Turbo
+  - Output limits: 16K tokens for GPT-4o/Mini, 4K for others
 - Comprehensive test suite with 277 tests across 7 test suites (100% pass rate)
 - Mock infrastructure for testing (MockHTTPClient, MockProvider, MockAnthropicAPI)
 - Test data samples (SampleRequests, SampleResponses, SampleErrors)
