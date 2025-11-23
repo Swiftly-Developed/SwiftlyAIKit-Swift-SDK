@@ -251,3 +251,144 @@ public struct OpenAIToolCall: Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - Request Structure
+
+/// OpenAI chat completion request
+public struct OpenAIRequest: Codable, Sendable {
+    public let model: String
+    public let messages: [OpenAIMessage]
+    public let maxTokens: Int?
+    public let temperature: Double?
+    public let topP: Double?
+    public let n: Int?
+    public var stream: Bool?
+    public let stop: [String]?
+    public let presencePenalty: Double?
+    public let frequencyPenalty: Double?
+    public let logitBias: [String: Double]?
+    public let user: String?
+    public let responseFormat: ResponseFormat?
+    public let seed: Int?
+    public let tools: [OpenAIToolDefinition]?
+    public let toolChoice: OpenAIToolChoice?
+
+    public struct ResponseFormat: Codable, Sendable, Equatable {
+        public let type: String
+
+        public init(type: String) {
+            self.type = type
+        }
+
+        public static let text = ResponseFormat(type: "text")
+        public static let jsonObject = ResponseFormat(type: "json_object")
+    }
+
+    public init(
+        model: String,
+        messages: [OpenAIMessage],
+        maxTokens: Int? = nil,
+        temperature: Double? = nil,
+        topP: Double? = nil,
+        n: Int? = nil,
+        stream: Bool? = nil,
+        stop: [String]? = nil,
+        presencePenalty: Double? = nil,
+        frequencyPenalty: Double? = nil,
+        logitBias: [String: Double]? = nil,
+        user: String? = nil,
+        responseFormat: ResponseFormat? = nil,
+        seed: Int? = nil,
+        tools: [OpenAIToolDefinition]? = nil,
+        toolChoice: OpenAIToolChoice? = nil
+    ) {
+        self.model = model
+        self.messages = messages
+        self.maxTokens = maxTokens
+        self.temperature = temperature
+        self.topP = topP
+        self.n = n
+        self.stream = stream
+        self.stop = stop
+        self.presencePenalty = presencePenalty
+        self.frequencyPenalty = frequencyPenalty
+        self.logitBias = logitBias
+        self.user = user
+        self.responseFormat = responseFormat
+        self.seed = seed
+        self.tools = tools
+        self.toolChoice = toolChoice
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case model
+        case messages
+        case temperature
+        case n
+        case stream
+        case stop
+        case user
+        case seed
+        case tools
+        case maxTokens = "max_tokens"
+        case topP = "top_p"
+        case presencePenalty = "presence_penalty"
+        case frequencyPenalty = "frequency_penalty"
+        case logitBias = "logit_bias"
+        case responseFormat = "response_format"
+        case toolChoice = "tool_choice"
+    }
+}
+
+// MARK: - Response Structure
+
+/// OpenAI chat completion response
+public struct OpenAIResponse: Codable, Sendable {
+    public let id: String
+    public let object: String
+    public let created: Int
+    public let model: String
+    public let choices: [Choice]
+    public let usage: Usage
+    public let systemFingerprint: String?
+
+    public struct Choice: Codable, Sendable {
+        public let index: Int
+        public let message: OpenAIMessage
+        public let finishReason: String?
+        public let logprobs: LogProbs?
+
+        enum CodingKeys: String, CodingKey {
+            case index
+            case message
+            case logprobs
+            case finishReason = "finish_reason"
+        }
+    }
+
+    public struct Usage: Codable, Sendable {
+        public let promptTokens: Int
+        public let completionTokens: Int
+        public let totalTokens: Int
+
+        enum CodingKeys: String, CodingKey {
+            case promptTokens = "prompt_tokens"
+            case completionTokens = "completion_tokens"
+            case totalTokens = "total_tokens"
+        }
+    }
+
+    public struct LogProbs: Codable, Sendable {
+        // Optional: Implementation for token probability information
+        // Can be added in future if needed
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case object
+        case created
+        case model
+        case choices
+        case usage
+        case systemFingerprint = "system_fingerprint"
+    }
+}
