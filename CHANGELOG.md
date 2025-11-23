@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2025-11-23
+
+### Added
+- **PerplexityOptions type-safe helper** (~147 lines)
+  - Type-safe convenience API for Perplexity-specific provider options
+  - Support for search domain filtering, recency filtering, citations, and images
+  - Support for ResponseFormat with JSON Schema structured outputs
+  - `toProviderOptions()` method converts to `[String: AnyCodable]` for AIRequest
+  - `webSearch()` convenience initializer for search-focused requests
+  - `jsonSchema()` convenience initializer for structured output requests
+  - Comprehensive documentation with usage examples
+- **Comprehensive test coverage for provider options** (36 new tests)
+  - PerplexityOptionsTests (28 tests) covering all helper methods and conversions
+  - Integration tests in PerplexityProviderTests (8 tests) for options extraction
+  - Tests for `toProviderOptions()` conversion for all option types
+  - Tests for `webSearch()` and `jsonSchema()` convenience initializers
+  - Tests for integration with AIRequest.providerOptions field
+- **Perplexity sample requests** (6 new examples)
+  - perplexityWebSearch: Basic web search with recency filter
+  - perplexityDomainFilter: Academic research with domain filtering
+  - perplexityJsonSchema: Structured output with JSON Schema
+  - perplexityFullOptions: All search options demonstration
+  - perplexityAcademicResearch: Research-focused query example
+  - perplexityBasic: Simple query without special options
+
+### Changed
+- Updated PerplexityProvider extraction functions to use AIRequest.providerOptions
+- Resolved 5 critical TODOs in PerplexityProvider (providerOptions extraction)
+- Updated test counts to reflect new tests (386+ total tests, 100% pass rate)
+
 ## [0.4.0] - 2025-11-23
 
 ### Added
@@ -136,7 +166,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive README with installation and usage guidelines
 - Basic test structure using Swift Testing framework
 
-[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.1.0...v0.2.0
