@@ -2,7 +2,7 @@
 
 ## Overview
 
-SwiftlyAIKit has comprehensive test coverage for Anthropic Claude, OpenAI GPT, and Google Gemini API integrations, with **323 tests** across **8 test suites** achieving **100% pass rate** (277 + 46 Gemini tests).
+SwiftlyAIKit has comprehensive test coverage for Anthropic Claude, OpenAI GPT, Google Gemini, and Perplexity AI integrations, with **350+ tests** across **9 test suites** achieving **100% pass rate** (277 + 46 Gemini + 27+ Perplexity tests).
 
 ## Test Framework
 
@@ -85,6 +85,17 @@ Pre-configured JSON responses for all Gemini API endpoints:
 - Max tokens reached responses
 - SSE streaming events (text and function calls)
 - Token counting responses
+- Error responses (400, 401, 403, 404, 429, 500, 503)
+
+#### MockPerplexityAPI.swift (276 lines)
+Pre-configured JSON responses for all Perplexity API endpoints:
+- Chat completion responses (simple text)
+- Responses with citations from web search
+- Max tokens reached responses
+- Content filtered responses
+- SSE streaming events (text with citations)
+- Domain-filtered search responses
+- Recency-filtered search responses
 - Error responses (400, 401, 403, 404, 429, 500, 503)
 
 ### Test Data (3 files, ~730 lines)
@@ -389,14 +400,64 @@ func testGeminiContextWindows()
 func testFunctionDeclaration()
 ```
 
+### 9. PerplexityProvider Tests (27+ tests)
+
+**Coverage:**
+- Initialization (default, custom baseURL, custom HTTP client)
+- Request mapping:
+  - Text messages to Perplexity format
+  - System prompts
+  - Generation config (temperature, topP, topK, maxTokens)
+- Response mapping:
+  - Successful responses
+  - Responses with citations
+  - Finish reasons (stop, length, content_filter)
+  - Usage metadata
+- Error handling (all HTTP status codes):
+  - 400 Bad Request
+  - 401 Unauthorized
+  - 429 Rate Limit
+  - 500 Internal Server Error
+- Search features:
+  - Domain filtering
+  - Recency filtering
+  - RecencyFilter enum values
+- Streaming:
+  - SSE event parsing
+  - Text accumulation
+- Model support (3 Perplexity models):
+  - Provider type mapping
+  - Display names
+  - Context windows (127K for Sonar/Reasoning, 200K for Pro)
+  - Output limits (4K for all models)
+  - No vision support (text-only)
+- Additional models:
+  - ResponseFormat with JSON Schema
+  - SearchResult metadata
+
+**Key Tests:**
+```swift
+@Test("Maps successful response from Perplexity")
+func testMapSuccessfulResponse()
+
+@Test("Maps response with citations")
+func testMapResponseWithCitations()
+
+@Test("Domain filtered response can be decoded")
+func testDomainFilteredResponse()
+
+@Test("Sonar Pro model is supported")
+func testSonarProSupport()
+```
+
 ## Test Statistics
 
 ### Overall Coverage
-- **Total Tests:** 323
-- **Test Files:** 13 (8 test suites + 4 mocks + 3 data files)
-- **Lines of Test Code:** ~5,300+
+- **Total Tests:** 350+
+- **Test Files:** 14 (9 test suites + 5 mocks + 3 data files)
+- **Lines of Test Code:** ~6,100+
 - **Success Rate:** 100%
-- **Execution Time:** <0.15 seconds
+- **Execution Time:** <0.20 seconds
 
 ### Breakdown by Category
 | Category | Tests | Files | Coverage |
@@ -404,12 +465,13 @@ func testFunctionDeclaration()
 | Error Handling | 42 | 1 | All 23 error types |
 | API Key Strategies | 33 | 1 | All 4 strategies |
 | Configuration | 39 | 1 | All 6 factory methods |
-| Model Definitions | 55 | 1 | All 30 models (22 Claude + 8 GPT + 5 Gemini - Note: GPT counted in ModelProvider, Gemini split 38+8) |
-| Provider Types | 36 | 1 | All 5 providers |
+| Model Definitions | 55+ | 1 | All 38 models (22 Claude + 8 GPT + 5 Gemini + 3 Perplexity) |
+| Provider Types | 36+ | 1 | All 6 providers |
 | Core Models | 38 | 1 | All request/response types |
 | Provider Protocol | 32 | 1 | Batch operations + protocol |
 | Gemini Provider | 46 | 1 | All Gemini API features |
-| **Total** | **323** | **8** | **Comprehensive** |
+| Perplexity Provider | 27+ | 1 | All Perplexity API features |
+| **Total** | **350+** | **9** | **Comprehensive** |
 
 ### Test Types
 - **Unit Tests:** 85% (235 tests)
@@ -422,18 +484,21 @@ func testFunctionDeclaration()
 | Error Handling | 100% | 42 |
 | API Keys | 100% | 33 |
 | Configuration | 100% | 39 |
-| Models | 100% | 55 + 8 Gemini |
-| Providers | 100% | 36 + 46 Gemini |
+| Models | 100% | 55 + 8 Gemini + 4 Perplexity |
+| Providers | 100% | 36 + 46 Gemini + 27 Perplexity |
 | Messages | 100% | 38 |
 | Batch Processing | 100% | 32 |
 | Vision/Images | 100% | 12 + 3 Gemini |
-| Streaming | 100% | 8 + 2 Gemini |
+| Streaming | 100% | 8 + 2 Gemini + 2 Perplexity |
 | Caching | 100% | 6 |
 | Extended Thinking | 100% | 6 |
 | PDFs | 100% | 4 + 2 Gemini |
 | Safety Settings (Gemini) | 100% | 3 |
 | Function Calling (Gemini) | 100% | 2 |
 | Token Counting (Gemini) | 100% | 2 |
+| Real-time Search (Perplexity) | 100% | 3 |
+| Citations (Perplexity) | 100% | 2 |
+| Domain/Recency Filtering (Perplexity) | 100% | 3 |
 
 ## Testing Best Practices
 

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-11-23
+
+### Added
+- **Complete Perplexity AI integration** (~800 lines total)
+  - PerplexityModels.swift with full type definitions (316 lines) for all Perplexity API features
+  - PerplexityProvider implementation (235 lines) with sendMessage and streamMessage
+  - Support for Sonar, Sonar Pro, and Sonar Reasoning models
+  - Real-time web search capabilities with citation support
+  - Domain filtering for search results (search_domain_filter)
+  - Recency filtering for time-based searches (day, week, month, year)
+  - JSON Schema structured outputs via response_format
+  - SSE streaming support with text accumulation for real-time responses
+  - Complete request/response mapping between AIRequest and Perplexity's chat completion format
+  - Bearer token authentication
+  - Context windows: 127K tokens (Sonar/Reasoning), 200K tokens (Sonar Pro)
+  - Output limits: 4K tokens for all models
+- **Comprehensive Perplexity test coverage** (27+ tests)
+  - MockPerplexityAPI.swift with sample responses for all Perplexity endpoints
+  - PerplexityProviderTests (27 tests) covering initialization, request/response mapping, error handling, search features, streaming, and model support
+  - Updated ModelProviderTests and ProviderTypeTests for Perplexity models
+  - Updated test counts across all test suites (330+ total tests, 100% pass rate)
+
+### Changed
+- Updated ModelProvider enum to include 3 Perplexity models (total now 38 models: 22 Claude + 8 GPT + 5 Gemini + 3 Perplexity)
+- Updated ProviderType enum to include .perplexity (total now 6 providers)
+- Updated all test assertions to reflect new model and provider counts
+
 ## [0.3.0] - 2025-11-23
 
 ### Added
@@ -109,7 +136,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive README with installation and usage guidelines
 - Basic test structure using Swift Testing framework
 
-[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/releases/tag/v0.1.0
