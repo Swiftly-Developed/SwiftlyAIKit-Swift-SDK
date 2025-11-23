@@ -235,10 +235,27 @@ app.post("ai", "stream") { req async throws -> Response in
 - Implementation: `Sources/SwiftlyAIKit/Providers/OpenAIProvider.swift` (~324 lines)
 - Models: `Sources/SwiftlyAIKit/Models/OpenAI/OpenAIModels.swift` (~639 lines)
 
+**Google Gemini**
+- ✅ GenerateContent API (create, stream)
+- ✅ Server-Sent Events (SSE) streaming with text accumulation
+- ✅ Token counting support via countTokens endpoint
+- ✅ Multimodal support (text, images via base64, documents via base64/fileUri)
+- ✅ Safety settings configuration (4 harm categories with thresholds)
+- ✅ Function calling with JSON Schema tool declarations
+- ✅ Structured output via responseMimeType and responseSchema
+- ✅ Generation config (temperature, topP, topK, maxOutputTokens, stopSequences)
+- ✅ Support for Gemini 2.5 Pro, 2.5 Flash, 2.0 Flash Exp, 1.5 Pro, 1.5 Flash
+- ✅ Context windows: 2M tokens (Pro models), 1M tokens (Flash models)
+- ✅ Output limits: 65K tokens (2.5 Pro), 8K tokens (other models)
+- ✅ API key authentication via query parameter
+- ⏸️ Batch API (not yet available in Gemini API)
+- ⏸️ Image URLs (only base64 supported, no external URLs)
+- Implementation: `Sources/SwiftlyAIKit/Providers/GeminiProvider.swift` (~335 lines)
+- Models: `Sources/SwiftlyAIKit/Models/Gemini/GeminiModels.swift` (~451 lines)
+
 ### Placeholder Providers
 
 The following providers have placeholder implementations that throw `AIError.unsupportedFeature`:
-- Google AI (Gemini models)
 - Cohere (Command models)
 - Mistral AI (Mistral models)
 
@@ -416,6 +433,10 @@ git push origin --tags
 **OpenAI Implementation (2 files, ~963 lines):**
 - `Sources/SwiftlyAIKit/Models/OpenAI/OpenAIModels.swift` (639 lines) - All OpenAI types
 - `Sources/SwiftlyAIKit/Providers/OpenAIProvider.swift` (324 lines) - Core implementation
+
+**Gemini Implementation (2 files, ~787 lines):**
+- `Sources/SwiftlyAIKit/Models/Gemini/GeminiModels.swift` (451 lines) - All Gemini types
+- `Sources/SwiftlyAIKit/Providers/GeminiProvider.swift` (335 lines) - Core implementation
 
 **Vapor Integration (2 files, ~413 lines):**
 - `Sources/SwiftlyAIKit/Extensions/Application+AI.swift` (173 lines) - App lifecycle
