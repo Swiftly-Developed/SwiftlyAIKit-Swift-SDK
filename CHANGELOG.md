@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-11-23
+
+### Added
+- **Complete Mistral AI integration** (~1,700 lines total)
+  - MistralModels.swift with full type definitions (641 lines) for Mistral API
+  - MistralProvider implementation (353 lines) with sendMessage and streamMessage
+  - Support for 11 Mistral models: Large 2.1, Medium 3, Small 3.1, Codestral, Magistral Small/Medium, Ministral 3B/8B
+  - OpenAI-compatible API format for straightforward integration
+  - SSE streaming support with delta accumulation for real-time responses
+  - Vision support via image URLs and base64 data URLs (Large, Medium, Small models)
+  - Tool/function calling infrastructure (OpenAI-compatible format)
+  - Complete request/response mapping between AIRequest and Mistral's chat completion format
+  - Bearer token authentication (same as OpenAI)
+  - Context windows: 128K tokens (most models), 32K tokens (Codestral)
+  - Output limits: 8K tokens (most models), 32K tokens (Magistral models)
+  - Unique features: safe_prompt for security, random_seed for determinism, reasoning mode for Magistral models
+- **Comprehensive Mistral test coverage** (30+ tests)
+  - MockMistralAPI.swift with sample responses, streaming events, and error responses
+  - MistralProviderTests (30 tests) covering initialization, request/response mapping, streaming, error handling, vision, and tool support
+  - Updated ModelProviderTests and ProviderTypeTests for Mistral models
+  - All tests passing (416+ total tests, 100% pass rate)
+- **Mistral implementation documentation**
+  - MISTRAL_IMPLEMENTATION_PLAN.md with comprehensive API specs, usage examples, and technical details
+  - Updated CLAUDE.md with Mistral provider information
+
+### Changed
+- Updated ModelProvider enum to include 11 Mistral models (total now 49 models: 22 Claude + 8 GPT + 5 Gemini + 3 Perplexity + 11 Mistral)
+- Updated ProviderType enum to include .mistral (total now 7 providers: Anthropic, OpenAI, Google, Perplexity, Mistral, Cohere, Other)
+- MistralProvider.swift replaced placeholder implementation with full functionality
+- Updated all test assertions to reflect new model and provider counts
+
 ## [0.4.1] - 2025-11-23
 
 ### Added

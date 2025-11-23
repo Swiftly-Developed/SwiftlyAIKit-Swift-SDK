@@ -253,13 +253,42 @@ app.post("ai", "stream") { req async throws -> Response in
 - Implementation: `Sources/SwiftlyAIKit/Providers/GeminiProvider.swift` (~335 lines)
 - Models: `Sources/SwiftlyAIKit/Models/Gemini/GeminiModels.swift` (~451 lines)
 
+**Perplexity AI**
+- ✅ Chat Completions API with real-time web search
+- ✅ SSE streaming support with text accumulation
+- ✅ Citation support for web search results
+- ✅ Domain filtering (search_domain_filter)
+- ✅ Recency filtering (day, week, month, year)
+- ✅ JSON Schema structured outputs via response_format
+- ✅ Support for Sonar, Sonar Pro, Sonar Reasoning models
+- ✅ Context windows: 127K tokens (Sonar/Reasoning), 200K tokens (Sonar Pro)
+- ✅ Output limits: 4K tokens for all models
+- ✅ Bearer token authentication
+- ✅ Type-safe PerplexityOptions helper for provider-specific features
+- Implementation: `Sources/SwiftlyAIKit/Providers/PerplexityProvider.swift` (~235 lines)
+- Models: `Sources/SwiftlyAIKit/Models/Perplexity/PerplexityModels.swift` (~316 lines)
+
+**Mistral AI**
+- ✅ Chat Completions API (create, stream)
+- ✅ Server-Sent Events (SSE) streaming with delta accumulation
+- ✅ Vision support (image URLs and base64 data URLs)
+- ✅ Tool/function calling infrastructure (OpenAI-compatible)
+- ✅ System prompt handling (prepended to messages array)
+- ✅ Support for 11 models: Large 2.1, Medium 3, Small 3.1, Codestral, Magistral Small/Medium, Ministral 3B/8B
+- ✅ Context windows: 128K tokens (most models), 32K tokens (Codestral)
+- ✅ Output limits: 8K tokens (most models), 32K tokens (Magistral models)
+- ✅ Bearer token authentication (OpenAI-compatible)
+- ✅ Unique features: safe_prompt, random_seed, reasoning mode
+- ⏸️ Batch API (models defined, implementation deferred)
+- Implementation: `Sources/SwiftlyAIKit/Providers/MistralProvider.swift` (~353 lines)
+- Models: `Sources/SwiftlyAIKit/Models/Mistral/MistralModels.swift` (~641 lines)
+
 ### Placeholder Providers
 
-The following providers have placeholder implementations that throw `AIError.unsupportedFeature`:
+The following provider has a placeholder implementation that throws `AIError.unsupportedFeature`:
 - Cohere (Command models)
-- Mistral AI (Mistral models)
 
-These will be implemented in future releases following the same `ProviderProtocol` interface.
+This will be implemented in a future release following the same `ProviderProtocol` interface.
 
 ## Key Implementation Notes
 
@@ -438,6 +467,15 @@ git push origin --tags
 - `Sources/SwiftlyAIKit/Models/Gemini/GeminiModels.swift` (451 lines) - All Gemini types
 - `Sources/SwiftlyAIKit/Providers/GeminiProvider.swift` (335 lines) - Core implementation
 
+**Perplexity Implementation (3 files, ~698 lines):**
+- `Sources/SwiftlyAIKit/Models/Perplexity/PerplexityModels.swift` (316 lines) - All Perplexity types
+- `Sources/SwiftlyAIKit/Models/Perplexity/PerplexityOptions.swift` (147 lines) - Type-safe options helper
+- `Sources/SwiftlyAIKit/Providers/PerplexityProvider.swift` (235 lines) - Core implementation
+
+**Mistral Implementation (2 files, ~994 lines):**
+- `Sources/SwiftlyAIKit/Models/Mistral/MistralModels.swift` (641 lines) - All Mistral types
+- `Sources/SwiftlyAIKit/Providers/MistralProvider.swift` (353 lines) - Core implementation
+
 **Vapor Integration (2 files, ~413 lines):**
 - `Sources/SwiftlyAIKit/Extensions/Application+AI.swift` (173 lines) - App lifecycle
 - `Sources/SwiftlyAIKit/Extensions/Request+AI.swift` (240 lines) - Request helpers
@@ -451,5 +489,8 @@ git push origin --tags
 - `CLAUDE.md` - This file (you are here)
 - `TESTING.md` - Comprehensive testing guide with 277 test details
 - `CHANGELOG.md` - Version history following Keep a Changelog format
-- `OPENAI_IMPLEMENTATION_PLAN.md` - Detailed OpenAI provider implementation guide
+- `Documentation/OPENAI_IMPLEMENTATION_PLAN.md` - OpenAI provider implementation guide
+- `Documentation/GEMINI_IMPLEMENTATION_PLAN.md` - Gemini provider implementation guide
+- `Documentation/PERPLEXITY_IMPLEMENTATION_PLAN.md` - Perplexity provider implementation guide
+- `Documentation/MISTRAL_IMPLEMENTATION_PLAN.md` - Mistral provider implementation guide
 - `README.md` - Public-facing documentation
