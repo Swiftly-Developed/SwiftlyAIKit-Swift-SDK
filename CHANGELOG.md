@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-11-23
+
+### Added
+- **Complete Cohere AI integration** (~2,000 lines total)
+  - CohereModels.swift with full type definitions (454 lines) for Cohere v2 API
+  - CohereProvider implementation (465 lines) with sendMessage, streamMessage, and countTokens
+  - Support for 11 Cohere models: Command A family (4 models), Command R family (5 models), legacy Command (2 models)
+  - RAG (Retrieval Augmented Generation) with document support and citations
+  - Function/tool calling infrastructure with CohereTool and CohereToolCall types
+  - Token counting via dedicated tokenize endpoint
+  - Structured JSON outputs with optional JSON Schema validation
+  - Safety modes (NONE, CONTEXTUAL, STRICT) for content filtering
+  - Vision support for Command A Vision model (base64 and URL images)
+  - SSE streaming support with typed events (message-start, content-delta, message-end, citation-start)
+  - Complete request/response mapping between AIRequest and Cohere's chat format
+  - Bearer token authentication
+  - Context windows: 256K tokens (A/R families), 16K tokens (A Translate), 4K tokens (legacy)
+  - Output limits: 8K tokens for all models
+  - Cohere-specific features: response_format for JSON mode, documents for RAG, safety_mode configuration
+- **Comprehensive Cohere test coverage** (48 tests)
+  - MockCohereAPI.swift with sample responses for all Cohere endpoints (30+ mock responses)
+  - CohereProviderTests (48 tests) covering initialization, request/response mapping, streaming, RAG, tool calling, tokenization, error handling, and model support
+  - Updated ModelProviderTests and ProviderTypeTests for Cohere models
+  - All tests passing (464+ total tests, 100% pass rate)
+- **Cohere implementation documentation**
+  - COHERE_IMPLEMENTATION_PLAN.md (624 lines) with comprehensive API specs, streaming event types, model specifications, and usage examples
+  - Complete RAG documentation with document structure and citation handling
+  - Tool/function calling documentation with type definitions
+  - JSON structured output documentation with schema examples
+  - Updated CLAUDE.md with Cohere provider information
+
+### Changed
+- Updated ModelProvider enum to include 11 Cohere models (total now 60 models: 22 Claude + 8 GPT + 5 Gemini + 3 Perplexity + 11 Mistral + 11 Cohere)
+- Updated ProviderType enum (total now 7 providers: Anthropic, OpenAI, Google, Perplexity, Mistral, Cohere, Other)
+- CohereProvider.swift replaced placeholder implementation with full functionality
+- Updated all test assertions to reflect new model and provider counts
+
 ## [0.5.0] - 2025-11-23
 
 ### Added
