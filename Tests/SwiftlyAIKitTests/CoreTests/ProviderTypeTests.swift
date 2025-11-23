@@ -101,6 +101,10 @@ struct ProviderTypeTests {
     @Test("Base URLs contain version suffix")
     func testBaseURLsVersion() {
         for provider in ProviderType.allCases {
+            // Perplexity doesn't use /v1 suffix
+            if provider == .perplexity {
+                continue
+            }
             #expect(provider.baseURL.hasSuffix("/v1"), "Provider \(provider) base URL should end with /v1")
         }
     }
@@ -290,7 +294,7 @@ struct ProviderTypeTests {
             displayNames.append(provider.displayName)
         }
 
-        #expect(displayNames.count == 5)
+        #expect(displayNames.count == 6)
         #expect(displayNames.contains("Anthropic"))
         #expect(displayNames.contains("OpenAI"))
     }
@@ -367,6 +371,8 @@ struct ProviderTypeTests {
             result = "anthropic"
         case .google:
             result = "google"
+        case .perplexity:
+            result = "perplexity"
         case .cohere:
             result = "cohere"
         case .mistral:
@@ -379,7 +385,7 @@ struct ProviderTypeTests {
     @Test("Can create Set of all providers")
     func testSetOfAllProviders() {
         let allProviders = Set(ProviderType.allCases)
-        #expect(allProviders.count == 5)
+        #expect(allProviders.count == 6)
     }
 
     @Test("Dictionary with provider keys maintains insertion")

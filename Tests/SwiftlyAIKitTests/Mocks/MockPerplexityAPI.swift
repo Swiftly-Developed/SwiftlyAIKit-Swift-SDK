@@ -115,23 +115,23 @@ public enum MockPerplexityAPI {
     // MARK: - Streaming Responses
 
     /// SSE stream events for a simple message
-    public static let streamEvents = [
-        "data: {\\"id\\":\\"pplx-stream-1\\",\\"model\\":\\"sonar\\",\\"created\\":1234567890,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"role\\":\\"assistant\\",\\"content\\":\\"Hello\\"},\\"finish_reason\\":null}]}",
-        "data: {\\"id\\":\\"pplx-stream-1\\",\\"model\\":\\"sonar\\",\\"created\\":1234567890,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"content\\":\\"! How\\"},\\"finish_reason\\":null}]}",
-        "data: {\\"id\\":\\"pplx-stream-1\\",\\"model\\":\\"sonar\\",\\"created\\":1234567890,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"content\\":\\" can\\"},\\"finish_reason\\":null}]}",
-        "data: {\\"id\\":\\"pplx-stream-1\\",\\"model\\":\\"sonar\\",\\"created\\":1234567890,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"content\\":\\" I\\"},\\"finish_reason\\":null}]}",
-        "data: {\\"id\\":\\"pplx-stream-1\\",\\"model\\":\\"sonar\\",\\"created\\":1234567890,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"content\\":\\" help\\"},\\"finish_reason\\":null}]}",
-        "data: {\\"id\\":\\"pplx-stream-1\\",\\"model\\":\\"sonar\\",\\"created\\":1234567890,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"content\\":\\" you\\"},\\"finish_reason\\":null}]}",
-        "data: {\\"id\\":\\"pplx-stream-1\\",\\"model\\":\\"sonar\\",\\"created\\":1234567890,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"content\\":\\"?\\"},\\"finish_reason\\":\\"stop\\"}]}",
+    public static let streamEvents: [String] = [
+        #"data: {"id":"pplx-stream-1","model":"sonar","created":1234567890,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"},"finish_reason":null}]}"#,
+        #"data: {"id":"pplx-stream-1","model":"sonar","created":1234567890,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"! How"},"finish_reason":null}]}"#,
+        #"data: {"id":"pplx-stream-1","model":"sonar","created":1234567890,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" can"},"finish_reason":null}]}"#,
+        #"data: {"id":"pplx-stream-1","model":"sonar","created":1234567890,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" I"},"finish_reason":null}]}"#,
+        #"data: {"id":"pplx-stream-1","model":"sonar","created":1234567890,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" help"},"finish_reason":null}]}"#,
+        #"data: {"id":"pplx-stream-1","model":"sonar","created":1234567890,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" you"},"finish_reason":null}]}"#,
+        #"data: {"id":"pplx-stream-1","model":"sonar","created":1234567890,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"?"},"finish_reason":"stop"}]}"#,
         "data: [DONE]"
     ]
 
     /// Stream events with citations
-    public static let streamEventsWithCitations = [
-        "data: {\\"id\\":\\"pplx-stream-2\\",\\"model\\":\\"sonar-pro\\",\\"created\\":1234567891,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"role\\":\\"assistant\\",\\"content\\":\\"According\\"},\\"finish_reason\\":null}]}",
-        "data: {\\"id\\":\\"pplx-stream-2\\",\\"model\\":\\"sonar-pro\\",\\"created\\":1234567891,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"content\\":\\" to\\"},\\"finish_reason\\":null}]}",
-        "data: {\\"id\\":\\"pplx-stream-2\\",\\"model\\":\\"sonar-pro\\",\\"created\\":1234567891,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"content\\":\\" recent\\"},\\"finish_reason\\":null}]}",
-        "data: {\\"id\\":\\"pplx-stream-2\\",\\"model\\":\\"sonar-pro\\",\\"created\\":1234567891,\\"object\\":\\"chat.completion.chunk\\",\\"choices\\":[{\\"index\\":0,\\"delta\\":{\\"content\\":\\" research...\\"},\\"finish_reason\\":\\"stop\\"}]}",
+    public static let streamEventsWithCitations: [String] = [
+        #"data: {"id":"pplx-stream-2","model":"sonar-pro","created":1234567891,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":"According"},"finish_reason":null}]}"#,
+        #"data: {"id":"pplx-stream-2","model":"sonar-pro","created":1234567891,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" to"},"finish_reason":null}]}"#,
+        #"data: {"id":"pplx-stream-2","model":"sonar-pro","created":1234567891,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" recent"},"finish_reason":null}]}"#,
+        #"data: {"id":"pplx-stream-2","model":"sonar-pro","created":1234567891,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" research..."},"finish_reason":"stop"}]}"#,
         "data: [DONE]"
     ]
 
