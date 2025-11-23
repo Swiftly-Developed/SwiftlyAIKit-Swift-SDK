@@ -222,10 +222,22 @@ app.post("ai", "stream") { req async throws -> Response in
 - Implementation: `Sources/SwiftlyAIKit/Providers/AnthropicProvider.swift` (~620 lines)
 - Models: `Sources/SwiftlyAIKit/Models/Anthropic/AnthropicModels.swift` (~700 lines)
 
+**OpenAI (GPT)**
+- ✅ Chat Completions API (create, stream)
+- ✅ Server-Sent Events (SSE) streaming with delta accumulation
+- ✅ Vision support (image URLs and base64 data URLs)
+- ✅ System prompt handling (prepended to messages array)
+- ✅ Support for GPT-4o, GPT-4o Mini, GPT-4 Turbo, GPT-4, GPT-3.5 Turbo
+- ✅ Context windows: 128K tokens (GPT-4o/Mini/Turbo), 16K (GPT-3.5), 8K (GPT-4)
+- ✅ Bearer token authentication with organization ID support
+- ⏸️ Batch API (models defined, implementation deferred)
+- ⏸️ Tool/function calling (models defined, mapping deferred)
+- Implementation: `Sources/SwiftlyAIKit/Providers/OpenAIProvider.swift` (~324 lines)
+- Models: `Sources/SwiftlyAIKit/Models/OpenAI/OpenAIModels.swift` (~639 lines)
+
 ### Placeholder Providers
 
 The following providers have placeholder implementations that throw `AIError.unsupportedFeature`:
-- OpenAI (GPT models)
 - Google AI (Gemini models)
 - Cohere (Command models)
 - Mistral AI (Mistral models)
@@ -400,6 +412,10 @@ git push origin --tags
 **Anthropic Implementation (2 files, ~1,300 lines):**
 - `Sources/SwiftlyAIKit/Models/Anthropic/AnthropicModels.swift` (679 lines) - All Anthropic types
 - `Sources/SwiftlyAIKit/Providers/AnthropicProvider.swift` (623 lines) - Complete implementation
+
+**OpenAI Implementation (2 files, ~963 lines):**
+- `Sources/SwiftlyAIKit/Models/OpenAI/OpenAIModels.swift` (639 lines) - All OpenAI types
+- `Sources/SwiftlyAIKit/Providers/OpenAIProvider.swift` (324 lines) - Core implementation
 
 **Vapor Integration (2 files, ~413 lines):**
 - `Sources/SwiftlyAIKit/Extensions/Application+AI.swift` (173 lines) - App lifecycle
