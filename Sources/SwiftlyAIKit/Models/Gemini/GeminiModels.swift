@@ -199,3 +199,170 @@ public struct GeminiFunctionCallingConfig: Codable, Sendable, Equatable {
         self.allowedFunctionNames = allowedFunctionNames
     }
 }
+
+// MARK: - Safety Settings
+
+/// Safety setting for content filtering
+public struct GeminiSafetySetting: Codable, Sendable, Equatable {
+    public let category: HarmCategory
+    public let threshold: HarmBlockThreshold
+
+    public enum HarmCategory: String, Codable, Sendable {
+        case harassment = "HARM_CATEGORY_HARASSMENT"
+        case hateSpeech = "HARM_CATEGORY_HATE_SPEECH"
+        case sexuallyExplicit = "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+        case dangerousContent = "HARM_CATEGORY_DANGEROUS_CONTENT"
+    }
+
+    public enum HarmBlockThreshold: String, Codable, Sendable {
+        case blockNone = "BLOCK_NONE"
+        case blockOnlyHigh = "BLOCK_ONLY_HIGH"
+        case blockMediumAndAbove = "BLOCK_MEDIUM_AND_ABOVE"
+        case blockLowAndAbove = "BLOCK_LOW_AND_ABOVE"
+    }
+
+    public init(category: HarmCategory, threshold: HarmBlockThreshold) {
+        self.category = category
+        self.threshold = threshold
+    }
+}
+
+// MARK: - Generation Config
+
+/// Generation configuration for Gemini API
+public struct GeminiGenerationConfig: Codable, Sendable, Equatable {
+    public let temperature: Double?
+    public let topP: Double?
+    public let topK: Int?
+    public let maxOutputTokens: Int?
+    public let stopSequences: [String]?
+    public let responseMimeType: String?
+    public let responseSchema: GeminiSchema?
+
+    public init(
+        temperature: Double? = nil,
+        topP: Double? = nil,
+        topK: Int? = nil,
+        maxOutputTokens: Int? = nil,
+        stopSequences: [String]? = nil,
+        responseMimeType: String? = nil,
+        responseSchema: GeminiSchema? = nil
+    ) {
+        self.temperature = temperature
+        self.topP = topP
+        self.topK = topK
+        self.maxOutputTokens = maxOutputTokens
+        self.stopSequences = stopSequences
+        self.responseMimeType = responseMimeType
+        self.responseSchema = responseSchema
+    }
+}
+
+// MARK: - Request/Response
+
+/// Gemini API request
+public struct GeminiRequest: Codable, Sendable {
+    public let contents: [GeminiContent]
+    public let systemInstruction: GeminiContent?
+    public let generationConfig: GeminiGenerationConfig?
+    public let safetySettings: [GeminiSafetySetting]?
+    public let tools: [GeminiTool]?
+    public let toolConfig: GeminiToolConfig?
+
+    public init(
+        contents: [GeminiContent],
+        systemInstruction: GeminiContent? = nil,
+        generationConfig: GeminiGenerationConfig? = nil,
+        safetySettings: [GeminiSafetySetting]? = nil,
+        tools: [GeminiTool]? = nil,
+        toolConfig: GeminiToolConfig? = nil
+    ) {
+        self.contents = contents
+        self.systemInstruction = systemInstruction
+        self.generationConfig = generationConfig
+        self.safetySettings = safetySettings
+        self.tools = tools
+        self.toolConfig = toolConfig
+    }
+}
+
+/// Gemini API response
+public struct GeminiResponse: Codable, Sendable {
+    public let candidates: [GeminiCandidate]
+    public let usageMetadata: GeminiUsageMetadata?
+    public let modelVersion: String?
+
+    public init(candidates: [GeminiCandidate], usageMetadata: GeminiUsageMetadata? = nil, modelVersion: String? = nil) {
+        self.candidates = candidates
+        self.usageMetadata = usageMetadata
+        self.modelVersion = modelVersion
+    }
+}
+
+/// Response candidate
+public struct GeminiCandidate: Codable, Sendable {
+    public let content: GeminiContent
+    public let finishReason: String?
+    public let safetyRatings: [GeminiSafetyRating]?
+    public let citationMetadata: GeminiCitationMetadata?
+
+    public init(
+        content: GeminiContent,
+        finishReason: String? = nil,
+        safetyRatings: [GeminiSafetyRating]? = nil,
+        citationMetadata: GeminiCitationMetadata? = nil
+    ) {
+        self.content = content
+        self.finishReason = finishReason
+        self.safetyRatings = safetyRatings
+        self.citationMetadata = citationMetadata
+    }
+}
+
+/// Usage metadata (token counts)
+public struct GeminiUsageMetadata: Codable, Sendable {
+    public let promptTokenCount: Int
+    public let candidatesTokenCount: Int
+    public let totalTokenCount: Int
+
+    public init(promptTokenCount: Int, candidatesTokenCount: Int, totalTokenCount: Int) {
+        self.promptTokenCount = promptTokenCount
+        self.candidatesTokenCount = candidatesTokenCount
+        self.totalTokenCount = totalTokenCount
+    }
+}
+
+/// Safety rating for a response
+public struct GeminiSafetyRating: Codable, Sendable {
+    public let category: String
+    public let probability: String
+
+    public init(category: String, probability: String) {
+        self.category = category
+        self.probability = probability
+    }
+}
+
+/// Citation metadata
+public struct GeminiCitationMetadata: Codable, Sendable {
+    public let citationSources: [GeminiCitationSource]
+
+    public init(citationSources: [GeminiCitationSource]) {
+        self.citationSources = citationSources
+    }
+}
+
+/// Citation source
+public struct GeminiCitationSource: Codable, Sendable {
+    public let startIndex: Int?
+    public let endIndex: Int?
+    public let uri: String?
+    public let license: String?
+
+    public init(startIndex: Int? = nil, endIndex: Int? = nil, uri: String? = nil, license: String? = nil) {
+        self.startIndex = startIndex
+        self.endIndex = endIndex
+        self.uri = uri
+        self.license = license
+    }
+}
