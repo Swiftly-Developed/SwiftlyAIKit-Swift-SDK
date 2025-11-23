@@ -52,21 +52,25 @@ swift package update
 
 The framework is organized into five main directories under `Sources/SwiftlyAIKit/`:
 
-1. **Models/** - Core data structures
-   - `AIRequest`, `AIResponse`, `AIMessage` - Request/response types
-   - `AIError` - Framework-specific errors
-   - `ModelProvider`, `ProviderType` - Provider identification
-   - `Models/Anthropic/` - Anthropic-specific types (AnthropicModels.swift with ~700 lines of API types)
-
-2. **Providers/** - AI provider implementations
-   - `ProviderProtocol` - Interface all providers must implement
-   - Provider implementations: OpenAI, Anthropic, Cohere, Google, Mistral
-   - Each provider handles API-specific request/response formatting
-
-3. **Core/** - Framework core logic
+1. **Core/** - Framework core logic
    - `AIGateway` - Main actor coordinating provider calls
    - `APIKeyStrategy` - Key management strategies (company vs client keys)
    - `Configuration` - Framework configuration options
+   - `ProviderProtocol` - Interface all providers must implement
+
+2. **Models/** - Shared/common data structures
+   - `AIRequest`, `AIResponse`, `AIMessage` - Request/response types
+   - `AIError` - Framework-specific errors
+   - `ModelProvider`, `ProviderType` - Provider identification
+
+3. **Providers/** - AI provider implementations (grouped by provider)
+   - `Anthropic/` - AnthropicProvider + AnthropicModels
+   - `OpenAI/` - OpenAIProvider + OpenAIModels
+   - `Gemini/` - GeminiProvider + GeminiModels + GoogleProvider (alias)
+   - `Perplexity/` - PerplexityProvider + PerplexityModels + PerplexityOptions
+   - `Mistral/` - MistralProvider + MistralModels
+   - `Cohere/` - CohereProvider + CohereModels
+   - Each provider subdirectory contains all provider-specific code
 
 4. **Extensions/** - Vapor integration
    - `Request+AI.swift` - Vapor Request extensions for gateway access
@@ -110,8 +114,15 @@ This project uses the Swift Testing framework (imported as `Testing`), not XCTes
 Tests are organized in `Tests/SwiftlyAIKitTests/`:
 - `CoreTests/` - AIGateway, Configuration, APIKeyStrategy, ModelProvider, ProviderType tests
 - `ModelTests/` - AIRequest, AIResponse, AIMessage, AIError tests
-- `ProviderTests/` - ProviderProtocol and provider implementation tests
-- `Mocks/` - Test infrastructure (MockHTTPClient, MockProvider, MockAnthropicAPI)
+- `ProviderTests/` - ProviderProtocol and provider implementation tests (grouped by provider)
+  - `ProviderProtocolTests.swift` - Protocol conformance tests
+  - `Anthropic/` - MockAnthropicAPI
+  - `OpenAI/` - (no tests yet)
+  - `Gemini/` - GeminiProviderTests + MockGeminiAPI
+  - `Perplexity/` - PerplexityProviderTests + PerplexityOptionsTests + MockPerplexityAPI
+  - `Mistral/` - MistralProviderTests + MockMistralAPI
+  - `Cohere/` - CohereProviderTests + MockCohereAPI
+- `Mocks/` - Shared test infrastructure (MockHTTPClient, MockProvider)
   - `TestData/` - Sample requests, responses, and errors for testing
 
 ## Dependencies
@@ -463,42 +474,47 @@ git push origin --tags
 - `Sources/SwiftlyAIKit/Core/AIGateway.swift` (318 lines) - Main coordinator actor
 - `Sources/SwiftlyAIKit/Core/Configuration.swift` (178 lines) - Framework configuration
 - `Sources/SwiftlyAIKit/Core/APIKeyStrategy.swift` (110 lines) - Key management strategies
+- `Sources/SwiftlyAIKit/Core/ProviderProtocol.swift` (189 lines) - Provider interface
 - `Sources/SwiftlyAIKit/Utilities/HTTPClientManager.swift` (255 lines) - HTTP client with retry
-- `Sources/SwiftlyAIKit/Providers/ProviderProtocol.swift` (189 lines) - Provider interface
 
 **Anthropic Implementation (2 files, ~1,300 lines):**
-- `Sources/SwiftlyAIKit/Models/Anthropic/AnthropicModels.swift` (679 lines) - All Anthropic types
-- `Sources/SwiftlyAIKit/Providers/AnthropicProvider.swift` (623 lines) - Complete implementation
+- `Sources/SwiftlyAIKit/Providers/Anthropic/AnthropicModels.swift` (679 lines) - All Anthropic types
+- `Sources/SwiftlyAIKit/Providers/Anthropic/AnthropicProvider.swift` (623 lines) - Complete implementation
 
 **OpenAI Implementation (2 files, ~963 lines):**
-- `Sources/SwiftlyAIKit/Models/OpenAI/OpenAIModels.swift` (639 lines) - All OpenAI types
-- `Sources/SwiftlyAIKit/Providers/OpenAIProvider.swift` (324 lines) - Core implementation
+- `Sources/SwiftlyAIKit/Providers/OpenAI/OpenAIModels.swift` (639 lines) - All OpenAI types
+- `Sources/SwiftlyAIKit/Providers/OpenAI/OpenAIProvider.swift` (324 lines) - Core implementation
 
-**Gemini Implementation (2 files, ~787 lines):**
-- `Sources/SwiftlyAIKit/Models/Gemini/GeminiModels.swift` (451 lines) - All Gemini types
-- `Sources/SwiftlyAIKit/Providers/GeminiProvider.swift` (335 lines) - Core implementation
+**Gemini Implementation (3 files, ~805 lines):**
+- `Sources/SwiftlyAIKit/Providers/Gemini/GeminiModels.swift` (451 lines) - All Gemini types
+- `Sources/SwiftlyAIKit/Providers/Gemini/GeminiProvider.swift` (335 lines) - Core implementation
+- `Sources/SwiftlyAIKit/Providers/Gemini/GoogleProvider.swift` (18 lines) - Alias for GeminiProvider
 
 **Perplexity Implementation (3 files, ~698 lines):**
-- `Sources/SwiftlyAIKit/Models/Perplexity/PerplexityModels.swift` (316 lines) - All Perplexity types
-- `Sources/SwiftlyAIKit/Models/Perplexity/PerplexityOptions.swift` (147 lines) - Type-safe options helper
-- `Sources/SwiftlyAIKit/Providers/PerplexityProvider.swift` (235 lines) - Core implementation
+- `Sources/SwiftlyAIKit/Providers/Perplexity/PerplexityModels.swift` (316 lines) - All Perplexity types
+- `Sources/SwiftlyAIKit/Providers/Perplexity/PerplexityOptions.swift` (147 lines) - Type-safe options helper
+- `Sources/SwiftlyAIKit/Providers/Perplexity/PerplexityProvider.swift` (235 lines) - Core implementation
 
 **Mistral Implementation (2 files, ~994 lines):**
-- `Sources/SwiftlyAIKit/Models/Mistral/MistralModels.swift` (641 lines) - All Mistral types
-- `Sources/SwiftlyAIKit/Providers/MistralProvider.swift` (353 lines) - Core implementation
+- `Sources/SwiftlyAIKit/Providers/Mistral/MistralModels.swift` (641 lines) - All Mistral types
+- `Sources/SwiftlyAIKit/Providers/Mistral/MistralProvider.swift` (353 lines) - Core implementation
 
 **Cohere Implementation (2 files, ~919 lines):**
-- `Sources/SwiftlyAIKit/Models/Cohere/CohereModels.swift` (454 lines) - All Cohere types
-- `Sources/SwiftlyAIKit/Providers/CohereProvider.swift` (465 lines) - Core implementation
+- `Sources/SwiftlyAIKit/Providers/Cohere/CohereModels.swift` (454 lines) - All Cohere types
+- `Sources/SwiftlyAIKit/Providers/Cohere/CohereProvider.swift` (465 lines) - Core implementation
 
 **Vapor Integration (2 files, ~413 lines):**
 - `Sources/SwiftlyAIKit/Extensions/Application+AI.swift` (173 lines) - App lifecycle
 - `Sources/SwiftlyAIKit/Extensions/Request+AI.swift` (240 lines) - Request helpers
 
-**Testing Infrastructure (3 files, ~1,000 lines):**
+**Testing Infrastructure (grouped by provider):**
 - `Tests/SwiftlyAIKitTests/Mocks/MockHTTPClient.swift` (278 lines)
 - `Tests/SwiftlyAIKitTests/Mocks/MockProvider.swift` (377 lines)
-- `Tests/SwiftlyAIKitTests/Mocks/MockAnthropicAPI.swift` (374 lines)
+- `Tests/SwiftlyAIKitTests/ProviderTests/Anthropic/MockAnthropicAPI.swift` (374 lines)
+- `Tests/SwiftlyAIKitTests/ProviderTests/Gemini/MockGeminiAPI.swift` + GeminiProviderTests
+- `Tests/SwiftlyAIKitTests/ProviderTests/Perplexity/MockPerplexityAPI.swift` + PerplexityProviderTests
+- `Tests/SwiftlyAIKitTests/ProviderTests/Mistral/MockMistralAPI.swift` + MistralProviderTests
+- `Tests/SwiftlyAIKitTests/ProviderTests/Cohere/MockCohereAPI.swift` + CohereProviderTests
 
 **Documentation:**
 - `CLAUDE.md` - This file (you are here)

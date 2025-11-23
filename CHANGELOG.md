@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Restructured codebase to provider-centric organization**
+  - Moved all provider-specific models from `Models/[Provider]/` to `Providers/[Provider]/`
+  - Moved `ProviderProtocol.swift` from `Providers/` to `Core/` directory
+  - Eliminated 6 single-file directories in Models/ (Anthropic, OpenAI, Gemini, Perplexity, Mistral, Cohere)
+  - Each provider directory now contains 2-3 files (provider + models + options where applicable)
+  - Test structure reorganized to mirror source structure with provider subdirectories
+  - Mock API files moved from `Mocks/` to `ProviderTests/[Provider]/` directories
+  - Updated CLAUDE.md documentation with new folder structure
+  - **Benefits**: Improved code cohesion, easier navigation, better scalability, clearer module boundaries
+
 ## [0.6.0] - 2025-11-23
 
 ### Added
