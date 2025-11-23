@@ -195,7 +195,7 @@ public enum AIError: Error, Sendable, Equatable {
         switch self {
         case .rateLimitExceeded, .timeout, .serviceUnavailable, .overloaded, .connectionFailed:
             return true
-        case .networkError:
+        case .networkError, .internalError:
             return true
         default:
             return false

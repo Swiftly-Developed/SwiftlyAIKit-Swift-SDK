@@ -11,7 +11,7 @@ struct AIErrorTests {
     func testMissingAPIKeyDescription() {
         let error = SampleErrors.missingAPIKey
         #expect(error.localizedDescription.contains("API key"))
-        #expect(error.localizedDescription.contains("anthropic"))
+        #expect(error.localizedDescription.contains("Anthropic"))
     }
 
     @Test("Missing API key is not retryable")
@@ -130,7 +130,7 @@ struct AIErrorTests {
     func testQuotaExceeded() {
         let error = SampleErrors.quotaExceeded
         #expect(!error.isRetryable)
-        #expect(error.localizedDescription.contains("quota"))
+        #expect(error.localizedDescription.contains("Quota"))
     }
 
     @Test("Quota without reset date")
@@ -176,14 +176,14 @@ struct AIErrorTests {
     func testDecodingError() {
         let error = SampleErrors.decodingError
         #expect(!error.isRetryable)
-        #expect(error.localizedDescription.contains("decoding"))
+        #expect(error.localizedDescription.contains("decode"))
     }
 
     @Test("Empty response error")
     func testEmptyResponse() {
         let error = SampleErrors.emptyResponse
         #expect(!error.isRetryable)
-        #expect(error.localizedDescription.contains("empty"))
+        #expect(error.localizedDescription.contains("Empty"))
     }
 
     @Test("Invalid response error")
@@ -217,14 +217,14 @@ struct AIErrorTests {
         let error = SampleErrors.unsupportedFeature
         #expect(!error.isRetryable)
         #expect(error.localizedDescription.contains("batch processing"))
-        #expect(error.localizedDescription.contains("openai"))
+        #expect(error.localizedDescription.contains("OpenAI"))
     }
 
     @Test("Provider not registered error")
     func testProviderNotRegistered() {
         let error = SampleErrors.providerNotRegistered
         #expect(!error.isRetryable)
-        #expect(error.localizedDescription.contains("mistral"))
+        #expect(error.localizedDescription.contains("Mistral"))
     }
 
     // MARK: - Unknown Error
