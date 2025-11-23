@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Comprehensive test suite with 277 tests across 7 test suites (100% pass rate)
+- Mock infrastructure for testing (MockHTTPClient, MockProvider, MockAnthropicAPI)
+- Test data samples (SampleRequests, SampleResponses, SampleErrors)
+- AIErrorTests (42 tests) - All error types, retryability, status codes, error categories
+- APIKeyStrategyTests (33 tests) - All 4 key strategies with edge cases and real-world scenarios
+- ConfigurationTests (39 tests) - All 6 factory methods, beta features, custom URLs
+- ModelProviderTests (55 tests) - All 25 models with feature support and token limits
+- ProviderTypeTests (36 tests) - All 5 providers with conformances and base URLs
+- AIModelsTests (38 tests) - All message/request/response types with integration tests
+- ProviderProtocolTests (32 tests) - Batch operations, protocol conformance, streaming
+- TESTING.md comprehensive testing documentation
+- Guidelines for test contributions and CI/CD integration
+
+### Changed
+- MockProvider.CapturedRequest now conforms to Sendable for Swift 6 concurrency safety
+- Updated CLAUDE.md with git workflow best practices (small commits, changelog maintenance, version tagging)
+
 ## [0.2.0] - 2025-11-23
 
 ### Added
