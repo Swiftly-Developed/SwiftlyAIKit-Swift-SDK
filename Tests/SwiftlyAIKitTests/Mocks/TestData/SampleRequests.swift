@@ -182,6 +182,93 @@ public enum SampleRequests {
         ]
     )
 
+    // MARK: - Perplexity-Specific Requests
+
+    /// Perplexity request with web search capabilities
+    public static let perplexityWebSearch = AIRequest(
+        model: "sonar",
+        messages: [
+            AIMessage(role: .user, content: [.text("What are the latest developments in AI?")])
+        ],
+        providerOptions: PerplexityOptions.webSearch(
+            recency: .week,
+            includeCitations: true
+        ).toProviderOptions()
+    )
+
+    /// Perplexity request with domain filtering
+    public static let perplexityDomainFilter = AIRequest(
+        model: "sonar-pro",
+        messages: [
+            AIMessage(role: .user, content: [.text("Latest AI research papers?")])
+        ],
+        providerOptions: PerplexityOptions.webSearch(
+            domains: ["arxiv.org", "scholar.google.com"],
+            recency: .month,
+            includeCitations: true
+        ).toProviderOptions()
+    )
+
+    /// Perplexity request with JSON schema structured output
+    public static let perplexityJsonSchema = AIRequest(
+        model: "sonar-reasoning",
+        messages: [
+            AIMessage(role: .user, content: [.text("Extract information about this person: John Doe, age 30, works at TechCorp")])
+        ],
+        providerOptions: PerplexityOptions.jsonSchema(
+            name: "person_info",
+            schema: [
+                "type": AnyCodable("object"),
+                "properties": AnyCodable([
+                    "name": ["type": "string"],
+                    "age": ["type": "integer"],
+                    "employer": ["type": "string"]
+                ]),
+                "required": AnyCodable(["name"])
+            ],
+            includeCitations: false
+        ).toProviderOptions()
+    )
+
+    /// Perplexity request with all search options
+    public static let perplexityFullOptions = AIRequest(
+        model: "sonar-pro",
+        messages: [
+            AIMessage(role: .user, content: [.text("Recent tech news about AI?")])
+        ],
+        maxTokens: 2048,
+        temperature: 0.7,
+        providerOptions: PerplexityOptions(
+            searchDomainFilter: ["techcrunch.com", "theverge.com", "wired.com"],
+            searchRecencyFilter: .day,
+            returnCitations: true,
+            returnImages: true
+        ).toProviderOptions()
+    )
+
+    /// Perplexity request with academic research focus
+    public static let perplexityAcademicResearch = AIRequest(
+        model: "sonar-reasoning",
+        messages: [
+            AIMessage(role: .user, content: [.text("What are the key findings in recent transformer architecture research?")])
+        ],
+        maxTokens: 4096,
+        temperature: 0.3,
+        providerOptions: PerplexityOptions.webSearch(
+            domains: ["arxiv.org", "papers.nips.cc", "openreview.net"],
+            recency: .year,
+            includeCitations: true
+        ).toProviderOptions()
+    )
+
+    /// Perplexity request without any special options (basic query)
+    public static let perplexityBasic = AIRequest(
+        model: "sonar",
+        messages: [
+            AIMessage(role: .user, content: [.text("What is the Swift programming language?")])
+        ]
+    )
+
     // MARK: - Batch Requests
 
     /// Array of requests for batch processing
