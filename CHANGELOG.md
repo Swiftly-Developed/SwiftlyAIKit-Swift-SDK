@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-11-23
+
 ### Added
 - **Complete Google Gemini API integration** (~787 lines total)
   - GeminiModels.swift with full type definitions (451 lines) for all Gemini API features
@@ -23,6 +25,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Context windows: 2M tokens for Pro models, 1M tokens for Flash models
   - Output limits: 65K tokens for 2.5 Pro, 8K tokens for other models
   - API key authentication via query parameter (x-goog-api-key)
+- **Comprehensive Gemini test coverage** (46 tests)
+  - MockGeminiAPI.swift with sample responses for all Gemini endpoints
+  - GeminiProviderTests (38 tests) covering initialization, request/response mapping, error handling, safety settings, function calling, token counting, streaming, and model support
+  - ModelProviderTests updates (8 tests) for Gemini model properties
+  - Updated TESTING.md documentation (323 total tests, 100% pass rate)
+
+### Changed
+- Updated ModelProvider enum to include 5 Gemini models (total now 35 models: 22 Claude + 8 GPT + 5 Gemini)
+- Updated CLAUDE.md with Gemini implementation status (moved from placeholder to fully implemented)
+- Updated test count in TESTING.md from 277 to 323 tests
+
+## [0.2.0] - 2025-11-23
+
+### Added
 - **Complete OpenAI GPT API integration** (~963 lines total)
   - OpenAIModels.swift with full type definitions (639 lines) for all OpenAI API features
   - OpenAIProvider implementation (324 lines) with sendMessage and streaming support
@@ -37,25 +53,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Context windows: 128K tokens for GPT-4o/Mini, 128K for GPT-4 Turbo
   - Output limits: 16K tokens for GPT-4o/Mini, 4K for others
 - Comprehensive test suite with 277 tests across 7 test suites (100% pass rate)
-- Mock infrastructure for testing (MockHTTPClient, MockProvider, MockAnthropicAPI)
-- Test data samples (SampleRequests, SampleResponses, SampleErrors)
-- AIErrorTests (42 tests) - All error types, retryability, status codes, error categories
-- APIKeyStrategyTests (33 tests) - All 4 key strategies with edge cases and real-world scenarios
-- ConfigurationTests (39 tests) - All 6 factory methods, beta features, custom URLs
-- ModelProviderTests (55 tests) - All 25 models with feature support and token limits
-- ProviderTypeTests (36 tests) - All 5 providers with conformances and base URLs
-- AIModelsTests (38 tests) - All message/request/response types with integration tests
-- ProviderProtocolTests (32 tests) - Batch operations, protocol conformance, streaming
-- TESTING.md comprehensive testing documentation
-- Guidelines for test contributions and CI/CD integration
-
-### Changed
-- MockProvider.CapturedRequest now conforms to Sendable for Swift 6 concurrency safety
-- Updated CLAUDE.md with git workflow best practices (small commits, changelog maintenance, version tagging)
-
-## [0.2.0] - 2025-11-23
-
-### Added
+  - Mock infrastructure for testing (MockHTTPClient, MockProvider, MockAnthropicAPI)
+  - Test data samples (SampleRequests, SampleResponses, SampleErrors)
+  - AIErrorTests (42 tests) - All error types, retryability, status codes, error categories
+  - APIKeyStrategyTests (33 tests) - All 4 key strategies with edge cases and real-world scenarios
+  - ConfigurationTests (39 tests) - All 6 factory methods, beta features, custom URLs
+  - ModelProviderTests (55 tests) - All 30 models with feature support and token limits
+  - ProviderTypeTests (36 tests) - All 5 providers with conformances and base URLs
+  - AIModelsTests (38 tests) - All message/request/response types with integration tests
+  - ProviderProtocolTests (32 tests) - Batch operations, protocol conformance, streaming
+  - TESTING.md comprehensive testing documentation
+  - Guidelines for test contributions and CI/CD integration
 - Complete Anthropic Claude API integration with full Messages and Batch API support
 - APIKeyStrategy enum with 4 key management strategies (companyKey, clientKey, hybrid, perProvider)
 - Configuration struct with convenience factory methods (withCompanyKey, withClientKeys, withHybridKeys, development, production)
@@ -101,6 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive README with installation and usage guidelines
 - Basic test structure using Swift Testing framework
 
-[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/releases/tag/v0.1.0
