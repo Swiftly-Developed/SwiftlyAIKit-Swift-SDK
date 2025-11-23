@@ -1,18 +1,324 @@
 import Foundation
+import Vapor
 
-/// OpenAI provider implementation (placeholder)
+/// OpenAI provider implementation for GPT models
 public struct OpenAIProvider: ProviderProtocol {
     public let providerType: ProviderType = .openai
 
-    public init() {}
+    private let httpClient: HTTPClientManager
+    private let baseURL: String
+    private let organizationId: String?
+    private let timeout: Int
+    private let maxRetries: Int
+    private let enableLogging: Bool
+
+    /// Initialize OpenAI provider with default HTTPClientManager
+    /// - Parameters:
+    ///   - baseURL: Base URL for OpenAI API (default: https://api.openai.com/v1)
+    ///   - organizationId: Optional organization ID for multi-tenant accounts
+    ///   - timeout: Request timeout in seconds (default: 60)
+    ///   - maxRetries: Maximum number of retry attempts (default: 3)
+    ///   - enableLogging: Enable request/response logging (default: false)
+    public init(
+        baseURL: String = "https://api.openai.com/v1",
+        organizationId: String? = nil,
+        timeout: Int = 60,
+        maxRetries: Int = 3,
+        enableLogging: Bool = false
+    ) {
+        self.httpClient = HTTPClientManager()
+        self.baseURL = baseURL
+        self.organizationId = organizationId
+        self.timeout = timeout
+        self.maxRetries = maxRetries
+        self.enableLogging = enableLogging
+    }
+
+    /// Initialize with custom HTTP client
+    /// - Parameters:
+    ///   - httpClient: Custom HTTP client manager
+    ///   - baseURL: Base URL for OpenAI API
+    ///   - organizationId: Optional organization ID
+    ///   - timeout: Request timeout in seconds
+    ///   - maxRetries: Maximum retry attempts
+    ///   - enableLogging: Enable logging
+    public init(
+        httpClient: HTTPClientManager,
+        baseURL: String = "https://api.openai.com/v1",
+        organizationId: String? = nil,
+        timeout: Int = 60,
+        maxRetries: Int = 3,
+        enableLogging: Bool = false
+    ) {
+        self.httpClient = httpClient
+        self.baseURL = baseURL
+        self.organizationId = organizationId
+        self.timeout = timeout
+        self.maxRetries = maxRetries
+        self.enableLogging = enableLogging
+    }
+
+    // MARK: - ProviderProtocol Implementation
 
     public func sendMessage(_ request: AIRequest, apiKey: String) async throws -> AIResponse {
-        throw AIError.unsupportedFeature(feature: "OpenAI provider", provider: .openai)
+        let openAIRequest = try mapToOpenAIRequest(request)
+        let headers = buildHeaders(apiKey: apiKey, stream: false)
+
+        let jsonData = try JSONEncoder().encode(openAIRequest)
+
+        let responseData = try await httpClient.post(
+            url: "\(baseURL)/chat/completions",
+            headers: headers,
+            body: jsonData
+        )
+
+        let openAIResponse = try JSONDecoder().decode(OpenAIResponse.self, from: responseData)
+        return mapToAIResponse(openAIResponse)
     }
 
     public func streamMessage(_ request: AIRequest, apiKey: String) -> AsyncThrowingStream<AIResponse, Error> {
         AsyncThrowingStream { continuation in
-            continuation.finish(throwing: AIError.unsupportedFeature(feature: "OpenAI provider", provider: .openai))
+            Task {
+                do {
+                    var openAIRequest = try mapToOpenAIRequest(request)
+                    openAIRequest.stream = true
+
+                    let headers = buildHeaders(apiKey: apiKey, stream: true)
+                    let jsonData = try JSONEncoder().encode(openAIRequest)
+
+                    let stream = try await httpClient.streamPost(
+                        url: "\(baseURL)/chat/completions",
+                        headers: headers,
+                        body: jsonData
+                    )
+
+                    var accumulatedContent = ""
+
+                    for try await chunk in stream {
+                        let chunkString = String(data: chunk, encoding: .utf8) ?? ""
+                        let lines = chunkString.split(separator: "\n")
+
+                        for line in lines {
+                            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+                            // Check for stream end signal
+                            if trimmed == "data: [DONE]" {
+                                continuation.finish()
+                                return
+                            }
+
+                            // Parse SSE format: "data: {...}"
+                            guard trimmed.hasPrefix("data: ") else { continue }
+
+                            let jsonString = String(trimmed.dropFirst(6))
+                            guard let jsonData = jsonString.data(using: .utf8) else { continue }
+
+                            let streamChunk = try JSONDecoder().decode(OpenAIStreamChunk.self, from: jsonData)
+
+                            // Extract delta content
+                            if let delta = streamChunk.choices.first?.delta,
+                               let content = delta.content {
+                                accumulatedContent += content
+
+                                // Create AIResponse for this chunk
+                                let message = AIMessage(
+                                    role: .assistant,
+                                    content: [.text(accumulatedContent)]
+                                )
+                                let response = AIResponse(
+                                    id: streamChunk.id,
+                                    model: streamChunk.model,
+                                    message: message,
+                                    stopReason: nil,
+                                    usage: nil,
+                                    provider: .openai
+                                )
+
+                                continuation.yield(response)
+                            }
+
+                            // Check for finish
+                            if let finishReason = streamChunk.choices.first?.finishReason {
+                                let finalMessage = AIMessage(
+                                    role: .assistant,
+                                    content: [.text(accumulatedContent)]
+                                )
+                                let finalResponse = AIResponse(
+                                    id: streamChunk.id,
+                                    model: streamChunk.model,
+                                    message: finalMessage,
+                                    stopReason: mapFinishReason(finishReason),
+                                    usage: nil,
+                                    provider: .openai
+                                )
+                                continuation.yield(finalResponse)
+                                continuation.finish()
+                                return
+                            }
+                        }
+                    }
+
+                    continuation.finish()
+
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    public func countTokens(_ request: AIRequest, apiKey: String) async throws -> Int? {
+        // OpenAI doesn't have a separate token counting endpoint
+        // Tokens are returned in the response usage field
+        return nil
+    }
+
+    // MARK: - Private Helper Methods
+
+    private func buildHeaders(apiKey: String, stream: Bool) -> [(String, String)] {
+        var headers = [
+            ("Authorization", "Bearer \(apiKey)"),
+            ("Content-Type", "application/json")
+        ]
+
+        if let orgId = organizationId {
+            headers.append(("OpenAI-Organization", orgId))
+        }
+
+        if stream {
+            headers.append(("Accept", "text/event-stream"))
+        }
+
+        return headers
+    }
+
+    private func mapToOpenAIRequest(_ request: AIRequest) throws -> OpenAIRequest {
+        var messages: [OpenAIMessage] = []
+
+        // Add system message if present (OpenAI uses messages array, not separate parameter)
+        if let systemPrompt = request.systemPrompt, !systemPrompt.isEmpty {
+            messages.append(OpenAIMessage(
+                role: .system,
+                content: .text(systemPrompt)
+            ))
+        }
+
+        // Map AIMessage to OpenAIMessage
+        for message in request.messages {
+            let openAIMessage = try mapMessage(message)
+            messages.append(openAIMessage)
+        }
+
+        return OpenAIRequest(
+            model: request.model,
+            messages: messages,
+            maxTokens: request.maxTokens,
+            temperature: request.temperature,
+            topP: request.topP,
+            stop: request.stopSequences
+        )
+    }
+
+    private func mapMessage(_ message: AIMessage) throws -> OpenAIMessage {
+        let role: OpenAIMessage.Role = message.role == .user ? .user : .assistant
+
+        // Handle different content types
+        if message.content.count == 1, case .text(let text) = message.content[0] {
+            // Simple text message
+            return OpenAIMessage(role: role, content: .text(text))
+        } else {
+            // Multi-part content (text + images)
+            let contentBlocks = try message.content.map { try mapContentBlock($0) }
+            return OpenAIMessage(role: role, content: .contentArray(contentBlocks))
+        }
+    }
+
+    private func mapContentBlock(_ block: AIMessageContent) throws -> OpenAIContentBlock {
+        switch block {
+        case .text(let text):
+            return .text(text)
+
+        case .image(let source, let mediaType):
+            switch source {
+            case .url(let url):
+                return .imageUrl(url: url, detail: .auto)
+
+            case .base64(let data):
+                // Convert to data URL format
+                let mimeType = mediaType ?? "image/jpeg"
+                let dataUrl = "data:\(mimeType);base64,\(data)"
+                return .imageUrl(url: dataUrl, detail: .auto)
+            }
+
+        case .document:
+            throw AIError.unsupportedFeature(feature: "PDF documents", provider: .openai)
+
+        case .custom:
+            throw AIError.unsupportedFeature(feature: "Custom content", provider: .openai)
+        }
+    }
+
+    private func mapToAIResponse(_ response: OpenAIResponse) -> AIResponse {
+        guard let choice = response.choices.first else {
+            let emptyMessage = AIMessage(role: .assistant, content: [])
+            return AIResponse(
+                id: response.id,
+                model: response.model,
+                message: emptyMessage,
+                stopReason: nil,
+                usage: nil,
+                provider: .openai
+            )
+        }
+
+        let content: [AIMessageContent]
+        if let messageContent = choice.message.content {
+            switch messageContent {
+            case .text(let text):
+                content = [.text(text)]
+            case .contentArray(let blocks):
+                content = blocks.compactMap { block in
+                    switch block {
+                    case .text(let text):
+                        return .text(text)
+                    case .imageUrl:
+                        return nil // Images in responses not typical
+                    }
+                }
+            }
+        } else {
+            content = []
+        }
+
+        let message = AIMessage(role: .assistant, content: content)
+
+        let usage = AIUsage(
+            inputTokens: response.usage.promptTokens,
+            outputTokens: response.usage.completionTokens
+        )
+
+        return AIResponse(
+            id: response.id,
+            model: response.model,
+            message: message,
+            stopReason: choice.finishReason.map { mapFinishReason($0) },
+            usage: usage,
+            provider: .openai
+        )
+    }
+
+    private func mapFinishReason(_ reason: String) -> AIStopReason {
+        switch reason {
+        case "stop":
+            return .endTurn
+        case "length":
+            return .maxTokens
+        case "content_filter":
+            return .stopSequence
+        case "tool_calls", "function_call":
+            return .toolUse
+        default:
+            return .endTurn
         }
     }
 }
