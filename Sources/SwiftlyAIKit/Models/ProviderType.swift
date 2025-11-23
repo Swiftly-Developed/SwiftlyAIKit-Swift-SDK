@@ -13,6 +13,9 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
     /// Google AI (Gemini and PaLM models)
     case google
 
+    /// Perplexity AI (Sonar models with real-time search)
+    case perplexity
+
     /// Cohere (Command and embedding models)
     case cohere
 
@@ -25,6 +28,7 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
         case .openai: return "OpenAI"
         case .anthropic: return "Anthropic"
         case .google: return "Google AI"
+        case .perplexity: return "Perplexity AI"
         case .cohere: return "Cohere"
         case .mistral: return "Mistral AI"
         }
@@ -39,6 +43,8 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
             return "https://api.anthropic.com/v1"
         case .google:
             return "https://generativelanguage.googleapis.com/v1"
+        case .perplexity:
+            return "https://api.perplexity.ai"
         case .cohere:
             return "https://api.cohere.ai/v1"
         case .mistral:
