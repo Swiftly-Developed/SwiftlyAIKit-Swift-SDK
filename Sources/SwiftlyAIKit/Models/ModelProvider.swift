@@ -159,6 +159,41 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Ministral 8B - Edge computing model (128K context)
     case ministral8B = "ministral-8b-latest"
 
+    // MARK: - Cohere Models
+
+    /// Command A - Most capable model (256K context, 111B params)
+    case commandA = "command-a-03-2025"
+
+    /// Command A Reasoning - Advanced reasoning model (256K context)
+    case commandAReasoning = "command-a-reasoning-03-2025"
+
+    /// Command A Translate - Translation specialist (16K context, 23 languages)
+    case commandATranslate = "command-a-translate-03-2025"
+
+    /// Command A Vision - Multimodal model with image understanding (256K context)
+    case commandAVision = "command-a-vision-03-2025"
+
+    /// Command R+ 08-2024 - Latest RAG-optimized model (256K context)
+    case commandRPlus08 = "command-r-plus-08-2024"
+
+    /// Command R 08-2024 - Efficient RAG model (256K context)
+    case commandR08 = "command-r-08-2024"
+
+    /// Command R7B - Smallest R family model (256K context, 7B params)
+    case commandR7B = "command-r7b-12-2024"
+
+    /// Command R+ - Legacy version (128K context)
+    case commandRPlus = "command-r-plus"
+
+    /// Command R - Legacy version (128K context)
+    case commandR = "command-r"
+
+    /// Command - Original Command model (4K context)
+    case command = "command"
+
+    /// Command Light - Lightweight version (4K context)
+    case commandLight = "command-light"
+
     // MARK: - Properties
 
     /// The provider for this model
@@ -197,6 +232,12 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .magistralSmall, .magistralMedium,
              .ministral3B, .ministral8B:
             return .mistral
+
+        case .commandA, .commandAReasoning, .commandATranslate, .commandAVision,
+             .commandRPlus08, .commandR08, .commandR7B,
+             .commandRPlus, .commandR,
+             .command, .commandLight:
+            return .cohere
         }
     }
 
@@ -252,6 +293,17 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .magistralMedium: return "Magistral Medium"
         case .ministral3B: return "Ministral 3B"
         case .ministral8B: return "Ministral 8B"
+        case .commandA: return "Command A"
+        case .commandAReasoning: return "Command A Reasoning"
+        case .commandATranslate: return "Command A Translate"
+        case .commandAVision: return "Command A Vision"
+        case .commandRPlus08: return "Command R+ 08-2024"
+        case .commandR08: return "Command R 08-2024"
+        case .commandR7B: return "Command R7B"
+        case .commandRPlus: return "Command R+"
+        case .commandR: return "Command R"
+        case .command: return "Command"
+        case .commandLight: return "Command Light"
         }
     }
 
@@ -288,6 +340,13 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return true
         case .codestral, .magistralSmall, .magistralMedium,
              .ministral3B, .ministral8B:
+            return false
+        case .commandAVision:
+            return true
+        case .commandA, .commandAReasoning, .commandATranslate,
+             .commandRPlus08, .commandR08, .commandR7B,
+             .commandRPlus, .commandR,
+             .command, .commandLight:
             return false
         }
     }
@@ -394,6 +453,14 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 128_000
         case .codestral:
             return 32_000
+        case .commandA, .commandAReasoning, .commandAVision,
+             .commandRPlus08, .commandR08, .commandR7B,
+             .commandRPlus, .commandR:
+            return 256_000 // Command A and R families have 256K context
+        case .commandATranslate:
+            return 16_000 // Command A Translate has 16K context
+        case .command, .commandLight:
+            return 4_000 // Legacy Command models have 4K context
         }
     }
 
@@ -441,6 +508,11 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 8_192
         case .magistralSmall, .magistralMedium:
             return 32_768
+        case .commandA, .commandAReasoning, .commandAVision, .commandATranslate,
+             .commandRPlus08, .commandR08, .commandR7B,
+             .commandRPlus, .commandR,
+             .command, .commandLight:
+            return 8_192 // All Cohere models have 8K output limit
         }
     }
 }
