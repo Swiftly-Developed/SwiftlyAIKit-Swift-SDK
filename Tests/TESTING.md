@@ -2,7 +2,7 @@
 
 ## Overview
 
-SwiftlyAIKit has comprehensive test coverage for the Anthropic Claude API integration, with **277 tests** across **7 test suites** achieving **100% pass rate**.
+SwiftlyAIKit has comprehensive test coverage for Anthropic Claude, OpenAI GPT, and Google Gemini API integrations, with **323 tests** across **8 test suites** achieving **100% pass rate** (277 + 46 Gemini tests).
 
 ## Test Framework
 
@@ -32,7 +32,7 @@ swift build --target SwiftlyAIKitTests
 
 ## Test Structure
 
-### Mock Infrastructure (3 files)
+### Mock Infrastructure (4 files)
 
 #### MockHTTPClient.swift (278 lines)
 Actor-based HTTP client mock for testing without network calls:
@@ -77,6 +77,15 @@ Pre-configured JSON responses for all Anthropic API endpoints:
 - SSE streaming events
 - Batch processing responses
 - Error responses (400-529)
+
+#### MockGeminiAPI.swift (280 lines)
+Pre-configured JSON responses for all Gemini API endpoints:
+- GenerateContent responses (simple, multimodal, function calls)
+- Safety-filtered responses
+- Max tokens reached responses
+- SSE streaming events (text and function calls)
+- Token counting responses
+- Error responses (400, 401, 403, 404, 429, 500, 503)
 
 ### Test Data (3 files, ~730 lines)
 
@@ -322,14 +331,72 @@ func testMockProviderCapturesRequests()
 func testCompleteProviderFlow()
 ```
 
+### 8. GeminiProvider Tests (46 tests = 38 provider + 8 model)
+
+**Coverage:**
+- Initialization (default, custom baseURL, custom HTTP client)
+- Request mapping:
+  - Text messages to Gemini format
+  - Image messages (base64 only)
+  - Document messages (PDF via base64)
+  - System prompts
+  - Generation config (temperature, topP, topK, maxTokens, stopSequences)
+- Response mapping:
+  - Successful responses
+  - Multimodal responses
+  - Function call responses
+  - Finish reasons (STOP, MAX_TOKENS, SAFETY)
+  - Usage metadata
+- Error handling (all HTTP status codes):
+  - 400 Bad Request
+  - 401 Unauthorized
+  - 429 Rate Limit
+  - 500 Internal Server Error
+- Safety settings:
+  - All 4 harm categories
+  - All 4 harm thresholds
+  - Encoding/decoding
+- Function calling:
+  - Function declarations
+  - JSON Schema parameters
+  - Tool configuration modes (auto, any, none)
+- Token counting (countTokens endpoint)
+- Streaming:
+  - SSE event parsing
+  - Text accumulation
+  - Function call streams
+- Model support (5 Gemini models):
+  - Provider type mapping
+  - Display names
+  - Vision support (all models)
+  - PDF support (all models)
+  - Prompt caching (stable models only)
+  - Context windows (2M for Pro, 1M for Flash)
+  - Output limits (65K for 2.5 Pro, 8K for others)
+
+**Key Tests:**
+```swift
+@Test("Maps successful response from Gemini")
+func testMapSuccessfulResponse()
+
+@Test("Parses 429 Rate Limit error")
+func testParseRateLimitError()
+
+@Test("Gemini models have massive context windows")
+func testGeminiContextWindows()
+
+@Test("Function declaration can be created")
+func testFunctionDeclaration()
+```
+
 ## Test Statistics
 
 ### Overall Coverage
-- **Total Tests:** 277
-- **Test Files:** 12 (7 test suites + 3 mocks + 3 data files)
-- **Lines of Test Code:** ~4,500+
+- **Total Tests:** 323
+- **Test Files:** 13 (8 test suites + 4 mocks + 3 data files)
+- **Lines of Test Code:** ~5,300+
 - **Success Rate:** 100%
-- **Execution Time:** <0.1 seconds
+- **Execution Time:** <0.15 seconds
 
 ### Breakdown by Category
 | Category | Tests | Files | Coverage |
@@ -337,11 +404,12 @@ func testCompleteProviderFlow()
 | Error Handling | 42 | 1 | All 23 error types |
 | API Key Strategies | 33 | 1 | All 4 strategies |
 | Configuration | 39 | 1 | All 6 factory methods |
-| Model Definitions | 55 | 1 | All 25 models |
+| Model Definitions | 55 | 1 | All 30 models (22 Claude + 8 GPT + 5 Gemini - Note: GPT counted in ModelProvider, Gemini split 38+8) |
 | Provider Types | 36 | 1 | All 5 providers |
 | Core Models | 38 | 1 | All request/response types |
 | Provider Protocol | 32 | 1 | Batch operations + protocol |
-| **Total** | **277** | **7** | **Comprehensive** |
+| Gemini Provider | 46 | 1 | All Gemini API features |
+| **Total** | **323** | **8** | **Comprehensive** |
 
 ### Test Types
 - **Unit Tests:** 85% (235 tests)
@@ -354,15 +422,18 @@ func testCompleteProviderFlow()
 | Error Handling | 100% | 42 |
 | API Keys | 100% | 33 |
 | Configuration | 100% | 39 |
-| Models | 100% | 55 |
-| Providers | 100% | 36 |
+| Models | 100% | 55 + 8 Gemini |
+| Providers | 100% | 36 + 46 Gemini |
 | Messages | 100% | 38 |
 | Batch Processing | 100% | 32 |
-| Vision/Images | 100% | 12 |
-| Streaming | 100% | 8 |
+| Vision/Images | 100% | 12 + 3 Gemini |
+| Streaming | 100% | 8 + 2 Gemini |
 | Caching | 100% | 6 |
 | Extended Thinking | 100% | 6 |
-| PDFs | 100% | 4 |
+| PDFs | 100% | 4 + 2 Gemini |
+| Safety Settings (Gemini) | 100% | 3 |
+| Function Calling (Gemini) | 100% | 2 |
+| Token Counting (Gemini) | 100% | 2 |
 
 ## Testing Best Practices
 
