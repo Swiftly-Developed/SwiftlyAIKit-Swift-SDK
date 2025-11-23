@@ -110,3 +110,92 @@ public struct GeminiContent: Codable, Sendable, Equatable {
         self.parts = parts
     }
 }
+
+// MARK: - Function Calling
+
+/// Function declaration for Gemini API
+public struct GeminiFunctionDeclaration: Codable, Sendable, Equatable {
+    public let name: String
+    public let description: String
+    public let parameters: GeminiSchema?
+
+    public init(name: String, description: String, parameters: GeminiSchema? = nil) {
+        self.name = name
+        self.description = description
+        self.parameters = parameters
+    }
+}
+
+/// JSON Schema for function parameters
+public struct GeminiSchema: Codable, Sendable, Equatable {
+    public let type: String
+    public let properties: [String: GeminiSchemaProperty]?
+    public let required: [String]?
+
+    public init(type: String, properties: [String: GeminiSchemaProperty]? = nil, required: [String]? = nil) {
+        self.type = type
+        self.properties = properties
+        self.required = required
+    }
+}
+
+/// Schema property definition
+public struct GeminiSchemaProperty: Codable, Sendable, Equatable {
+    public let type: String
+    public let description: String?
+    public let format: String?
+    public let items: GeminiSchemaItems?
+    public let `enum`: [String]?
+
+    public init(type: String, description: String? = nil, format: String? = nil, items: GeminiSchemaItems? = nil, enumValues: [String]? = nil) {
+        self.type = type
+        self.description = description
+        self.format = format
+        self.items = items
+        self.enum = enumValues
+    }
+}
+
+/// Schema items for array types
+public struct GeminiSchemaItems: Codable, Sendable, Equatable {
+    public let type: String
+
+    public init(type: String) {
+        self.type = type
+    }
+}
+
+/// Tool configuration for Gemini API
+public struct GeminiTool: Codable, Sendable, Equatable {
+    public let functionDeclarations: [GeminiFunctionDeclaration]
+
+    public init(functionDeclarations: [GeminiFunctionDeclaration]) {
+        self.functionDeclarations = functionDeclarations
+    }
+}
+
+/// Tool configuration settings
+public struct GeminiToolConfig: Codable, Sendable, Equatable {
+    public let functionCallingConfig: GeminiFunctionCallingConfig
+
+    public init(functionCallingConfig: GeminiFunctionCallingConfig) {
+        self.functionCallingConfig = functionCallingConfig
+    }
+}
+
+/// Function calling mode configuration
+public struct GeminiFunctionCallingConfig: Codable, Sendable, Equatable {
+    public let mode: Mode
+    public let allowedFunctionNames: [String]?
+
+    public enum Mode: String, Codable, Sendable {
+        case auto = "AUTO"
+        case any = "ANY"
+        case none = "NONE"
+    }
+
+    public init(mode: Mode, allowedFunctionNames: [String]? = nil) {
+        self.mode = mode
+        self.allowedFunctionNames = allowedFunctionNames
+    }
+}
