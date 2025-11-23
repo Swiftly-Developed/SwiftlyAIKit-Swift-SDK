@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Complete Google Gemini API integration** (~787 lines total)
+  - GeminiModels.swift with full type definitions (451 lines) for all Gemini API features
+  - GeminiProvider implementation (335 lines) with sendMessage, streamMessage, and countTokens
+  - Support for Gemini 2.5 Pro, 2.5 Flash, 2.0 Flash Exp, 1.5 Pro, and 1.5 Flash models
+  - Complete request/response mapping between AIRequest and Gemini's generateContent format
+  - SSE streaming support with text accumulation for real-time responses
+  - Multimodal support: text, images (base64), documents (PDFs via base64 or fileUri)
+  - Safety settings configuration with 4 harm categories and thresholds
+  - Function calling support with JSON Schema-based tool declarations
+  - Structured output support via responseMimeType and responseSchema
+  - Generation config: temperature, topP, topK, maxOutputTokens, stopSequences
+  - Token counting support via countTokens endpoint
+  - Context windows: 2M tokens for Pro models, 1M tokens for Flash models
+  - Output limits: 65K tokens for 2.5 Pro, 8K tokens for other models
+  - API key authentication via query parameter (x-goog-api-key)
 - **Complete OpenAI GPT API integration** (~963 lines total)
   - OpenAIModels.swift with full type definitions (639 lines) for all OpenAI API features
   - OpenAIProvider implementation (324 lines) with sendMessage and streaming support
