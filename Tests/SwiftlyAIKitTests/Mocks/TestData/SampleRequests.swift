@@ -41,10 +41,7 @@ public enum SampleRequests {
             AIMessage(role: .user, content: [
                 .text("What do you see in this image?"),
                 .image(
-                    source: .base64(
-                        data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-                        mediaType: "image/png"
-                    ),
+                    source: .base64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="),
                     mediaType: "image/png"
                 )
             ])
@@ -180,8 +177,8 @@ public enum SampleRequests {
             AIMessage(role: .user, content: [.text("Hello")])
         ],
         providerOptions: [
-            "user_id": "user-123",
-            "request_id": "req-456"
+            "user_id": AnyCodable("user-123"),
+            "request_id": AnyCodable("req-456")
         ]
     )
 

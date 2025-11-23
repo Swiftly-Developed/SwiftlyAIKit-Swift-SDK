@@ -7,8 +7,7 @@ public enum SampleErrors {
 
     /// Missing API key
     public static let missingAPIKey = AIError.missingAPIKey(
-        provider: .anthropic,
-        strategy: "clientKey"
+        provider: .anthropic
     )
 
     /// Invalid API key
@@ -27,19 +26,18 @@ public enum SampleErrors {
 
     /// Network error
     public static let networkError = AIError.networkError(
-        underlying: NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet, userInfo: nil)
+        underlying: "Connection to internet lost"
     )
 
     /// Timeout error
-    public static let timeout = AIError.timeout(after: 60.0)
+    public static let timeout = AIError.timeout
 
     /// Invalid URL
     public static let invalidURL = AIError.invalidURL("htp://invalid-url")
 
     /// Connection failed
     public static let connectionFailed = AIError.connectionFailed(
-        host: "api.anthropic.com",
-        message: "Connection refused"
+        "Connection to api.anthropic.com refused"
     )
 
     // MARK: - Validation Errors
@@ -51,8 +49,7 @@ public enum SampleErrors {
 
     /// Missing parameter
     public static let missingParameter = AIError.missingParameter(
-        name: "messages",
-        message: "Request must include at least one message"
+        name: "messages"
     )
 
     /// Invalid model
@@ -70,7 +67,7 @@ public enum SampleErrors {
     /// Invalid content type
     public static let invalidContentType = AIError.invalidContentType(
         expected: "application/json",
-        received: "text/plain"
+        got: "text/plain"
     )
 
     // MARK: - Rate Limiting Errors
@@ -89,14 +86,12 @@ public enum SampleErrors {
 
     /// Quota exceeded
     public static let quotaExceeded = AIError.quotaExceeded(
-        provider: .anthropic,
-        resetDate: Date().addingTimeInterval(86400)
+        provider: .anthropic
     )
 
     /// Quota without reset date
     public static let quotaNoReset = AIError.quotaExceeded(
-        provider: .anthropic,
-        resetDate: nil
+        provider: .anthropic
     )
 
     // MARK: - Provider Errors
@@ -128,13 +123,11 @@ public enum SampleErrors {
 
     /// Decoding error
     public static let decodingError = AIError.decodingError(
-        underlying: NSError(domain: "TestDomain", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON"])
+        message: "Invalid JSON format"
     )
 
     /// Empty response
-    public static let emptyResponse = AIError.emptyResponse(
-        provider: .anthropic
-    )
+    public static let emptyResponse = AIError.emptyResponse
 
     /// Invalid response
     public static let invalidResponse = AIError.invalidResponse(

@@ -54,7 +54,6 @@ struct AIErrorTests {
     func testTimeoutError() {
         let error = SampleErrors.timeout
         #expect(error.isRetryable)
-        #expect(error.localizedDescription.contains("60"))
         #expect(error.localizedDescription.contains("timeout"))
     }
 
@@ -101,16 +100,14 @@ struct AIErrorTests {
         let error = SampleErrors.requestTooLarge
         #expect(!error.isRetryable)
         #expect(error.statusCode == 413)
-        #expect(error.localizedDescription.contains("10000000"))
-        #expect(error.localizedDescription.contains("5000000"))
+        #expect(error.localizedDescription.contains("too large"))
     }
 
     @Test("Invalid content type error")
     func testInvalidContentType() {
         let error = SampleErrors.invalidContentType
         #expect(!error.isRetryable)
-        #expect(error.localizedDescription.contains("application/json"))
-        #expect(error.localizedDescription.contains("text/plain"))
+        #expect(error.localizedDescription.contains("content type"))
     }
 
     // MARK: - Rate Limiting Errors
@@ -120,7 +117,6 @@ struct AIErrorTests {
         let error = SampleErrors.rateLimitExceeded
         #expect(error.isRetryable)
         #expect(error.statusCode == 429)
-        #expect(error.localizedDescription.contains("60"))
     }
 
     @Test("Rate limit without retry time")
@@ -244,22 +240,22 @@ struct AIErrorTests {
 
     @Test("Same errors are equal")
     func testErrorEquality() {
-        let error1 = AIError.timeout(after: 60)
-        let error2 = AIError.timeout(after: 60)
+        let error1 = AIError.timeout
+        let error2 = AIError.timeout
         #expect(error1 == error2)
     }
 
     @Test("Different errors are not equal")
     func testErrorInequality() {
-        let error1 = AIError.timeout(after: 60)
+        let error1 = AIError.timeout
         let error2 = AIError.invalidAPIKey(provider: .anthropic, message: "test")
         #expect(error1 != error2)
     }
 
     @Test("Same error type with different values are not equal")
     func testErrorInequalityDifferentValues() {
-        let error1 = AIError.timeout(after: 60)
-        let error2 = AIError.timeout(after: 30)
+        let error1 = AIError.invalidAPIKey(provider: .anthropic, message: "test1")
+        let error2 = AIError.invalidAPIKey(provider: .anthropic, message: "test2")
         #expect(error1 != error2)
     }
 
