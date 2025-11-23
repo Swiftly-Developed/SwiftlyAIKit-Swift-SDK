@@ -366,3 +366,86 @@ public struct GeminiCitationSource: Codable, Sendable {
         self.license = license
     }
 }
+
+// MARK: - Streaming
+
+/// Streaming response chunk
+public struct GeminiStreamChunk: Codable, Sendable {
+    public let candidates: [GeminiCandidate]
+    public let usageMetadata: GeminiUsageMetadata?
+    public let modelVersion: String?
+
+    public init(candidates: [GeminiCandidate], usageMetadata: GeminiUsageMetadata? = nil, modelVersion: String? = nil) {
+        self.candidates = candidates
+        self.usageMetadata = usageMetadata
+        self.modelVersion = modelVersion
+    }
+}
+
+// MARK: - Token Counting
+
+/// Token count request
+public struct GeminiCountTokensRequest: Codable, Sendable {
+    public let contents: [GeminiContent]
+
+    public init(contents: [GeminiContent]) {
+        self.contents = contents
+    }
+}
+
+/// Token count response
+public struct GeminiCountTokensResponse: Codable, Sendable {
+    public let totalTokens: Int
+
+    public init(totalTokens: Int) {
+        self.totalTokens = totalTokens
+    }
+}
+
+// MARK: - Error Models
+
+/// Gemini API error response
+public struct GeminiErrorResponse: Codable, Sendable {
+    public let error: GeminiError
+
+    public init(error: GeminiError) {
+        self.error = error
+    }
+}
+
+/// Gemini error details
+public struct GeminiError: Codable, Sendable {
+    public let code: Int
+    public let message: String
+    public let status: String?
+    public let details: [GeminiErrorDetail]?
+
+    public init(code: Int, message: String, status: String? = nil, details: [GeminiErrorDetail]? = nil) {
+        self.code = code
+        self.message = message
+        self.status = status
+        self.details = details
+    }
+}
+
+/// Gemini error detail
+public struct GeminiErrorDetail: Codable, Sendable {
+    public let type: String?
+    public let reason: String?
+    public let domain: String?
+    public let metadata: [String: String]?
+
+    private enum CodingKeys: String, CodingKey {
+        case type = "@type"
+        case reason
+        case domain
+        case metadata
+    }
+
+    public init(type: String? = nil, reason: String? = nil, domain: String? = nil, metadata: [String: String]? = nil) {
+        self.type = type
+        self.reason = reason
+        self.domain = domain
+        self.metadata = metadata
+    }
+}
