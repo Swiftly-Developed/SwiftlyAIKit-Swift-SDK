@@ -93,3 +93,32 @@ Tests are organized in `Tests/SwiftlyAIKitTests/`:
 - Document public APIs with DocC-style comments
 - Follow Swift API Design Guidelines
 - Maintain backwards compatibility within major versions
+
+## Git Workflow
+
+**IMPORTANT: Always make small, focused commits**
+
+When working on this repository, follow these commit practices:
+
+- **Make small, atomic commits**: Each commit should represent a single logical change
+- **Commit frequently**: Don't wait until everything is complete to commit
+- **One feature per commit**: If adding multiple features, break them into separate commits
+- **Test before committing**: Ensure `swift build` passes before making a commit
+- **Write clear commit messages**: Use descriptive messages that explain what and why
+- **Example workflow**:
+  ```bash
+  # Add a single feature
+  git add Sources/SwiftlyAIKit/Models/NewModel.swift
+  git commit -m "Add NewModel struct for X functionality"
+
+  # Add tests for that feature
+  git add Tests/SwiftlyAIKitTests/NewModelTests.swift
+  git commit -m "Add tests for NewModel"
+
+  # Update documentation
+  git add README.md
+  git commit -m "Update README with NewModel usage examples"
+  ```
+
+**Bad practice**: Committing 19 files with 3,667 lines changed in one commit
+**Good practice**: Breaking that work into 10-15 smaller commits, each focused on one component
