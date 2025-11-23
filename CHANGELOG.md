@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-11-23
+
+### Added
+- Complete Anthropic Claude API integration with full Messages and Batch API support
+- APIKeyStrategy enum with 4 key management strategies (companyKey, clientKey, hybrid, perProvider)
+- Configuration struct with convenience factory methods (withCompanyKey, withClientKeys, withHybridKeys, development, production)
+- Thread-safe AIGateway actor for provider coordination and API key resolution
+- Comprehensive AIError with 20+ specialized error types (authentication, network, validation, rate limiting, etc.)
+- AnthropicModels.swift with complete type definitions (~700 lines) for all Anthropic features
+- ModelProvider enum with all 27 Claude models (Opus 4.1, Sonnet 4.5, Haiku 4.5, legacy models)
+- HTTPClientManager with automatic retry logic, exponential backoff, and timeout management
+- ProviderProtocol with default implementations for batch operations
+- Complete AnthropicProvider implementation (~620 lines) with 3 flexible initializer variants
+- Full support for advanced Anthropic features: prompt caching, extended thinking, tool use, vision, PDF processing
+- Complete Batch API support (create, retrieve, cancel, list, results streaming with JSONL)
+- Vapor Request+AI extension with convenience methods and automatic client key extraction from headers
+- Vapor Application+AI extension with fluent initialization API
+- SSE (Server-Sent Events) streaming support for real-time AI responses
+- Git workflow guidelines in CLAUDE.md emphasizing small, atomic commits
+
+### Changed
+- Enhanced all model structures (AIRequest, AIResponse, AIMessage) to support multi-content and Anthropic features
+- Updated ProviderProtocol with batch operation methods and default implementations
+- Improved HTTPClientManager with streaming support and better error mapping
+
+### Fixed
+- Sendable conformance issues with AnyCodable using @unchecked Sendable
+- Actor isolation issues in HTTPClientManager (streamPost, mapHTTPError)
+- Actor isolation issues in AIGateway initialization
+- Configuration parameter ordering in static factory methods
+- Request+AI streaming methods with proper async Task wrapping
+
 ## [0.1.0] - 2025-11-22
 
 ### Added
@@ -23,5 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive README with installation and usage guidelines
 - Basic test structure using Swift Testing framework
 
-[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/releases/tag/v0.1.0
