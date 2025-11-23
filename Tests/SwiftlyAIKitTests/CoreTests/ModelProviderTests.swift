@@ -10,7 +10,7 @@ struct ModelProviderTests {
     @Test("ModelProvider is CaseIterable")
     func testCaseIterable() {
         let allCases = ModelProvider.allCases
-        #expect(allCases.count == 33) // 22 Claude + 8 GPT + 5 Gemini + 3 Perplexity
+        #expect(allCases.count == 38) // 22 Claude + 8 GPT + 5 Gemini + 3 Perplexity
     }
 
     @Test("ModelProvider has correct raw values")

@@ -344,7 +344,7 @@ struct ProviderTypeTests {
             uniqueKeysWithValues: ProviderType.allCases.map { ($0, $0.baseURL) }
         )
 
-        #expect(urlMapping.count == 5)
+        #expect(urlMapping.count == 6)
         #expect(urlMapping[.anthropic] == "https://api.anthropic.com/v1")
         #expect(urlMapping[.openai] == "https://api.openai.com/v1")
     }

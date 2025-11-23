@@ -327,4 +327,184 @@ struct PerplexityProviderTests {
         #expect(result.author == "Jane Researcher")
         #expect(result.score == 0.95)
     }
+
+    // MARK: - PerplexityOptions Integration Tests
+
+    @Test("PerplexityOptions creates valid providerOptions for AIRequest")
+    func testPerplexityOptionsCreatesValidProviderOptions() {
+        let options = PerplexityOptions(
+            searchDomainFilter: ["arxiv.org", "github.com"],
+            searchRecencyFilter: .week,
+            returnCitations: true,
+            returnImages: false
+        )
+
+        let request = AIRequest(
+            model: "sonar-pro",
+            messages: [AIMessage(role: .user, content: [.text("Latest AI research?")])],
+            providerOptions: options.toProviderOptions()
+        )
+
+        #expect(request.model == "sonar-pro")
+        #expect(request.providerOptions != nil)
+        #expect(request.providerOptions?.count == 4)
+    }
+
+    @Test("PerplexityOptions webSearch convenience method creates correct options")
+    func testPerplexityOptionsWebSearch() {
+        let options = PerplexityOptions.webSearch(
+            domains: ["techcrunch.com", "theverge.com"],
+            recency: .day,
+            includeCitations: true
+        )
+
+        let request = AIRequest(
+            model: "sonar",
+            messages: [AIMessage(role: .user, content: [.text("Latest tech news?")])],
+            providerOptions: options.toProviderOptions()
+        )
+
+        #expect(request.providerOptions != nil)
+        #expect(request.providerOptions?["search_domain_filter"] != nil)
+        #expect(request.providerOptions?["search_recency_filter"] != nil)
+        #expect(request.providerOptions?["return_citations"] != nil)
+    }
+
+    @Test("PerplexityOptions jsonSchema convenience method creates correct options")
+    func testPerplexityOptionsJsonSchema() {
+        let schema: [String: AnyCodable] = [
+            "type": AnyCodable("object"),
+            "properties": AnyCodable([
+                "name": ["type": "string"],
+                "age": ["type": "integer"]
+            ])
+        ]
+
+        let options = PerplexityOptions.jsonSchema(
+            name: "person",
+            schema: schema,
+            includeCitations: false
+        )
+
+        let request = AIRequest(
+            model: "sonar-reasoning",
+            messages: [AIMessage(role: .user, content: [.text("Extract person info")])],
+            providerOptions: options.toProviderOptions()
+        )
+
+        #expect(request.providerOptions != nil)
+        #expect(request.providerOptions?["response_format"] != nil)
+        #expect(request.providerOptions?["return_citations"] != nil)
+    }
+
+    @Test("AIRequest with PerplexityOptions has correct domain filter")
+    func testAIRequestWithDomainFilter() {
+        let options = PerplexityOptions(
+            searchDomainFilter: ["example.com", "test.org"]
+        )
+
+        let request = AIRequest(
+            model: "sonar",
+            messages: [AIMessage(role: .user, content: [.text("Test query")])],
+            providerOptions: options.toProviderOptions()
+        )
+
+        #expect(request.providerOptions?["search_domain_filter"] != nil)
+
+        if let domains = request.providerOptions?["search_domain_filter"]?.value as? [String] {
+            #expect(domains == ["example.com", "test.org"])
+        } else {
+            Issue.record("Domain filter not extracted correctly")
+        }
+    }
+
+    @Test("AIRequest with PerplexityOptions has correct recency filter")
+    func testAIRequestWithRecencyFilter() {
+        let options = PerplexityOptions(
+            searchRecencyFilter: .month
+        )
+
+        let request = AIRequest(
+            model: "sonar-pro",
+            messages: [AIMessage(role: .user, content: [.text("Recent developments?")])],
+            providerOptions: options.toProviderOptions()
+        )
+
+        #expect(request.providerOptions?["search_recency_filter"] != nil)
+
+        if let recency = request.providerOptions?["search_recency_filter"]?.value as? String {
+            #expect(recency == "month")
+        } else {
+            Issue.record("Recency filter not extracted correctly")
+        }
+    }
+
+    @Test("AIRequest with PerplexityOptions has correct citation flag")
+    func testAIRequestWithCitationFlag() {
+        let options = PerplexityOptions(
+            returnCitations: true
+        )
+
+        let request = AIRequest(
+            model: "sonar",
+            messages: [AIMessage(role: .user, content: [.text("AI research")])],
+            providerOptions: options.toProviderOptions()
+        )
+
+        #expect(request.providerOptions?["return_citations"] != nil)
+
+        if let citations = request.providerOptions?["return_citations"]?.value as? Bool {
+            #expect(citations == true)
+        } else {
+            Issue.record("Citations flag not extracted correctly")
+        }
+    }
+
+    @Test("AIRequest with PerplexityOptions has correct images flag")
+    func testAIRequestWithImagesFlag() {
+        let options = PerplexityOptions(
+            returnImages: true
+        )
+
+        let request = AIRequest(
+            model: "sonar",
+            messages: [AIMessage(role: .user, content: [.text("Show me images")])],
+            providerOptions: options.toProviderOptions()
+        )
+
+        #expect(request.providerOptions?["return_images"] != nil)
+
+        if let images = request.providerOptions?["return_images"]?.value as? Bool {
+            #expect(images == true)
+        } else {
+            Issue.record("Images flag not extracted correctly")
+        }
+    }
+
+    @Test("AIRequest with PerplexityOptions has correct response format")
+    func testAIRequestWithResponseFormat() {
+        let schema: [String: AnyCodable] = [
+            "type": AnyCodable("object"),
+            "properties": AnyCodable(["title": ["type": "string"]])
+        ]
+
+        let options = PerplexityOptions.jsonSchema(
+            name: "article",
+            schema: schema
+        )
+
+        let request = AIRequest(
+            model: "sonar-reasoning",
+            messages: [AIMessage(role: .user, content: [.text("Extract article")])],
+            providerOptions: options.toProviderOptions()
+        )
+
+        #expect(request.providerOptions?["response_format"] != nil)
+
+        if let format = request.providerOptions?["response_format"]?.value as? [String: Any] {
+            #expect(format["type"] as? String == "json_schema")
+        } else {
+            Issue.record("Response format not extracted correctly")
+        }
+    }
 }
