@@ -113,6 +113,17 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Gemini 1.5 Flash - Previous generation fast model
     case gemini15Flash = "gemini-1.5-flash-latest"
 
+    // MARK: - Perplexity AI Models
+
+    /// Sonar - Balanced performance with web search
+    case sonar = "sonar"
+
+    /// Sonar Pro - Enhanced accuracy with web search
+    case sonarPro = "sonar-pro"
+
+    /// Sonar Reasoning - Advanced reasoning with web search
+    case sonarReasoning = "sonar-reasoning"
+
     // MARK: - Properties
 
     /// The provider for this model
@@ -140,6 +151,9 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .gemini20FlashExp,
              .gemini15Pro, .gemini15Flash:
             return .google
+
+        case .sonar, .sonarPro, .sonarReasoning:
+            return .perplexity
         }
     }
 
@@ -181,6 +195,9 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .gemini20FlashExp: return "Gemini 2.0 Flash (Experimental)"
         case .gemini15Pro: return "Gemini 1.5 Pro"
         case .gemini15Flash: return "Gemini 1.5 Flash"
+        case .sonar: return "Sonar"
+        case .sonarPro: return "Sonar Pro"
+        case .sonarReasoning: return "Sonar Reasoning"
         }
     }
 
@@ -209,6 +226,8 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .gemini20FlashExp,
              .gemini15Pro, .gemini15Flash:
             return true
+        case .sonar, .sonarPro, .sonarReasoning:
+            return false
         }
     }
 
@@ -300,6 +319,12 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 2_097_152
         case .gemini15Flash:
             return 1_048_576
+        case .sonar:
+            return 127_072
+        case .sonarPro:
+            return 200_000
+        case .sonarReasoning:
+            return 127_072
         }
     }
 
@@ -337,6 +362,8 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 8_192
         case .gemini15Flash:
             return 8_192
+        case .sonar, .sonarPro, .sonarReasoning:
+            return 4_096
         }
     }
 }
