@@ -124,6 +124,41 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Sonar Reasoning - Advanced reasoning with web search
     case sonarReasoning = "sonar-reasoning"
 
+    // MARK: - Mistral AI Models
+
+    /// Mistral Large 2.1 - Most capable model (128K context)
+    case mistralLarge2 = "mistral-large-2411"
+
+    /// Mistral Large - Latest alias
+    case mistralLargeLatest = "mistral-large-latest"
+
+    /// Mistral Medium 3 - Balanced performance (128K context)
+    case mistralMedium3 = "mistral-medium-3-2505"
+
+    /// Mistral Medium - Latest alias
+    case mistralMediumLatest = "mistral-medium-latest"
+
+    /// Mistral Small 3.1 - Fast and cost-effective (128K context)
+    case mistralSmall3 = "mistral-small-2501"
+
+    /// Mistral Small - Latest alias
+    case mistralSmallLatest = "mistral-small-latest"
+
+    /// Codestral - Code generation specialist (32K context)
+    case codestral = "codestral-latest"
+
+    /// Magistral Small - Reasoning model with chain-of-thought (128K context)
+    case magistralSmall = "magistral-small-latest"
+
+    /// Magistral Medium - Advanced reasoning (128K context)
+    case magistralMedium = "magistral-medium-latest"
+
+    /// Ministral 3B - Edge computing model (128K context)
+    case ministral3B = "ministral-3b-latest"
+
+    /// Ministral 8B - Edge computing model (128K context)
+    case ministral8B = "ministral-8b-latest"
+
     // MARK: - Properties
 
     /// The provider for this model
@@ -154,6 +189,14 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
 
         case .sonar, .sonarPro, .sonarReasoning:
             return .perplexity
+
+        case .mistralLarge2, .mistralLargeLatest,
+             .mistralMedium3, .mistralMediumLatest,
+             .mistralSmall3, .mistralSmallLatest,
+             .codestral,
+             .magistralSmall, .magistralMedium,
+             .ministral3B, .ministral8B:
+            return .mistral
         }
     }
 
@@ -198,6 +241,17 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .sonar: return "Sonar"
         case .sonarPro: return "Sonar Pro"
         case .sonarReasoning: return "Sonar Reasoning"
+        case .mistralLarge2: return "Mistral Large 2.1"
+        case .mistralLargeLatest: return "Mistral Large"
+        case .mistralMedium3: return "Mistral Medium 3"
+        case .mistralMediumLatest: return "Mistral Medium"
+        case .mistralSmall3: return "Mistral Small 3.1"
+        case .mistralSmallLatest: return "Mistral Small"
+        case .codestral: return "Codestral"
+        case .magistralSmall: return "Magistral Small"
+        case .magistralMedium: return "Magistral Medium"
+        case .ministral3B: return "Ministral 3B"
+        case .ministral8B: return "Ministral 8B"
         }
     }
 
@@ -227,6 +281,13 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .gemini15Pro, .gemini15Flash:
             return true
         case .sonar, .sonarPro, .sonarReasoning:
+            return false
+        case .mistralLargeLatest, .mistralLarge2,
+             .mistralMediumLatest, .mistralMedium3,
+             .mistralSmallLatest, .mistralSmall3:
+            return true
+        case .codestral, .magistralSmall, .magistralMedium,
+             .ministral3B, .ministral8B:
             return false
         }
     }
@@ -325,6 +386,14 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 200_000
         case .sonarReasoning:
             return 127_072
+        case .mistralLargeLatest, .mistralLarge2,
+             .mistralMediumLatest, .mistralMedium3,
+             .mistralSmallLatest, .mistralSmall3,
+             .magistralSmall, .magistralMedium,
+             .ministral3B, .ministral8B:
+            return 128_000
+        case .codestral:
+            return 32_000
         }
     }
 
@@ -364,6 +433,14 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 8_192
         case .sonar, .sonarPro, .sonarReasoning:
             return 4_096
+        case .mistralLargeLatest, .mistralLarge2,
+             .mistralMediumLatest, .mistralMedium3,
+             .mistralSmallLatest, .mistralSmall3,
+             .codestral,
+             .ministral3B, .ministral8B:
+            return 8_192
+        case .magistralSmall, .magistralMedium:
+            return 32_768
         }
     }
 }
