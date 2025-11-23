@@ -70,15 +70,30 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Claude 3 Haiku - Version 20240307
     case claude3Haiku20240307 = "claude-3-haiku-20240307"
 
-    // MARK: - OpenAI Models (placeholders for future implementation)
+    // MARK: - OpenAI Models
 
-    /// GPT-4 Turbo
+    /// GPT-4o - Latest model with vision and function calling
+    case gpt4o = "gpt-4o"
+
+    /// GPT-4o - May 13 2024 snapshot
+    case gpt4o20240513 = "gpt-4o-2024-05-13"
+
+    /// GPT-4o Mini - Lightweight version
+    case gpt4oMini = "gpt-4o-mini"
+
+    /// GPT-4o Mini - July 18 2024 snapshot
+    case gpt4oMini20240718 = "gpt-4o-mini-2024-07-18"
+
+    /// GPT-4 Turbo - High intelligence model
     case gpt4Turbo = "gpt-4-turbo"
 
-    /// GPT-4
+    /// GPT-4 Turbo Preview
+    case gpt4TurboPreview = "gpt-4-turbo-preview"
+
+    /// GPT-4 - Base model
     case gpt4 = "gpt-4"
 
-    /// GPT-3.5 Turbo
+    /// GPT-3.5 Turbo - Fast and economical
     case gpt35Turbo = "gpt-3.5-turbo"
 
     // MARK: - Properties
@@ -98,7 +113,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .claude3Haiku, .claude3Haiku20240307:
             return .anthropic
 
-        case .gpt4Turbo, .gpt4, .gpt35Turbo:
+        case .gpt4o, .gpt4o20240513,
+             .gpt4oMini, .gpt4oMini20240718,
+             .gpt4Turbo, .gpt4TurboPreview,
+             .gpt4, .gpt35Turbo:
             return .openai
         }
     }
@@ -128,7 +146,12 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .claude3Sonnet20240229: return "Claude 3 Sonnet (20240229)"
         case .claude3Haiku: return "Claude 3 Haiku"
         case .claude3Haiku20240307: return "Claude 3 Haiku (20240307)"
+        case .gpt4o: return "GPT-4o"
+        case .gpt4o20240513: return "GPT-4o (2024-05-13)"
+        case .gpt4oMini: return "GPT-4o Mini"
+        case .gpt4oMini20240718: return "GPT-4o Mini (2024-07-18)"
         case .gpt4Turbo: return "GPT-4 Turbo"
+        case .gpt4TurboPreview: return "GPT-4 Turbo Preview"
         case .gpt4: return "GPT-4"
         case .gpt35Turbo: return "GPT-3.5 Turbo"
         }
@@ -148,7 +171,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .claude3Sonnet, .claude3Sonnet20240229,
              .claude3Haiku, .claude3Haiku20240307:
             return true
-        case .gpt4Turbo, .gpt4:
+        case .gpt4o, .gpt4o20240513,
+             .gpt4oMini, .gpt4oMini20240718,
+             .gpt4Turbo, .gpt4TurboPreview,
+             .gpt4:
             return true
         case .gpt35Turbo:
             return false
@@ -216,7 +242,11 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .claude3Sonnet, .claude3Sonnet20240229,
              .claude3Haiku, .claude3Haiku20240307:
             return 200_000
-        case .gpt4Turbo:
+        case .gpt4o, .gpt4o20240513:
+            return 128_000
+        case .gpt4oMini, .gpt4oMini20240718:
+            return 128_000
+        case .gpt4Turbo, .gpt4TurboPreview:
             return 128_000
         case .gpt4:
             return 8_192
@@ -241,7 +271,11 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .claude3Sonnet, .claude3Sonnet20240229,
              .claude3Haiku, .claude3Haiku20240307:
             return 4_096
-        case .gpt4Turbo:
+        case .gpt4o, .gpt4o20240513:
+            return 16_384
+        case .gpt4oMini, .gpt4oMini20240718:
+            return 16_384
+        case .gpt4Turbo, .gpt4TurboPreview:
             return 4_096
         case .gpt4, .gpt35Turbo:
             return 4_096
