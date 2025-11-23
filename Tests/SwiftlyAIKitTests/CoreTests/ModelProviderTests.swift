@@ -10,7 +10,7 @@ struct ModelProviderTests {
     @Test("ModelProvider is CaseIterable")
     func testCaseIterable() {
         let allCases = ModelProvider.allCases
-        #expect(allCases.count == 25) // 22 Claude + 3 OpenAI
+        #expect(allCases.count == 30) // 22 Claude + 3 OpenAI + 5 Gemini
     }
 
     @Test("ModelProvider has correct raw values")
@@ -458,10 +458,91 @@ struct ModelProviderTests {
     @Test("Scenario: Find largest context window")
     func testLargestContextWindow() {
         let maxContext = ModelProvider.allCases.map { $0.maxInputTokens }.max()
-        #expect(maxContext == 200_000)
+        #expect(maxContext == 2_097_152)
 
-        // Claude models have the largest context
-        let largestModels = ModelProvider.allCases.filter { $0.maxInputTokens == 200_000 }
-        #expect(largestModels.allSatisfy { $0.providerType == .anthropic })
+        // Gemini Pro models have the largest context (2M tokens)
+        let largestModels = ModelProvider.allCases.filter { $0.maxInputTokens == 2_097_152 }
+        #expect(largestModels.allSatisfy { $0.providerType == .google })
+    }
+
+    // MARK: - Gemini Model Tests
+
+    @Test("All Gemini models return Google provider")
+    func testGeminiModelsProvider() {
+        #expect(ModelProvider.gemini25Pro.providerType == .google)
+        #expect(ModelProvider.gemini25Flash.providerType == .google)
+        #expect(ModelProvider.gemini20FlashExp.providerType == .google)
+        #expect(ModelProvider.gemini15Pro.providerType == .google)
+        #expect(ModelProvider.gemini15Flash.providerType == .google)
+    }
+
+    @Test("Gemini models have correct display names")
+    func testGeminiDisplayNames() {
+        #expect(ModelProvider.gemini25Pro.displayName == "Gemini 2.5 Pro")
+        #expect(ModelProvider.gemini25Flash.displayName == "Gemini 2.5 Flash")
+        #expect(ModelProvider.gemini20FlashExp.displayName == "Gemini 2.0 Flash (Experimental)")
+        #expect(ModelProvider.gemini15Pro.displayName == "Gemini 1.5 Pro")
+        #expect(ModelProvider.gemini15Flash.displayName == "Gemini 1.5 Flash")
+    }
+
+    @Test("All Gemini models support vision")
+    func testGeminiVisionSupport() {
+        #expect(ModelProvider.gemini25Pro.supportsVision == true)
+        #expect(ModelProvider.gemini25Flash.supportsVision == true)
+        #expect(ModelProvider.gemini20FlashExp.supportsVision == true)
+        #expect(ModelProvider.gemini15Pro.supportsVision == true)
+        #expect(ModelProvider.gemini15Flash.supportsVision == true)
+    }
+
+    @Test("All Gemini models support PDF")
+    func testGeminiPDFSupport() {
+        #expect(ModelProvider.gemini25Pro.supportsPDF == true)
+        #expect(ModelProvider.gemini25Flash.supportsPDF == true)
+        #expect(ModelProvider.gemini20FlashExp.supportsPDF == true)
+        #expect(ModelProvider.gemini15Pro.supportsPDF == true)
+        #expect(ModelProvider.gemini15Flash.supportsPDF == true)
+    }
+
+    @Test("Gemini stable models support prompt caching")
+    func testGeminiPromptCaching() {
+        #expect(ModelProvider.gemini25Pro.supportsPromptCaching == true)
+        #expect(ModelProvider.gemini25Flash.supportsPromptCaching == true)
+        #expect(ModelProvider.gemini15Pro.supportsPromptCaching == true)
+        #expect(ModelProvider.gemini15Flash.supportsPromptCaching == true)
+        // Experimental model might not support caching
+        #expect(ModelProvider.gemini20FlashExp.supportsPromptCaching == false)
+    }
+
+    @Test("Gemini models have massive context windows")
+    func testGeminiContextWindows() {
+        // Pro models: 2M tokens
+        #expect(ModelProvider.gemini25Pro.maxInputTokens == 2_097_152)
+        #expect(ModelProvider.gemini15Pro.maxInputTokens == 2_097_152)
+
+        // Flash models: 1M tokens
+        #expect(ModelProvider.gemini25Flash.maxInputTokens == 1_048_576)
+        #expect(ModelProvider.gemini20FlashExp.maxInputTokens == 1_048_576)
+        #expect(ModelProvider.gemini15Flash.maxInputTokens == 1_048_576)
+    }
+
+    @Test("Gemini models have correct output limits")
+    func testGeminiOutputLimits() {
+        // 2.5 Pro has 65K output
+        #expect(ModelProvider.gemini25Pro.maxOutputTokens == 65_536)
+
+        // Other models have 8K output
+        #expect(ModelProvider.gemini25Flash.maxOutputTokens == 8_192)
+        #expect(ModelProvider.gemini20FlashExp.maxOutputTokens == 8_192)
+        #expect(ModelProvider.gemini15Pro.maxOutputTokens == 8_192)
+        #expect(ModelProvider.gemini15Flash.maxOutputTokens == 8_192)
+    }
+
+    @Test("Gemini models do not support extended thinking")
+    func testGeminiNoExtendedThinking() {
+        #expect(ModelProvider.gemini25Pro.supportsExtendedThinking == false)
+        #expect(ModelProvider.gemini25Flash.supportsExtendedThinking == false)
+        #expect(ModelProvider.gemini20FlashExp.supportsExtendedThinking == false)
+        #expect(ModelProvider.gemini15Pro.supportsExtendedThinking == false)
+        #expect(ModelProvider.gemini15Flash.supportsExtendedThinking == false)
     }
 }
