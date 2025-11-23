@@ -44,7 +44,7 @@ public actor MockProvider: ProviderProtocol {
     private(set) var capturedAPIKeys: [String] = []
 
     /// Captured request details
-    public struct CapturedRequest {
+    public struct CapturedRequest: Sendable {
         public let operation: String
         public let request: AIRequest?
         public let batchId: String?
