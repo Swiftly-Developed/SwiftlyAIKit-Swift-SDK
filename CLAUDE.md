@@ -122,3 +122,39 @@ When working on this repository, follow these commit practices:
 
 **Bad practice**: Committing 19 files with 3,667 lines changed in one commit
 **Good practice**: Breaking that work into 10-15 smaller commits, each focused on one component
+
+### Maintaining the Changelog
+
+**IMPORTANT: Always update CHANGELOG.md for significant changes**
+
+This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format:
+
+- **Update CHANGELOG.md** when adding features, making changes, or fixing bugs
+- Add entries to the `[Unreleased]` section during development
+- When releasing a version, create a new dated section (e.g., `[0.2.0] - 2025-11-23`)
+- Categorize changes under:
+  - **Added** - New features or functionality
+  - **Changed** - Modifications to existing features
+  - **Deprecated** - Features that will be removed in future versions
+  - **Removed** - Features that have been removed
+  - **Fixed** - Bug fixes
+  - **Security** - Security vulnerability fixes
+
+**Example workflow**:
+```bash
+# After implementing a feature
+git add Sources/SwiftlyAIKit/Core/NewFeature.swift
+git commit -m "Add NewFeature for X functionality"
+
+# Update changelog for that feature
+git add CHANGELOG.md
+git commit -m "Update CHANGELOG.md with NewFeature entry"
+```
+
+**When to update CHANGELOG.md**:
+- ✅ Adding new API endpoints or providers
+- ✅ Changing public APIs or behavior
+- ✅ Fixing bugs that affect users
+- ✅ Adding new configuration options
+- ❌ Internal refactoring without user-facing changes
+- ❌ Fixing typos in comments (unless in public documentation)
