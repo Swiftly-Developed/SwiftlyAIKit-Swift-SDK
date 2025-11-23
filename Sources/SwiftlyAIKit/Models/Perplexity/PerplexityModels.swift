@@ -213,3 +213,104 @@ public struct PerplexityResponse: Codable, Sendable {
         self.choices = choices
     }
 }
+
+// MARK: - Search Results
+
+/// Search result metadata from Perplexity
+public struct SearchResult: Codable, Sendable {
+    public let title: String
+    public let url: String
+    public let publishedDate: String?
+    public let author: String?
+    public let score: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case url
+        case publishedDate = "published_date"
+        case author
+        case score
+    }
+
+    public init(
+        title: String,
+        url: String,
+        publishedDate: String? = nil,
+        author: String? = nil,
+        score: Double? = nil
+    ) {
+        self.title = title
+        self.url = url
+        self.publishedDate = publishedDate
+        self.author = author
+        self.score = score
+    }
+}
+
+// MARK: - Streaming
+
+/// Stream choice for Perplexity streaming responses
+public struct StreamChoice: Codable, Sendable {
+    public let index: Int
+    public let delta: Delta
+    public let finishReason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case index
+        case delta
+        case finishReason = "finish_reason"
+    }
+
+    public init(index: Int, delta: Delta, finishReason: String? = nil) {
+        self.index = index
+        self.delta = delta
+        self.finishReason = finishReason
+    }
+}
+
+/// Stream chunk for Perplexity streaming responses
+public struct PerplexityStreamChunk: Codable, Sendable {
+    public let id: String
+    public let model: String
+    public let created: Int
+    public let object: String
+    public let choices: [StreamChoice]
+
+    public init(
+        id: String,
+        model: String,
+        created: Int,
+        object: String,
+        choices: [StreamChoice]
+    ) {
+        self.id = id
+        self.model = model
+        self.created = created
+        self.object = object
+        self.choices = choices
+    }
+}
+
+// MARK: - Error Response
+
+/// Perplexity API error detail
+public struct PerplexityError: Codable, Sendable {
+    public let message: String
+    public let type: String?
+    public let code: String?
+
+    public init(message: String, type: String? = nil, code: String? = nil) {
+        self.message = message
+        self.type = type
+        self.code = code
+    }
+}
+
+/// Perplexity API error response
+public struct PerplexityErrorResponse: Codable, Sendable {
+    public let error: PerplexityError
+
+    public init(error: PerplexityError) {
+        self.error = error
+    }
+}
