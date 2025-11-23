@@ -160,28 +160,57 @@ public struct PerplexityProvider: ProviderProtocol {
     }
 
     private func extractSearchDomainFilter(from request: AIRequest) -> [String]? {
-        // TODO: Implement when AIRequest supports AnyCodable metadata
+        guard let providerOptions = request.providerOptions else { return nil }
+        guard let domains = providerOptions["search_domain_filter"] else { return nil }
+
+        // Handle array of strings
+        if let array = domains.value as? [Any] {
+            return array.compactMap { $0 as? String }
+        }
+
         return nil
     }
 
     private func extractSearchRecencyFilter(from request: AIRequest) -> String? {
-        // TODO: Implement when AIRequest supports AnyCodable metadata
-        return nil
+        guard let providerOptions = request.providerOptions else { return nil }
+        guard let filter = providerOptions["search_recency_filter"] else { return nil }
+
+        return filter.value as? String
     }
 
     private func extractReturnCitations(from request: AIRequest) -> Bool? {
-        // TODO: Implement when AIRequest supports AnyCodable metadata
-        return nil
+        guard let providerOptions = request.providerOptions else { return nil }
+        guard let citations = providerOptions["return_citations"] else { return nil }
+
+        return citations.value as? Bool
     }
 
     private func extractReturnImages(from request: AIRequest) -> Bool? {
-        // TODO: Implement when AIRequest supports AnyCodable metadata
-        return nil
+        guard let providerOptions = request.providerOptions else { return nil }
+        guard let images = providerOptions["return_images"] else { return nil }
+
+        return images.value as? Bool
     }
 
     private func extractResponseFormat(from request: AIRequest) -> ResponseFormat? {
-        // TODO: Implement when AIRequest supports AnyCodable metadata
-        return nil
+        guard let providerOptions = request.providerOptions else { return nil }
+        guard let format = providerOptions["response_format"] else { return nil }
+
+        // Extract format dictionary
+        guard let formatDict = format.value as? [String: Any] else { return nil }
+        guard let type = formatDict["type"] as? String else { return nil }
+
+        // Extract optional JSON schema
+        var jsonSchema: JSONSchema?
+        if let schemaDict = formatDict["json_schema"] as? [String: Any],
+           let name = schemaDict["name"] as? String,
+           let schemaObj = schemaDict["schema"] as? [String: Any] {
+            // Convert [String: Any] to [String: AnyCodable]
+            let anyCodableSchema = schemaObj.mapValues { AnyCodable($0) }
+            jsonSchema = JSONSchema(name: name, schema: anyCodableSchema)
+        }
+
+        return ResponseFormat(type: type, jsonSchema: jsonSchema)
     }
 
     // MARK: - Response Mapping
