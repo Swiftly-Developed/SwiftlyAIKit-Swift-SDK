@@ -392,3 +392,248 @@ public struct OpenAIResponse: Codable, Sendable {
         case systemFingerprint = "system_fingerprint"
     }
 }
+
+// MARK: - Streaming Response
+
+/// OpenAI streaming chunk
+public struct OpenAIStreamChunk: Codable, Sendable {
+    public let id: String
+    public let object: String
+    public let created: Int
+    public let model: String
+    public let choices: [StreamChoice]
+    public let systemFingerprint: String?
+
+    public struct StreamChoice: Codable, Sendable {
+        public let index: Int
+        public let delta: Delta
+        public let finishReason: String?
+
+        public struct Delta: Codable, Sendable {
+            public let role: String?
+            public let content: String?
+            public let toolCalls: [DeltaToolCall]?
+
+            public struct DeltaToolCall: Codable, Sendable {
+                public let index: Int
+                public let id: String?
+                public let type: String?
+                public let function: DeltaFunction?
+
+                public struct DeltaFunction: Codable, Sendable {
+                    public let name: String?
+                    public let arguments: String?
+                }
+            }
+
+            enum CodingKeys: String, CodingKey {
+                case role
+                case content
+                case toolCalls = "tool_calls"
+            }
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case index
+            case delta
+            case finishReason = "finish_reason"
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case object
+        case created
+        case model
+        case choices
+        case systemFingerprint = "system_fingerprint"
+    }
+}
+
+// MARK: - Batch API Models
+
+/// OpenAI batch status
+public struct OpenAIBatch: Codable, Sendable {
+    public let id: String
+    public let object: String
+    public let endpoint: String
+    public let errors: BatchErrors?
+    public let inputFileId: String
+    public let completionWindow: String
+    public let status: BatchStatus
+    public let outputFileId: String?
+    public let errorFileId: String?
+    public let createdAt: Int
+    public let inProgressAt: Int?
+    public let expiresAt: Int?
+    public let completedAt: Int?
+    public let failedAt: Int?
+    public let expiredAt: Int?
+    public let cancellingAt: Int?
+    public let cancelledAt: Int?
+    public let requestCounts: RequestCounts?
+    public let metadata: [String: String]?
+
+    public enum BatchStatus: String, Codable, Sendable {
+        case validating
+        case failed
+        case inProgress = "in_progress"
+        case finalizing
+        case completed
+        case expired
+        case cancelling
+        case cancelled
+    }
+
+    public struct BatchErrors: Codable, Sendable {
+        public let object: String
+        public let data: [ErrorData]
+
+        public struct ErrorData: Codable, Sendable {
+            public let code: String
+            public let message: String
+            public let param: String?
+            public let line: Int?
+        }
+    }
+
+    public struct RequestCounts: Codable, Sendable {
+        public let total: Int
+        public let completed: Int
+        public let failed: Int
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case object
+        case endpoint
+        case errors
+        case status
+        case metadata
+        case inputFileId = "input_file_id"
+        case completionWindow = "completion_window"
+        case outputFileId = "output_file_id"
+        case errorFileId = "error_file_id"
+        case createdAt = "created_at"
+        case inProgressAt = "in_progress_at"
+        case expiresAt = "expires_at"
+        case completedAt = "completed_at"
+        case failedAt = "failed_at"
+        case expiredAt = "expired_at"
+        case cancellingAt = "cancelling_at"
+        case cancelledAt = "cancelled_at"
+        case requestCounts = "request_counts"
+    }
+}
+
+/// Batch request item (for JSONL file)
+public struct OpenAIBatchRequest: Codable, Sendable {
+    public let customId: String
+    public let method: String
+    public let url: String
+    public let body: OpenAIRequest
+
+    public init(customId: String, method: String = "POST", url: String = "/v1/chat/completions", body: OpenAIRequest) {
+        self.customId = customId
+        self.method = method
+        self.url = url
+        self.body = body
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case method
+        case url
+        case body
+        case customId = "custom_id"
+    }
+}
+
+/// Batch result item
+public struct OpenAIBatchResult: Codable, Sendable {
+    public let id: String
+    public let customId: String
+    public let response: BatchResponse?
+    public let error: BatchError?
+
+    public struct BatchResponse: Codable, Sendable {
+        public let statusCode: Int
+        public let requestId: String?
+        public let body: OpenAIResponse
+
+        enum CodingKeys: String, CodingKey {
+            case body
+            case statusCode = "status_code"
+            case requestId = "request_id"
+        }
+    }
+
+    public struct BatchError: Codable, Sendable {
+        public let code: String?
+        public let message: String
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case error
+        case response
+        case customId = "custom_id"
+    }
+}
+
+/// Batch creation request
+public struct OpenAICreateBatchRequest: Codable, Sendable {
+    public let inputFileId: String
+    public let endpoint: String
+    public let completionWindow: String
+    public let metadata: [String: String]?
+
+    public init(
+        inputFileId: String,
+        endpoint: String = "/v1/chat/completions",
+        completionWindow: String = "24h",
+        metadata: [String: String]? = nil
+    ) {
+        self.inputFileId = inputFileId
+        self.endpoint = endpoint
+        self.completionWindow = completionWindow
+        self.metadata = metadata
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case endpoint
+        case metadata
+        case inputFileId = "input_file_id"
+        case completionWindow = "completion_window"
+    }
+}
+
+/// List batches response
+public struct OpenAIBatchList: Codable, Sendable {
+    public let object: String
+    public let data: [OpenAIBatch]
+    public let firstId: String?
+    public let lastId: String?
+    public let hasMore: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case object
+        case data
+        case firstId = "first_id"
+        case lastId = "last_id"
+        case hasMore = "has_more"
+    }
+}
+
+// MARK: - Error Response
+
+/// OpenAI error response
+public struct OpenAIErrorResponse: Codable, Sendable {
+    public let error: ErrorDetail
+
+    public struct ErrorDetail: Codable, Sendable {
+        public let message: String
+        public let type: String
+        public let param: String?
+        public let code: String?
+    }
+}
