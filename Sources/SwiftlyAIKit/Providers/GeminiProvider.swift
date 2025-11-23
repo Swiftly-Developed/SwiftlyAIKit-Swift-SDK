@@ -241,7 +241,7 @@ public struct GeminiProvider: ProviderProtocol {
 
         case .image(let source, let mediaType):
             switch source {
-            case .url(let url):
+            case .url:
                 // Gemini requires fileData or inlineData, not URLs
                 throw AIError.unsupportedFeature(feature: "Image URLs (use base64 instead)", provider: .google)
 
@@ -250,17 +250,10 @@ public struct GeminiProvider: ProviderProtocol {
                 return .inlineData(mimeType: mimeType, data: data)
             }
 
-        case .document(let source, let mediaType):
-            switch source {
-            case .url(let url):
-                // For file URIs uploaded via Files API
-                let mimeType = mediaType ?? "application/pdf"
-                return .fileData(mimeType: mimeType, fileUri: url)
-
-            case .base64(let data):
-                let mimeType = mediaType ?? "application/pdf"
-                return .inlineData(mimeType: mimeType, data: data)
-            }
+        case .document(let data, let mediaType, _):
+            // Gemini expects base64-encoded data for documents
+            let base64Data = data.base64EncodedString()
+            return .inlineData(mimeType: mediaType, data: base64Data)
 
         case .custom:
             throw AIError.unsupportedFeature(feature: "Custom content", provider: .google)
