@@ -96,6 +96,23 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// GPT-3.5 Turbo - Fast and economical
     case gpt35Turbo = "gpt-3.5-turbo"
 
+    // MARK: - Google Gemini Models
+
+    /// Gemini 2.5 Pro - Most capable model
+    case gemini25Pro = "gemini-2.5-pro-latest"
+
+    /// Gemini 2.5 Flash - Fast and efficient
+    case gemini25Flash = "gemini-2.5-flash-latest"
+
+    /// Gemini 2.0 Flash Experimental - Latest experimental model
+    case gemini20FlashExp = "gemini-2.0-flash-exp"
+
+    /// Gemini 1.5 Pro - Previous generation flagship
+    case gemini15Pro = "gemini-1.5-pro-latest"
+
+    /// Gemini 1.5 Flash - Previous generation fast model
+    case gemini15Flash = "gemini-1.5-flash-latest"
+
     // MARK: - Properties
 
     /// The provider for this model
@@ -118,6 +135,11 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .gpt4Turbo, .gpt4TurboPreview,
              .gpt4, .gpt35Turbo:
             return .openai
+
+        case .gemini25Pro, .gemini25Flash,
+             .gemini20FlashExp,
+             .gemini15Pro, .gemini15Flash:
+            return .google
         }
     }
 
@@ -154,6 +176,11 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .gpt4TurboPreview: return "GPT-4 Turbo Preview"
         case .gpt4: return "GPT-4"
         case .gpt35Turbo: return "GPT-3.5 Turbo"
+        case .gemini25Pro: return "Gemini 2.5 Pro"
+        case .gemini25Flash: return "Gemini 2.5 Flash"
+        case .gemini20FlashExp: return "Gemini 2.0 Flash (Experimental)"
+        case .gemini15Pro: return "Gemini 1.5 Pro"
+        case .gemini15Flash: return "Gemini 1.5 Flash"
         }
     }
 
@@ -178,6 +205,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return true
         case .gpt35Turbo:
             return false
+        case .gemini25Pro, .gemini25Flash,
+             .gemini20FlashExp,
+             .gemini15Pro, .gemini15Flash:
+            return true
         }
     }
 
@@ -192,6 +223,9 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .claude35Haiku, .claude35Haiku20241022,
              .claude3Opus, .claude3Opus20240229,
              .claude3Haiku, .claude3Haiku20240307:
+            return true
+        case .gemini25Pro, .gemini25Flash,
+             .gemini15Pro, .gemini15Flash:
             return true
         default:
             return false
@@ -221,6 +255,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .claude35Sonnet, .claude35Sonnet20241022, .claude35Sonnet20240620,
              .claude35Haiku, .claude35Haiku20241022,
              .claude3Opus, .claude3Opus20240229:
+            return true
+        case .gemini25Pro, .gemini25Flash,
+             .gemini20FlashExp,
+             .gemini15Pro, .gemini15Flash:
             return true
         default:
             return false
@@ -252,6 +290,16 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 8_192
         case .gpt35Turbo:
             return 16_385
+        case .gemini25Pro:
+            return 2_097_152
+        case .gemini25Flash:
+            return 1_048_576
+        case .gemini20FlashExp:
+            return 1_048_576
+        case .gemini15Pro:
+            return 2_097_152
+        case .gemini15Flash:
+            return 1_048_576
         }
     }
 
@@ -279,6 +327,16 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 4_096
         case .gpt4, .gpt35Turbo:
             return 4_096
+        case .gemini25Pro:
+            return 65_536
+        case .gemini25Flash:
+            return 8_192
+        case .gemini20FlashExp:
+            return 8_192
+        case .gemini15Pro:
+            return 8_192
+        case .gemini15Flash:
+            return 8_192
         }
     }
 }
