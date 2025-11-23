@@ -135,7 +135,98 @@ public struct OpenAIMessage: Codable, Sendable, Equatable {
     }
 }
 
-// MARK: - Tool Call (Forward Declaration)
+// MARK: - Tool/Function Calling
+
+/// Tool definition for function calling
+public struct OpenAIToolDefinition: Codable, Sendable, Equatable {
+    public let type: String
+    public let function: FunctionDefinition
+
+    public struct FunctionDefinition: Codable, Sendable, Equatable {
+        public let name: String
+        public let description: String?
+        public let parameters: [String: AnyCodable]
+
+        public init(name: String, description: String? = nil, parameters: [String: AnyCodable]) {
+            self.name = name
+            self.description = description
+            self.parameters = parameters
+        }
+    }
+
+    public init(function: FunctionDefinition) {
+        self.type = "function"
+        self.function = function
+    }
+}
+
+/// Tool choice parameter
+public enum OpenAIToolChoice: Codable, Sendable, Equatable {
+    case none
+    case auto
+    case required
+    case function(String)
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .none, .auto, .required:
+            var container = encoder.singleValueContainer()
+            switch self {
+            case .none:
+                try container.encode("none")
+            case .auto:
+                try container.encode("auto")
+            case .required:
+                try container.encode("required")
+            default:
+                break
+            }
+        case .function(let name):
+            // Encode as structured object
+            var container = encoder.container(keyedBy: FunctionChoiceKeys.self)
+            try container.encode("function", forKey: .type)
+            var funcContainer = container.nestedContainer(keyedBy: FunctionKeys.self, forKey: .function)
+            try funcContainer.encode(name, forKey: .name)
+        }
+    }
+
+    private enum FunctionChoiceKeys: String, CodingKey {
+        case type
+        case function
+    }
+
+    private enum FunctionKeys: String, CodingKey {
+        case name
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+
+        if let string = try? container.decode(String.self) {
+            switch string {
+            case "none":
+                self = .none
+            case "auto":
+                self = .auto
+            case "required":
+                self = .required
+            default:
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Invalid tool_choice string value"
+                )
+            }
+        } else if let dict = try? container.decode([String: [String: String]].self),
+                  let functionName = dict["function"]?["name"] {
+            self = .function(functionName)
+        } else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid tool_choice format"
+            )
+        }
+    }
+}
 
 /// Tool call made by the assistant
 public struct OpenAIToolCall: Codable, Sendable, Equatable {
@@ -159,3 +250,4 @@ public struct OpenAIToolCall: Codable, Sendable, Equatable {
         self.function = function
     }
 }
+
