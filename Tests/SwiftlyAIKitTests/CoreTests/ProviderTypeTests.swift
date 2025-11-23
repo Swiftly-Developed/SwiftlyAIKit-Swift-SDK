@@ -10,12 +10,13 @@ struct ProviderTypeTests {
     @Test("ProviderType is CaseIterable")
     func testCaseIterable() {
         let allCases = ProviderType.allCases
-        #expect(allCases.count == 5)
+        #expect(allCases.count == 6) // anthropic, openai, google, perplexity, mistral, cohere
         #expect(allCases.contains(.openai))
         #expect(allCases.contains(.anthropic))
         #expect(allCases.contains(.google))
-        #expect(allCases.contains(.cohere))
+        #expect(allCases.contains(.perplexity))
         #expect(allCases.contains(.mistral))
+        #expect(allCases.contains(.cohere))
     }
 
     @Test("ProviderType has correct raw values")
