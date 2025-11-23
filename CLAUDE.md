@@ -283,12 +283,23 @@ app.post("ai", "stream") { req async throws -> Response in
 - Implementation: `Sources/SwiftlyAIKit/Providers/MistralProvider.swift` (~353 lines)
 - Models: `Sources/SwiftlyAIKit/Models/Mistral/MistralModels.swift` (~641 lines)
 
-### Placeholder Providers
-
-The following provider has a placeholder implementation that throws `AIError.unsupportedFeature`:
-- Cohere (Command models)
-
-This will be implemented in a future release following the same `ProviderProtocol` interface.
+**Cohere AI**
+- ✅ Chat API v2 (create, stream)
+- ✅ Server-Sent Events (SSE) streaming with typed events (message-start, content-delta, message-end)
+- ✅ Token counting via dedicated tokenize endpoint
+- ✅ RAG (Retrieval Augmented Generation) with document support and citations
+- ✅ Tool/function calling infrastructure (CohereTool, CohereToolCall)
+- ✅ Structured JSON outputs with optional JSON Schema validation
+- ✅ Safety modes (NONE, CONTEXTUAL, STRICT) for content filtering
+- ✅ Vision support for Command A Vision model (base64 and URL images)
+- ✅ System prompt handling via system role in messages array
+- ✅ Support for 11 models: Command A (4 variants), Command R (5 variants), Command legacy (2 models)
+- ✅ Context windows: 256K tokens (A/R families), 16K tokens (A Translate), 4K tokens (legacy)
+- ✅ Output limits: 8K tokens for all models
+- ✅ Bearer token authentication
+- ✅ Unique features: RAG with citations, safety_mode, response_format with JSON Schema
+- Implementation: `Sources/SwiftlyAIKit/Providers/CohereProvider.swift` (~465 lines)
+- Models: `Sources/SwiftlyAIKit/Models/Cohere/CohereModels.swift` (~454 lines)
 
 ## Key Implementation Notes
 
@@ -476,6 +487,10 @@ git push origin --tags
 - `Sources/SwiftlyAIKit/Models/Mistral/MistralModels.swift` (641 lines) - All Mistral types
 - `Sources/SwiftlyAIKit/Providers/MistralProvider.swift` (353 lines) - Core implementation
 
+**Cohere Implementation (2 files, ~919 lines):**
+- `Sources/SwiftlyAIKit/Models/Cohere/CohereModels.swift` (454 lines) - All Cohere types
+- `Sources/SwiftlyAIKit/Providers/CohereProvider.swift` (465 lines) - Core implementation
+
 **Vapor Integration (2 files, ~413 lines):**
 - `Sources/SwiftlyAIKit/Extensions/Application+AI.swift` (173 lines) - App lifecycle
 - `Sources/SwiftlyAIKit/Extensions/Request+AI.swift` (240 lines) - Request helpers
@@ -487,10 +502,11 @@ git push origin --tags
 
 **Documentation:**
 - `CLAUDE.md` - This file (you are here)
-- `TESTING.md` - Comprehensive testing guide with 277 test details
+- `TESTING.md` - Comprehensive testing guide with test details
 - `CHANGELOG.md` - Version history following Keep a Changelog format
 - `Documentation/OPENAI_IMPLEMENTATION_PLAN.md` - OpenAI provider implementation guide
 - `Documentation/GEMINI_IMPLEMENTATION_PLAN.md` - Gemini provider implementation guide
 - `Documentation/PERPLEXITY_IMPLEMENTATION_PLAN.md` - Perplexity provider implementation guide
 - `Documentation/MISTRAL_IMPLEMENTATION_PLAN.md` - Mistral provider implementation guide
+- `Documentation/COHERE_IMPLEMENTATION_PLAN.md` - Cohere provider implementation guide
 - `README.md` - Public-facing documentation
