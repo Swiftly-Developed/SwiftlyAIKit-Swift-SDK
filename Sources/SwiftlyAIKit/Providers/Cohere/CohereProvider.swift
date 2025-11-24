@@ -294,9 +294,11 @@ public struct CohereProvider: ProviderProtocol {
             cohereMessages.append(try mapMessage(message))
         }
 
+        // Map tools if present
+        let tools = request.tools?.map { mapTool($0) }
+
         // Extract Cohere-specific options from metadata if present
         var documents: [CohereDocument]? = nil
-        let tools: [CohereTool]? = nil // TODO: Add when AIRequest supports tools
         var responseFormat: CohereResponseFormat? = nil
         var safetyMode: CohereRequest.SafetyMode? = nil
 
@@ -340,7 +342,7 @@ public struct CohereProvider: ProviderProtocol {
             presencePenalty: nil,
             stopSequences: request.stopSequences,
             documents: documents,
-            tools: tools, // TODO: Add when AIRequest supports tools
+            tools: tools,
             responseFormat: responseFormat,
             safetyMode: safetyMode
         )
@@ -358,6 +360,43 @@ public struct CohereProvider: ProviderProtocol {
             role = .assistant
         }
 
+        // Check if message contains tool calls
+        let toolCalls = message.content.compactMap { content -> CohereToolCall? in
+            if case .toolCall(let toolCall) = content {
+                return CohereToolCall(
+                    id: toolCall.id,
+                    type: toolCall.type,
+                    function: CohereToolCall.FunctionCall(
+                        name: toolCall.name,
+                        arguments: toolCall.arguments
+                    )
+                )
+            }
+            return nil
+        }
+
+        // If we have tool calls, create message with tool calls
+        if !toolCalls.isEmpty {
+            return CohereMessage(role: role, content: nil, toolCalls: toolCalls)
+        }
+
+        // Check if message is a tool result
+        if let toolResult = message.content.first(where: {
+            if case .toolResult = $0 { return true }
+            return false
+        }) {
+            if case .toolResult(let id, let result) = toolResult {
+                // Cohere expects tool result in a specific format
+                // Since Cohere doesn't have a separate tool result structure in the models,
+                // we'll use the tool role with the result in content
+                return CohereMessage(
+                    role: .tool,
+                    content: .text(result),
+                    toolCallId: id
+                )
+            }
+        }
+
         // Map content
         if message.content.isEmpty {
             return CohereMessage(role: role, content: nil)
@@ -365,8 +404,21 @@ public struct CohereProvider: ProviderProtocol {
             // Simple text message
             return CohereMessage(role: role, content: .text(text))
         } else {
-            // Multi-part content (text + images)
-            let contentBlocks = try message.content.map { try mapContentBlock($0) }
+            // Multi-part content (text + images, excluding tool calls/results)
+            let contentBlocks = try message.content.compactMap { content -> CohereContentBlock? in
+                // Skip tool-related content in this mapping
+                switch content {
+                case .toolCall, .toolResult:
+                    return nil
+                default:
+                    return try mapContentBlock(content)
+                }
+            }
+
+            if contentBlocks.isEmpty {
+                return CohereMessage(role: role, content: nil)
+            }
+
             return CohereMessage(role: role, content: .contentArray(contentBlocks))
         }
     }
@@ -387,6 +439,9 @@ public struct CohereProvider: ProviderProtocol {
             }
         case .document:
             throw AIError.unsupportedFeature(feature: "PDF documents in messages", provider: .cohere)
+        case .toolCall, .toolResult:
+            // Tool calls and results are handled separately in mapMessage
+            throw AIError.invalidRequest(message: "Tool calls and results should be handled in message mapping")
         case .custom:
             throw AIError.unsupportedFeature(feature: "Custom content blocks", provider: .cohere)
         }
@@ -394,17 +449,29 @@ public struct CohereProvider: ProviderProtocol {
 
     /// Map CohereResponse to AIResponse
     private func mapToAIResponse(_ response: CohereResponse) -> AIResponse {
-        // Extract message content
-        let messageContent: String
+        var content: [AIMessageContent] = []
+
+        // Extract text content
         if let contentBlocks = response.message.content, !contentBlocks.isEmpty {
-            messageContent = contentBlocks.compactMap { block in
+            let textContent = contentBlocks.compactMap { block -> AIMessageContent? in
                 if case .text(let text) = block {
-                    return text
+                    return .text(text)
                 }
                 return nil
-            }.joined()
-        } else {
-            messageContent = ""
+            }
+            content.append(contentsOf: textContent)
+        }
+
+        // Extract tool calls if present
+        if let toolCalls = response.message.toolCalls {
+            content.append(contentsOf: toolCalls.map { toolCall in
+                return .toolCall(AIToolCall(
+                    id: toolCall.id,
+                    type: toolCall.type,
+                    name: toolCall.function.name,
+                    arguments: toolCall.function.arguments
+                ))
+            })
         }
 
         // Map finish reason
@@ -423,11 +490,50 @@ public struct CohereProvider: ProviderProtocol {
             model: "", // Cohere doesn't return model in response
             message: AIMessage(
                 role: .assistant,
-                content: [.text(messageContent)]
+                content: content
             ),
             stopReason: stopReason,
             usage: usage,
             provider: .cohere
+        )
+    }
+
+    /// Map AITool to CohereTool
+    private func mapTool(_ tool: AITool) -> CohereTool {
+        // Convert AIToolParameters to Cohere parameter schema format
+        // Cohere uses JSON Schema format like OpenAI
+        var parameters: [String: AnyCodable] = [
+            "type": AnyCodable(tool.parameters.type),
+            "properties": AnyCodable(tool.parameters.properties.mapValues { property in
+                var propDict: [String: Any] = ["type": property.type]
+                if let desc = property.description {
+                    propDict["description"] = desc
+                }
+                if let enumValues = property.enum {
+                    propDict["enum"] = enumValues
+                }
+                if let items = property.items {
+                    var itemsDict: [String: Any] = ["type": items.type]
+                    if let desc = items.description {
+                        itemsDict["description"] = desc
+                    }
+                    propDict["items"] = itemsDict
+                }
+                return propDict
+            })
+        ]
+
+        if let required = tool.parameters.required {
+            parameters["required"] = AnyCodable(required)
+        }
+
+        return CohereTool(
+            type: "function",
+            function: CohereTool.ToolFunction(
+                name: tool.name,
+                description: tool.description,
+                parameters: parameters
+            )
         )
     }
 

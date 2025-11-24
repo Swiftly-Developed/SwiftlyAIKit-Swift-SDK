@@ -224,8 +224,9 @@ public struct MistralProvider: ProviderProtocol {
             mistralMessages.append(try mapMessage(message))
         }
 
-        // TODO: Map tools if present (when AIRequest supports tools)
-        // let tools = request.tools?.compactMap { ... }
+        // Map tools if present
+        let tools = request.tools?.map { mapTool($0) }
+        let toolChoice = request.toolChoice.map { mapToolChoice($0) }
 
         // Build request
         return MistralRequest(
@@ -239,8 +240,8 @@ public struct MistralProvider: ProviderProtocol {
             randomSeed: nil, // Can be added as an option
             stop: request.stopSequences,
             responseFormat: nil, // Can be added for JSON mode
-            tools: nil, // TODO: Add when AIRequest supports tools
-            toolChoice: nil, // Default to auto
+            tools: tools,
+            toolChoice: toolChoice,
             frequencyPenalty: nil,
             presencePenalty: nil
         )
@@ -258,6 +259,44 @@ public struct MistralProvider: ProviderProtocol {
             role = .assistant
         }
 
+        // Check if message contains tool calls
+        let toolCalls = message.content.compactMap { content -> MistralToolCall? in
+            if case .toolCall(let toolCall) = content {
+                return MistralToolCall(
+                    id: toolCall.id,
+                    type: toolCall.type,
+                    function: MistralToolCall.FunctionCall(
+                        name: toolCall.name,
+                        arguments: toolCall.arguments
+                    )
+                )
+            }
+            return nil
+        }
+
+        // Check if message is a tool result
+        if let toolResult = message.content.first(where: {
+            if case .toolResult = $0 { return true }
+            return false
+        }) {
+            if case .toolResult(let id, let result) = toolResult {
+                return MistralMessage(
+                    role: .tool,
+                    content: .text(result),
+                    toolCallId: id
+                )
+            }
+        }
+
+        // If we have tool calls, return assistant message with tool calls
+        if !toolCalls.isEmpty {
+            return MistralMessage(
+                role: .assistant,
+                content: nil,
+                toolCalls: toolCalls
+            )
+        }
+
         // Map content
         if message.content.isEmpty {
             return MistralMessage(role: role, content: nil)
@@ -265,8 +304,21 @@ public struct MistralProvider: ProviderProtocol {
             // Simple text message
             return MistralMessage(role: role, content: .text(text))
         } else {
-            // Multi-part content (text + images)
-            let contentBlocks = try message.content.map { try mapContentBlock($0) }
+            // Multi-part content (text + images, excluding tool calls/results)
+            let contentBlocks = try message.content.compactMap { content -> MistralContentBlock? in
+                // Skip tool-related content in this mapping
+                switch content {
+                case .toolCall, .toolResult:
+                    return nil
+                default:
+                    return try mapContentBlock(content)
+                }
+            }
+
+            if contentBlocks.isEmpty {
+                return MistralMessage(role: role, content: nil)
+            }
+
             return MistralMessage(role: role, content: .contentArray(contentBlocks))
         }
     }
@@ -287,6 +339,9 @@ public struct MistralProvider: ProviderProtocol {
             }
         case .document:
             throw AIError.unsupportedFeature(feature: "PDF documents", provider: .mistral)
+        case .toolCall, .toolResult:
+            // Tool calls and results are handled separately in mapMessage
+            throw AIError.invalidRequest(message: "Tool calls and results should be handled in message mapping")
         case .custom:
             throw AIError.unsupportedFeature(feature: "Custom content blocks", provider: .mistral)
         }
@@ -305,22 +360,33 @@ public struct MistralProvider: ProviderProtocol {
             )
         }
 
+        var content: [AIMessageContent] = []
+
         // Extract message content
-        let messageContent: String
-        if let content = choice.message.content {
-            switch content {
+        if let messageContent = choice.message.content {
+            switch messageContent {
             case .text(let text):
-                messageContent = text
+                content.append(.text(text))
             case .contentArray(let blocks):
-                messageContent = blocks.compactMap { block in
+                content.append(contentsOf: blocks.compactMap { block in
                     if case .text(let text) = block {
-                        return text
+                        return .text(text)
                     }
                     return nil
-                }.joined()
+                })
             }
-        } else {
-            messageContent = ""
+        }
+
+        // Add tool calls if present
+        if let toolCalls = choice.message.toolCalls {
+            content.append(contentsOf: toolCalls.map { toolCall in
+                .toolCall(AIToolCall(
+                    id: toolCall.id,
+                    type: toolCall.type,
+                    name: toolCall.function.name,
+                    arguments: toolCall.function.arguments
+                ))
+            })
         }
 
         // Map finish reason
@@ -337,12 +403,73 @@ public struct MistralProvider: ProviderProtocol {
             model: response.model,
             message: AIMessage(
                 role: .assistant,
-                content: [.text(messageContent)]
+                content: content
             ),
             stopReason: stopReason,
             usage: usage,
             provider: .mistral
         )
+    }
+
+    /// Map AITool to MistralToolDefinition
+    private func mapTool(_ tool: AITool) -> MistralToolDefinition {
+        // Convert AIToolParameters properties to Mistral format
+        var parameters: [String: AnyCodable] = [
+            "type": AnyCodable(tool.parameters.type),
+            "properties": AnyCodable(tool.parameters.properties.mapValues { property in
+                var propDict: [String: Any] = ["type": property.type]
+                if let desc = property.description {
+                    propDict["description"] = desc
+                }
+                if let enumValues = property.enum {
+                    propDict["enum"] = enumValues
+                }
+                if let items = property.items {
+                    var itemsDict: [String: Any] = ["type": items.type]
+                    if let desc = items.description {
+                        itemsDict["description"] = desc
+                    }
+                    propDict["items"] = itemsDict
+                }
+                if let min = property.minimum {
+                    propDict["minimum"] = min
+                }
+                if let max = property.maximum {
+                    propDict["maximum"] = max
+                }
+                return propDict
+            })
+        ]
+
+        if let required = tool.parameters.required {
+            parameters["required"] = AnyCodable(required)
+        }
+
+        if let additionalProperties = tool.parameters.additionalProperties {
+            parameters["additionalProperties"] = AnyCodable(additionalProperties)
+        }
+
+        return MistralToolDefinition(
+            function: MistralToolDefinition.FunctionDefinition(
+                name: tool.name,
+                description: tool.description,
+                parameters: parameters
+            )
+        )
+    }
+
+    /// Map AIToolChoice to MistralToolChoice
+    private func mapToolChoice(_ choice: AIToolChoice) -> MistralToolChoice {
+        switch choice {
+        case .auto:
+            return .auto
+        case .required:
+            return .any
+        case .none:
+            return .none
+        case .specific(let toolName):
+            return .specific(name: toolName)
+        }
     }
 
     /// Map Mistral finish reason to AIStopReason

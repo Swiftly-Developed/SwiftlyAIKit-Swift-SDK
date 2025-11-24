@@ -1,5 +1,4 @@
 import Foundation
-import Vapor
 
 /// AI Gateway - Main coordinator for multi-provider AI operations
 ///
@@ -292,6 +291,7 @@ public actor AIGateway {
         providers[.google] = GoogleProvider()
         providers[.cohere] = CohereProvider()
         providers[.mistral] = MistralProvider()
+        providers[.deepseek] = DeepSeekProvider()
 
         return providers
     }

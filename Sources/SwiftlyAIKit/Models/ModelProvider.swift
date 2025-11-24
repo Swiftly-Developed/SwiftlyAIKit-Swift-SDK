@@ -159,6 +159,14 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Ministral 8B - Edge computing model (128K context)
     case ministral8B = "ministral-8b-latest"
 
+    // MARK: - DeepSeek Models
+
+    /// DeepSeek Chat - Latest chat model (128K context, V3.2)
+    case deepseekChat = "deepseek-chat"
+
+    /// DeepSeek Reasoner - Reasoning model with chain-of-thought (64K-128K context, R1)
+    case deepseekReasoner = "deepseek-reasoner"
+
     // MARK: - Cohere Models
 
     /// Command A - Most capable model (256K context, 111B params)
@@ -233,6 +241,9 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
              .ministral3B, .ministral8B:
             return .mistral
 
+        case .deepseekChat, .deepseekReasoner:
+            return .deepseek
+
         case .commandA, .commandAReasoning, .commandATranslate, .commandAVision,
              .commandRPlus08, .commandR08, .commandR7B,
              .commandRPlus, .commandR,
@@ -293,6 +304,8 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .magistralMedium: return "Magistral Medium"
         case .ministral3B: return "Ministral 3B"
         case .ministral8B: return "Ministral 8B"
+        case .deepseekChat: return "DeepSeek Chat"
+        case .deepseekReasoner: return "DeepSeek Reasoner"
         case .commandA: return "Command A"
         case .commandAReasoning: return "Command A Reasoning"
         case .commandATranslate: return "Command A Translate"
@@ -341,6 +354,8 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .codestral, .magistralSmall, .magistralMedium,
              .ministral3B, .ministral8B:
             return false
+        case .deepseekChat, .deepseekReasoner:
+            return false
         case .commandAVision:
             return true
         case .commandA, .commandAReasoning, .commandATranslate,
@@ -365,6 +380,8 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return true
         case .gemini25Pro, .gemini25Flash,
              .gemini15Pro, .gemini15Flash:
+            return true
+        case .deepseekChat, .deepseekReasoner:
             return true
         default:
             return false
@@ -453,6 +470,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 128_000
         case .codestral:
             return 32_000
+        case .deepseekChat:
+            return 128_000 // DeepSeek Chat V3.2 has 128K context
+        case .deepseekReasoner:
+            return 64_000 // DeepSeek Reasoner R1 has 64K context (some sources say up to 128K)
         case .commandA, .commandAReasoning, .commandAVision,
              .commandRPlus08, .commandR08, .commandR7B,
              .commandRPlus, .commandR:
@@ -508,6 +529,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 8_192
         case .magistralSmall, .magistralMedium:
             return 32_768
+        case .deepseekChat:
+            return 8_192 // DeepSeek Chat typically outputs up to 8K tokens
+        case .deepseekReasoner:
+            return 32_768 // DeepSeek Reasoner can output up to 32K-64K tokens (including reasoning)
         case .commandA, .commandAReasoning, .commandAVision, .commandATranslate,
              .commandRPlus08, .commandR08, .commandR7B,
              .commandRPlus, .commandR,

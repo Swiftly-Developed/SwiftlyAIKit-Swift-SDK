@@ -1,5 +1,4 @@
 import Foundation
-import Vapor
 
 /// Google Gemini provider implementation
 public struct GeminiProvider: ProviderProtocol {
@@ -219,10 +218,20 @@ public struct GeminiProvider: ProviderProtocol {
             stopSequences: request.stopSequences
         )
 
+        // Map tools if present
+        let tools = request.tools.map { aiTools in
+            [GeminiTool(functionDeclarations: aiTools.map { mapTool($0) })]
+        }
+
+        // Map tool config if tool choice is specified
+        let toolConfig = request.toolChoice.map { mapToolConfig($0) }
+
         return GeminiRequest(
             contents: contents,
             systemInstruction: systemInstruction,
-            generationConfig: generationConfig
+            generationConfig: generationConfig,
+            tools: tools,
+            toolConfig: toolConfig
         )
     }
 
@@ -255,6 +264,22 @@ public struct GeminiProvider: ProviderProtocol {
             let base64Data = data.base64EncodedString()
             return .inlineData(mimeType: mediaType, data: base64Data)
 
+        case .toolCall(let toolCall):
+            // Map to Gemini function call
+            // Parse arguments JSON string to dictionary
+            guard let argsData = toolCall.arguments.data(using: .utf8),
+                  let argsDict = try? JSONSerialization.jsonObject(with: argsData) as? [String: Any] else {
+                throw AIError.invalidRequest(message: "Invalid tool call arguments")
+            }
+            let args = argsDict.mapValues { AnyCodable($0) }
+            return .functionCall(name: toolCall.name, args: args)
+
+        case .toolResult(let id, let result):
+            // Map to Gemini function response
+            // Gemini expects the function name in the response, but we only have the ID
+            // We'll use the ID as the name for now
+            return .functionResponse(name: id, response: ["result": AnyCodable(result)])
+
         case .custom:
             throw AIError.unsupportedFeature(feature: "Custom content", provider: .google)
         }
@@ -273,17 +298,25 @@ public struct GeminiProvider: ProviderProtocol {
             )
         }
 
-        // Extract text content from parts
-        let content: [AIMessageContent] = candidate.content.parts.compactMap { part in
+        // Extract content from parts
+        let content: [AIMessageContent] = try candidate.content.parts.compactMap { part in
             switch part {
             case .text(let text):
                 return .text(text)
-            case .functionCall:
-                return nil // Tool calls not mapped yet
+            case .functionCall(let name, let args):
+                // Convert args back to JSON string
+                let argsData = try? JSONSerialization.data(withJSONObject: args.mapValues { $0.value })
+                let argsString = argsData.flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                return .toolCall(AIToolCall(
+                    id: UUID().uuidString, // Gemini doesn't provide IDs, generate one
+                    type: "function",
+                    name: name,
+                    arguments: argsString
+                ))
             case .functionResponse:
-                return nil
+                return nil // Function responses are inputs, not outputs
             case .inlineData, .fileData:
-                return nil
+                return nil // Images/documents in responses not typical
             }
         }
 
@@ -306,6 +339,50 @@ public struct GeminiProvider: ProviderProtocol {
             stopReason: candidate.finishReason.map { mapFinishReason($0) },
             usage: usage,
             provider: .google
+        )
+    }
+
+    private func mapTool(_ tool: AITool) -> GeminiFunctionDeclaration {
+        // Convert AIToolParameters to Gemini Schema format
+        let properties = tool.parameters.properties.mapValues { property -> GeminiSchemaProperty in
+            let items = property.items.map { GeminiSchemaItems(type: $0.type.uppercased()) }
+            return GeminiSchemaProperty(
+                type: property.type.uppercased(),
+                description: property.description,
+                items: items,
+                enumValues: property.enum
+            )
+        }
+
+        let schema = GeminiSchema(
+            type: tool.parameters.type.uppercased(),
+            properties: properties,
+            required: tool.parameters.required
+        )
+
+        return GeminiFunctionDeclaration(
+            name: tool.name,
+            description: tool.description,
+            parameters: schema
+        )
+    }
+
+    private func mapToolConfig(_ choice: AIToolChoice) -> GeminiToolConfig {
+        let mode: GeminiFunctionCallingConfig.Mode
+        switch choice {
+        case .auto:
+            mode = .auto
+        case .required:
+            mode = .any
+        case .none:
+            mode = .none
+        case .specific:
+            // Gemini doesn't support forcing a specific function, use ANY instead
+            mode = .any
+        }
+
+        return GeminiToolConfig(
+            functionCallingConfig: GeminiFunctionCallingConfig(mode: mode)
         )
     }
 

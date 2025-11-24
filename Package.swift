@@ -6,13 +6,22 @@ import PackageDescription
 let package = Package(
     name: "SwiftlyAIKit",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v13),
+        .iOS(.v16),
+        .watchOS(.v9),
+        .tvOS(.v16),
+        .visionOS(.v1)
     ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
+        // Core library - works on all platforms (server + device)
         .library(
             name: "SwiftlyAIKit",
             targets: ["SwiftlyAIKit"]
+        ),
+        // Vapor integration - server-side only
+        .library(
+            name: "SwiftlyAIKitVapor",
+            targets: ["SwiftlyAIKitVapor"]
         ),
     ],
     dependencies: [
@@ -20,15 +29,22 @@ let package = Package(
         .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.19.0"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
+        // Core framework - platform-agnostic (no Vapor dependency)
         .target(
             name: "SwiftlyAIKit",
             dependencies: [
-                .product(name: "Vapor", package: "vapor"),
                 .product(name: "AsyncHTTPClient", package: "async-http-client"),
             ]
         ),
+        // Vapor extensions - depends on core + Vapor
+        .target(
+            name: "SwiftlyAIKitVapor",
+            dependencies: [
+                "SwiftlyAIKit",
+                .product(name: "Vapor", package: "vapor"),
+            ]
+        ),
+        // Tests - test core functionality
         .testTarget(
             name: "SwiftlyAIKitTests",
             dependencies: ["SwiftlyAIKit"]

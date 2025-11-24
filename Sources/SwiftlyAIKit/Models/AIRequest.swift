@@ -38,6 +38,12 @@ public struct AIRequest: Codable, Sendable {
     /// Provider-specific options
     public let providerOptions: [String: AnyCodable]?
 
+    /// Tools/functions the model may call
+    public let tools: [AITool]?
+
+    /// Controls which tools the model may call
+    public let toolChoice: AIToolChoice?
+
     /// Initialize a new AI request
     ///
     /// - Parameters:
@@ -52,6 +58,8 @@ public struct AIRequest: Codable, Sendable {
     ///   - stream: Enable streaming (default false)
     ///   - metadata: Custom metadata (optional)
     ///   - providerOptions: Provider-specific options (optional)
+    ///   - tools: Tools/functions the model may call (optional)
+    ///   - toolChoice: Controls which tools the model may call (optional)
     public init(
         model: String,
         messages: [AIMessage],
@@ -63,7 +71,9 @@ public struct AIRequest: Codable, Sendable {
         stopSequences: [String]? = nil,
         stream: Bool = false,
         metadata: [String: String]? = nil,
-        providerOptions: [String: AnyCodable]? = nil
+        providerOptions: [String: AnyCodable]? = nil,
+        tools: [AITool]? = nil,
+        toolChoice: AIToolChoice? = nil
     ) {
         self.model = model
         self.messages = messages
@@ -76,6 +86,8 @@ public struct AIRequest: Codable, Sendable {
         self.stream = stream
         self.metadata = metadata
         self.providerOptions = providerOptions
+        self.tools = tools
+        self.toolChoice = toolChoice
     }
 
     /// Convenience initializer for a simple text request

@@ -23,6 +23,12 @@ public enum AIMessageContent: Codable, Sendable, Equatable {
     /// Document content (PDF, etc.)
     case document(data: Data, mediaType: String, filename: String?)
 
+    /// Tool/function call
+    case toolCall(AIToolCall)
+
+    /// Tool/function result
+    case toolResult(id: String, result: String)
+
     /// Custom/provider-specific content
     case custom(data: [String: AnyCodable])
 

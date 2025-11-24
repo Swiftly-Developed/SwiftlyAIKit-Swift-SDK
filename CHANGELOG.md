@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **DeepSeek Provider** (~650 lines models + ~400 lines provider implementation)
+  - Complete OpenAI-compatible API implementation
+  - Two models: `deepseek-chat` (128K context) and `deepseek-reasoner` (64K context, R1)
+  - Full feature set: chat completions, SSE streaming, tool calling (up to 128 functions), reasoning mode
+  - Prompt caching support with `prompt_cache_hit_tokens` and `prompt_cache_miss_tokens` tracking
+  - Reasoning mode with `reasoning_content` field for chain-of-thought transparency
+  - Structured JSON output via `response_format`
+  - Bearer token authentication
+  - Added to ProviderType enum, ModelProvider enum, and AIGateway registration
+  - Mock test infrastructure (MockDeepSeekAPI) with comprehensive test responses
+- **Platform-Agnostic Architecture** - Framework now works on iOS, macOS, watchOS, tvOS, and visionOS
+  - Separated SwiftlyAIKit (core) and SwiftlyAIKitVapor (Vapor extensions) targets in Package.swift
+  - Core framework has no Vapor dependency - works on all Apple platforms
+  - Vapor extensions available as separate import for server-side applications
+  - Removed unnecessary Vapor imports from AIGateway, OpenAIProvider, and GeminiProvider
+  - Added platform support: .macOS(.v13), .iOS(.v16), .watchOS(.v9), .tvOS(.v16), .visionOS(.v1)
+  - Two usage patterns: (1) SwiftlyAIKit alone on devices, (2) SwiftlyAIKit + SwiftlyAIKitVapor on servers
+- **Complete Tool/Function Calling Support** (~350 lines core + ~600 lines provider implementations)
+  - AITool.swift with complete tool definition framework
+  - `AITool` struct for defining functions the model can call (name, description, JSON Schema parameters)
+  - `AIToolParameters` and `AIToolProperty` for JSON Schema-based parameter definitions
+  - `AIToolChoice` enum (auto, required, none, specific) for controlling tool usage
+  - `AIToolCall` struct for representing model tool invocations
+  - Extended `AIMessageContent` enum with `toolCall` and `toolResult` cases
+  - Extended `AIRequest` with `tools` and `toolChoice` properties
+  - **Fully implemented tool calling in all providers:**
+    - OpenAI: Maps to OpenAI function calling API with tool definitions and tool choice
+    - Mistral: Maps to Mistral tool calling API (OpenAI-compatible format)
+    - Gemini: Maps to Google function declarations with function calling config
+    - Cohere: Maps to Cohere tool definitions with JSON Schema parameters
+  - Bidirectional tool call mapping: AITool → Provider format and Provider response → AIToolCall
+  - Tool result handling in message content for multi-turn tool usage
+  - Removed all TODO comments - tool calling is now production-ready
+- **Comprehensive README Documentation**
+  - Complete configuration examples for all three API key strategies (company, client, hybrid)
+  - Real-world usage examples with Vapor route handlers
+  - Basic chat completion and streaming response examples
+  - Detailed API key strategy descriptions with use cases
+- **AIGateway Initialization Test Suite** (8 tests)
+  - Tests for all configuration strategies (company key, client key, hybrid, per-provider)
+  - Tests for development and production configurations
+  - Custom provider registration tests
+  - Ensures robust gateway initialization
+
 ### Changed
 - **Restructured codebase to provider-centric organization**
   - Moved all provider-specific models from `Models/[Provider]/` to `Providers/[Provider]/`
@@ -17,6 +62,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Mock API files moved from `Mocks/` to `ProviderTests/[Provider]/` directories
   - Updated CLAUDE.md documentation with new folder structure
   - **Benefits**: Improved code cohesion, easier navigation, better scalability, clearer module boundaries
+- **All providers fully support tool/function calling**
+  - Complete toolCall and toolResult handling in all provider implementations
+  - Request mapping: AITool → provider-specific tool format
+  - Response mapping: provider tool calls → AIToolCall
+  - Message mapping: handles tool calls from assistant and tool results from user
+  - Maintained backwards compatibility with existing code (tools are optional)
+
+### Removed
+- Removed unused `JSONHelpers.swift` placeholder file
+- Removed unused `SwiftlyAIKit.swift` empty struct file
+- Removed placeholder `SwiftlyAIKitTests.swift` test file
+- Cleaned up dead code and TODO placeholders
 
 ## [0.6.0] - 2025-11-23
 

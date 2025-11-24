@@ -77,8 +77,7 @@ The framework is organized into five main directories under `Sources/SwiftlyAIKi
    - `Application+AI.swift` - Application lifecycle and registration
 
 5. **Utilities/** - Helper functionality
-   - `HTTPClientManager` - AsyncHTTPClient wrapper
-   - `JSONHelpers` - JSON encoding/decoding utilities
+   - `HTTPClientManager` - AsyncHTTPClient wrapper with retry logic
 
 ### Design Patterns
 
@@ -134,8 +133,6 @@ Tests are organized in `Tests/SwiftlyAIKitTests/`:
 
 - Keep provider implementations independent and focused
 - Use actors for shared mutable state
-- Document public APIs with DocC-style comments
-- Follow Swift API Design Guidelines
 - Maintain backwards compatibility within major versions
 
 ### Swift 6 Concurrency Safety
@@ -518,11 +515,6 @@ git push origin --tags
 
 **Documentation:**
 - `CLAUDE.md` - This file (you are here)
-- `TESTING.md` - Comprehensive testing guide with test details
 - `CHANGELOG.md` - Version history following Keep a Changelog format
-- `Documentation/OPENAI_IMPLEMENTATION_PLAN.md` - OpenAI provider implementation guide
-- `Documentation/GEMINI_IMPLEMENTATION_PLAN.md` - Gemini provider implementation guide
-- `Documentation/PERPLEXITY_IMPLEMENTATION_PLAN.md` - Perplexity provider implementation guide
-- `Documentation/MISTRAL_IMPLEMENTATION_PLAN.md` - Mistral provider implementation guide
-- `Documentation/COHERE_IMPLEMENTATION_PLAN.md` - Cohere provider implementation guide
 - `README.md` - Public-facing documentation
+- `Documentation/` - Provider implementation plans (OpenAI, Gemini, Perplexity, Mistral, Cohere)

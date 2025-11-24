@@ -1,5 +1,4 @@
 import Foundation
-import Vapor
 
 /// OpenAI provider implementation for GPT models
 public struct OpenAIProvider: ProviderProtocol {
@@ -209,26 +208,91 @@ public struct OpenAIProvider: ProviderProtocol {
             messages.append(openAIMessage)
         }
 
+        // Map tools if present
+        let tools = request.tools?.map { mapTool($0) }
+        let toolChoice = request.toolChoice.map { mapToolChoice($0) }
+
         return OpenAIRequest(
             model: request.model,
             messages: messages,
             maxTokens: request.maxTokens,
             temperature: request.temperature,
             topP: request.topP,
-            stop: request.stopSequences
+            stop: request.stopSequences,
+            tools: tools,
+            toolChoice: toolChoice
         )
     }
 
     private func mapMessage(_ message: AIMessage) throws -> OpenAIMessage {
-        let role: OpenAIMessage.Role = message.role == .user ? .user : .assistant
+        let role: OpenAIMessage.Role
+        switch message.role {
+        case .user:
+            role = .user
+        case .assistant:
+            role = .assistant
+        case .system:
+            role = .system
+        }
+
+        // Check if message contains tool calls
+        let toolCalls = message.content.compactMap { content -> OpenAIToolCall? in
+            if case .toolCall(let toolCall) = content {
+                return OpenAIToolCall(
+                    id: toolCall.id,
+                    type: toolCall.type,
+                    function: OpenAIToolCall.FunctionCall(
+                        name: toolCall.name,
+                        arguments: toolCall.arguments
+                    )
+                )
+            }
+            return nil
+        }
+
+        // Check if message is a tool result
+        if let toolResult = message.content.first(where: {
+            if case .toolResult = $0 { return true }
+            return false
+        }) {
+            if case .toolResult(let id, let result) = toolResult {
+                return OpenAIMessage(
+                    role: .tool,
+                    content: .text(result),
+                    toolCallId: id
+                )
+            }
+        }
+
+        // If we have tool calls, return assistant message with tool calls
+        if !toolCalls.isEmpty {
+            return OpenAIMessage(
+                role: .assistant,
+                content: nil,
+                toolCalls: toolCalls
+            )
+        }
 
         // Handle different content types
         if message.content.count == 1, case .text(let text) = message.content[0] {
             // Simple text message
             return OpenAIMessage(role: role, content: .text(text))
         } else {
-            // Multi-part content (text + images)
-            let contentBlocks = try message.content.map { try mapContentBlock($0) }
+            // Multi-part content (text + images, excluding tool calls/results)
+            let contentBlocks = try message.content.compactMap { content -> OpenAIContentBlock? in
+                // Skip tool-related content in this mapping
+                switch content {
+                case .toolCall, .toolResult:
+                    return nil
+                default:
+                    return try mapContentBlock(content)
+                }
+            }
+
+            if contentBlocks.isEmpty {
+                return OpenAIMessage(role: role, content: nil)
+            }
+
             return OpenAIMessage(role: role, content: .contentArray(contentBlocks))
         }
     }
@@ -253,6 +317,10 @@ public struct OpenAIProvider: ProviderProtocol {
         case .document:
             throw AIError.unsupportedFeature(feature: "PDF documents", provider: .openai)
 
+        case .toolCall, .toolResult:
+            // Tool calls and results are handled separately in mapMessage
+            throw AIError.invalidRequest(message: "Tool calls and results should be handled in message mapping")
+
         case .custom:
             throw AIError.unsupportedFeature(feature: "Custom content", provider: .openai)
         }
@@ -271,23 +339,35 @@ public struct OpenAIProvider: ProviderProtocol {
             )
         }
 
-        let content: [AIMessageContent]
+        var content: [AIMessageContent] = []
+
+        // Add text content if present
         if let messageContent = choice.message.content {
             switch messageContent {
             case .text(let text):
-                content = [.text(text)]
+                content.append(.text(text))
             case .contentArray(let blocks):
-                content = blocks.compactMap { block in
+                content.append(contentsOf: blocks.compactMap { block in
                     switch block {
                     case .text(let text):
                         return .text(text)
                     case .imageUrl:
                         return nil // Images in responses not typical
                     }
-                }
+                })
             }
-        } else {
-            content = []
+        }
+
+        // Add tool calls if present
+        if let toolCalls = choice.message.toolCalls {
+            content.append(contentsOf: toolCalls.map { toolCall in
+                .toolCall(AIToolCall(
+                    id: toolCall.id,
+                    type: toolCall.type,
+                    name: toolCall.function.name,
+                    arguments: toolCall.function.arguments
+                ))
+            })
         }
 
         let message = AIMessage(role: .assistant, content: content)
@@ -305,6 +385,65 @@ public struct OpenAIProvider: ProviderProtocol {
             usage: usage,
             provider: .openai
         )
+    }
+
+    private func mapTool(_ tool: AITool) -> OpenAIToolDefinition {
+        // Convert AIToolParameters properties to OpenAI format
+        var parameters: [String: AnyCodable] = [
+            "type": AnyCodable(tool.parameters.type),
+            "properties": AnyCodable(tool.parameters.properties.mapValues { property in
+                var propDict: [String: Any] = ["type": property.type]
+                if let desc = property.description {
+                    propDict["description"] = desc
+                }
+                if let enumValues = property.enum {
+                    propDict["enum"] = enumValues
+                }
+                if let items = property.items {
+                    var itemsDict: [String: Any] = ["type": items.type]
+                    if let desc = items.description {
+                        itemsDict["description"] = desc
+                    }
+                    propDict["items"] = itemsDict
+                }
+                if let min = property.minimum {
+                    propDict["minimum"] = min
+                }
+                if let max = property.maximum {
+                    propDict["maximum"] = max
+                }
+                return propDict
+            })
+        ]
+
+        if let required = tool.parameters.required {
+            parameters["required"] = AnyCodable(required)
+        }
+
+        if let additionalProperties = tool.parameters.additionalProperties {
+            parameters["additionalProperties"] = AnyCodable(additionalProperties)
+        }
+
+        return OpenAIToolDefinition(
+            function: OpenAIToolDefinition.FunctionDefinition(
+                name: tool.name,
+                description: tool.description,
+                parameters: parameters
+            )
+        )
+    }
+
+    private func mapToolChoice(_ choice: AIToolChoice) -> OpenAIToolChoice {
+        switch choice {
+        case .auto:
+            return .auto
+        case .required:
+            return .required
+        case .none:
+            return .none
+        case .specific(let toolName):
+            return .function(toolName)
+        }
     }
 
     private func mapFinishReason(_ reason: String) -> AIStopReason {

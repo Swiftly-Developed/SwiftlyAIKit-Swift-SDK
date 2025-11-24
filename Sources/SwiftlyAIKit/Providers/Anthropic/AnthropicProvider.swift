@@ -434,6 +434,12 @@ public struct AnthropicProvider: ProviderProtocol {
                 case .document(let data, let mediaType, _):
                     let base64Data = data.base64EncodedString()
                     return .document(source: .init(mediaType: mediaType, data: base64Data))
+                case .toolCall(let toolCall):
+                    // Map AIToolCall to Anthropic's tool_use format
+                    return .toolUse(id: toolCall.id, name: toolCall.name, input: [:]) // Parse arguments as needed
+                case .toolResult(let id, let result):
+                    // Map tool result to Anthropic's tool_result format
+                    return .toolResult(toolUseId: id, content: result, isError: false)
                 case .custom:
                     return .text("") // Fallback for custom content
                 }

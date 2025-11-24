@@ -1,4 +1,5 @@
 import Vapor
+import SwiftlyAIKit
 
 /// Vapor Application extension for AI Gateway integration
 ///
