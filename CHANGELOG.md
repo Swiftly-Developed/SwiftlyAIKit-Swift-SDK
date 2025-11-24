@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-11-24
+
+### Removed
+- **BREAKING:** SwiftlyAIKitVapor target (moved to separate SwiftlyAIServerKit package)
+- Vapor framework dependency (no longer needed for device framework)
+
+### Changed
+- Package now focused on device platforms (iOS, macOS, watchOS, tvOS, visionOS)
+- SwiftlyAIKitVapor users should migrate to SwiftlyAIServerKit package
+- Updated README.md to remove Vapor-specific examples
+- Updated CLAUDE.md to remove server-specific guidance
+
+### Migration Guide
+
+**For device app developers (iOS, macOS, watchOS, tvOS, visionOS):**
+
+No changes needed! Continue using SwiftlyAIKit as before:
+
+```swift
+.package(url: "https://github.com/SwiftlyWorkspace/SwiftlyAIKit.git", from: "0.8.0")
+// import SwiftlyAIKit
+```
+
+**For Vapor server developers:**
+
+You need to add a second package dependency. Change from:
+
+```swift
+// Before (v0.7.0)
+.package(url: "https://github.com/SwiftlyWorkspace/SwiftlyAIKit.git", from: "0.7.0")
+// import SwiftlyAIKitVapor
+```
+
+To:
+
+```swift
+// After (v0.8.0+)
+.package(url: "https://github.com/SwiftlyWorkspace/SwiftlyAIServerKit.git", from: "0.1.0")
+// import SwiftlyAIServerKit
+```
+
+All APIs remain identical - only the import name changes.
+
+## [0.7.0] - 2025-11-24
+
 ### Added
 - **DeepSeek Provider** (~650 lines models + ~400 lines provider implementation)
   - Complete OpenAI-compatible API implementation
@@ -302,7 +347,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive README with installation and usage guidelines
 - Basic test structure using Swift Testing framework
 
-[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.2.0...v0.3.0
