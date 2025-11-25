@@ -37,10 +37,19 @@ public struct AIUsage: Codable, Sendable {
     /// Cached tokens (if prompt caching was used)
     public let cachedTokens: Int?
 
-    public init(inputTokens: Int, outputTokens: Int, cachedTokens: Int? = nil) {
+    /// Reasoning tokens (for models with reasoning capabilities like Grok 4)
+    public let reasoningTokens: Int?
+
+    public init(
+        inputTokens: Int,
+        outputTokens: Int,
+        cachedTokens: Int? = nil,
+        reasoningTokens: Int? = nil
+    ) {
         self.inputTokens = inputTokens
         self.outputTokens = outputTokens
         self.cachedTokens = cachedTokens
+        self.reasoningTokens = reasoningTokens
     }
 }
 

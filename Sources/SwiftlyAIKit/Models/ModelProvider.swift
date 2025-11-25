@@ -167,6 +167,29 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// DeepSeek Reasoner - Reasoning model with chain-of-thought (64K-128K context, R1)
     case deepseekReasoner = "deepseek-reasoner"
 
+    // MARK: - xAI Grok Models
+
+    /// Grok 4 - Latest flagship model with reasoning (July 2025)
+    case grok4 = "grok-4-0709"
+
+    /// Grok 4 - Latest alias
+    case grok4Latest = "grok-4"
+
+    /// Grok 3 - Previous flagship model (1M context)
+    case grok3 = "grok-3"
+
+    /// Grok 3 Mini - Smaller, faster model (1M context)
+    case grok3Mini = "grok-3-mini"
+
+    /// Grok 2 Vision - Image understanding model (128K context)
+    case grok2Vision = "grok-2-vision-1212"
+
+    /// Grok Code Fast - Code generation specialist
+    case grokCodeFast = "grok-code-fast-1"
+
+    /// Grok 2 Image - Image generation model
+    case grok2Image = "grok-2-image"
+
     // MARK: - Cohere Models
 
     /// Command A - Most capable model (256K context, 111B params)
@@ -244,6 +267,9 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .deepseekChat, .deepseekReasoner:
             return .deepseek
 
+        case .grok4, .grok4Latest, .grok3, .grok3Mini, .grok2Vision, .grokCodeFast, .grok2Image:
+            return .grok
+
         case .commandA, .commandAReasoning, .commandATranslate, .commandAVision,
              .commandRPlus08, .commandR08, .commandR7B,
              .commandRPlus, .commandR,
@@ -306,6 +332,13 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .ministral8B: return "Ministral 8B"
         case .deepseekChat: return "DeepSeek Chat"
         case .deepseekReasoner: return "DeepSeek Reasoner"
+        case .grok4: return "Grok 4"
+        case .grok4Latest: return "Grok 4"
+        case .grok3: return "Grok 3"
+        case .grok3Mini: return "Grok 3 Mini"
+        case .grok2Vision: return "Grok 2 Vision"
+        case .grokCodeFast: return "Grok Code Fast"
+        case .grok2Image: return "Grok 2 Image"
         case .commandA: return "Command A"
         case .commandAReasoning: return "Command A Reasoning"
         case .commandATranslate: return "Command A Translate"
@@ -356,6 +389,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return false
         case .deepseekChat, .deepseekReasoner:
             return false
+        case .grok2Vision:
+            return true
+        case .grok4, .grok4Latest, .grok3, .grok3Mini, .grokCodeFast, .grok2Image:
+            return false
         case .commandAVision:
             return true
         case .commandA, .commandAReasoning, .commandATranslate,
@@ -383,6 +420,8 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return true
         case .deepseekChat, .deepseekReasoner:
             return true
+        case .grok4, .grok4Latest, .grok3, .grok3Mini, .grok2Vision, .grokCodeFast:
+            return true  // Grok has automatic prompt caching
         default:
             return false
         }
@@ -474,6 +513,14 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 128_000 // DeepSeek Chat V3.2 has 128K context
         case .deepseekReasoner:
             return 64_000 // DeepSeek Reasoner R1 has 64K context (some sources say up to 128K)
+        case .grok3, .grok3Mini:
+            return 1_000_000 // 1M context
+        case .grok2Vision:
+            return 128_000
+        case .grok4, .grok4Latest, .grokCodeFast:
+            return 128_000 // Assumed based on typical model sizes
+        case .grok2Image:
+            return 1_024 // Max prompt length for image generation
         case .commandA, .commandAReasoning, .commandAVision,
              .commandRPlus08, .commandR08, .commandR7B,
              .commandRPlus, .commandR:
@@ -533,6 +580,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
             return 8_192 // DeepSeek Chat typically outputs up to 8K tokens
         case .deepseekReasoner:
             return 32_768 // DeepSeek Reasoner can output up to 32K-64K tokens (including reasoning)
+        case .grok4, .grok4Latest, .grok3, .grok3Mini, .grok2Vision, .grokCodeFast:
+            return 8_192 // Typical output limit
+        case .grok2Image:
+            return 0 // Image generation doesn't produce text tokens
         case .commandA, .commandAReasoning, .commandAVision, .commandATranslate,
              .commandRPlus08, .commandR08, .commandR7B,
              .commandRPlus, .commandR,

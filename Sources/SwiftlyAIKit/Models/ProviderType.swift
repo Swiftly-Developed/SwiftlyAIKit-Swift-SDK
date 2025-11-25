@@ -25,6 +25,9 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
     /// DeepSeek (DeepSeek models with reasoning)
     case deepseek
 
+    /// xAI (Grok models)
+    case grok
+
     /// Human-readable name for the provider
     public var displayName: String {
         switch self {
@@ -35,6 +38,7 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
         case .cohere: return "Cohere"
         case .mistral: return "Mistral AI"
         case .deepseek: return "DeepSeek"
+        case .grok: return "xAI Grok"
         }
     }
 
@@ -55,6 +59,8 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
             return "https://api.mistral.ai/v1"
         case .deepseek:
             return "https://api.deepseek.com"
+        case .grok:
+            return "https://api.x.ai/v1"
         }
     }
 }

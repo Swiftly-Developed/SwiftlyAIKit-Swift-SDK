@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2025-11-25
+
+### Added
+- **xAI Grok Provider** (~1,200 lines total)
+  - GrokModels.swift with complete type definitions (~900 lines) for all Grok API features
+  - GrokProvider implementation (~670 lines) with sendMessage, streamMessage, countTokens, image generation, deferred completions, and model listing
+  - Support for 7 Grok models: Grok 4, Grok 4 Latest, Grok 3, Grok 3 Mini, Grok 2 Vision, Grok Code Fast, Grok 2 Image
+  - OpenAI-compatible API format for straightforward integration
+  - Reasoning tokens tracking via `AIUsage.reasoningTokens` and `completion_tokens_details.reasoning_tokens`
+  - Automatic prompt caching with `prompt_tokens_details.cached_tokens` tracking
+  - SSE streaming support with delta accumulation for real-time responses
+  - Vision support for Grok 2 Vision model (image URLs and base64 data URLs)
+  - Tool/function calling infrastructure (OpenAI-compatible format)
+  - Live web search via `search_parameters` option
+  - Deferred completions for long-running requests
+  - Image generation with Grok 2 Image model (`generateImage` method)
+  - Tokenization via dedicated `/tokenize-text` endpoint (`countTokens` method)
+  - Bearer token authentication
+  - Context windows: 1M tokens (Grok 3/3 Mini), 128K tokens (Grok 4/Vision/Code)
+  - Output limits: 8K tokens for all chat models
+  - Added `reasoningTokens` field to `AIUsage` struct for Grok 4 reasoning token tracking
+- **Comprehensive Grok test coverage** (60+ tests)
+  - MockGrokAPI.swift with sample responses for all Grok endpoints (40+ mock responses)
+  - GrokProviderTests (60 tests) covering initialization, request/response mapping, streaming, reasoning tokens, cached tokens, deferred completions, image generation, tokenization, error handling, and model support
+
+### Changed
+- Updated ModelProvider enum to include 7 Grok models (total now 67 models)
+- Updated ProviderType enum to include `.grok` (total now 8 providers: Anthropic, OpenAI, Google, Perplexity, Cohere, Mistral, DeepSeek, Grok)
+- AIGateway now registers GrokProvider and PerplexityProvider by default
+- Updated ProviderTypeTests switch statement to include `.grok` case
+
 ## [0.8.0] - 2025-11-24
 
 ### Removed
@@ -347,7 +378,8 @@ All APIs remain identical - only the import name changes.
 - Comprehensive README with installation and usage guidelines
 - Basic test structure using Swift Testing framework
 
-[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.5.0...v0.6.0

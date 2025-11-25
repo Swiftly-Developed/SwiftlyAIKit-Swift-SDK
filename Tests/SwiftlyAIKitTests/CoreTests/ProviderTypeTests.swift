@@ -380,6 +380,8 @@ struct ProviderTypeTests {
             result = "mistral"
         case .deepseek:
             result = "deepseek"
+        case .grok:
+            result = "grok"
         }
 
         #expect(result == "anthropic")
@@ -388,7 +390,7 @@ struct ProviderTypeTests {
     @Test("Can create Set of all providers")
     func testSetOfAllProviders() {
         let allProviders = Set(ProviderType.allCases)
-        #expect(allProviders.count == 7)
+        #expect(allProviders.count == 8)
     }
 
     @Test("Dictionary with provider keys maintains insertion")

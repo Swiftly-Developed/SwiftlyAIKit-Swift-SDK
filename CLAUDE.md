@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SwiftlyAIKit is an AI Model Gateway framework built for server-side Swift and Vapor applications. It provides a unified interface for interacting with multiple AI providers (OpenAI, Anthropic, Google AI, Cohere, Mistral). The project uses Swift 6.2 and requires macOS 13.0+.
+SwiftlyAIKit is an AI Model Gateway framework providing unified access to multiple AI providers (Anthropic, OpenAI, Google Gemini, Perplexity, Mistral, Cohere, DeepSeek) through a single Swift API. Works on iOS, macOS, watchOS, tvOS, visionOS, and Linux servers. The project uses Swift 6.0+ and requires macOS 13.0+.
+
+**Note:** This package has zero Vapor dependencies. For Vapor integration, see SwiftlyAIServerKit.
 
 **Repository Structure:**
 - This is part of a larger Xcode workspace: `SwiftlyAI.xcworkspace`
@@ -70,13 +72,10 @@ The framework is organized into five main directories under `Sources/SwiftlyAIKi
    - `Perplexity/` - PerplexityProvider + PerplexityModels + PerplexityOptions
    - `Mistral/` - MistralProvider + MistralModels
    - `Cohere/` - CohereProvider + CohereModels
+   - `DeepSeek/` - DeepSeekProvider + DeepSeekModels
    - Each provider subdirectory contains all provider-specific code
 
-4. **Extensions/** - Vapor integration
-   - `Request+AI.swift` - Vapor Request extensions for gateway access
-   - `Application+AI.swift` - Application lifecycle and registration
-
-5. **Utilities/** - Helper functionality
+4. **Utilities/** - Helper functionality
    - `HTTPClientManager` - AsyncHTTPClient wrapper with retry logic
 
 ### Design Patterns
@@ -91,10 +90,9 @@ The framework is organized into five main directories under `Sources/SwiftlyAIKi
 - **Async/await**: All async operations use modern Swift concurrency
   - All providers implement `async throws` methods
   - Streaming uses AsyncThrowingStream
-- **Vapor Storage pattern**: Framework uses Vapor's storage system for dependency injection
-  - `Application.storage[AIGatewayKey.self]` stores the gateway instance
-  - Access via `app.ai` or `req.ai` for convenient usage
-  - Storage keys are type-safe and provide clear error messages if not initialized
+- **Configuration builder pattern**: Framework uses builder pattern for type-safe configuration
+  - `Configuration.withCompanyKey()`, `.withClientKeys()`, `.withHybridKeys()`
+  - Provides clear, chainable API for setup
 - **Error mapping**: HTTPClientManager maps HTTP status codes to specific AIError types
   - 401/403 → authentication errors
   - 429 → rate limiting
@@ -126,8 +124,9 @@ Tests are organized in `Tests/SwiftlyAIKitTests/`:
 
 ## Dependencies
 
-- **Vapor** (4.99.0+) - Web framework integration
 - **AsyncHTTPClient** (1.19.0+) - HTTP client for provider API calls
+
+**Note:** SwiftlyAIKit has no Vapor dependency. Vapor integration is provided by SwiftlyAIServerKit.
 
 ## Development Guidelines
 
@@ -157,65 +156,36 @@ When implementing a new provider (e.g., OpenAI, Google, Cohere):
 
 ### Request/Response Flow
 
-Understanding the data flow through the framework:
-1. Vapor request comes in with user data
-2. `Request+AI` extension extracts client API key from headers (if present)
-3. `AIGateway` resolves which API key to use based on `APIKeyStrategy`
-4. Gateway routes request to appropriate `ProviderProtocol` implementation
-5. Provider transforms `AIRequest` into provider-specific format (e.g., Anthropic.MessageRequest)
-6. `HTTPClientManager` sends HTTP request with retry logic
-7. Provider transforms provider-specific response back to `AIResponse`
-8. Response flows back through gateway to Vapor route handler
+Understanding the data flow through SwiftlyAIKit:
+1. App creates `AIRequest` with model, messages, and options
+2. `AIGateway` resolves which API key to use based on `APIKeyStrategy`
+3. Gateway routes request to appropriate `ProviderProtocol` implementation
+4. Provider transforms `AIRequest` into provider-specific format (e.g., Anthropic.MessageRequest)
+5. `HTTPClientManager` sends HTTP request with retry logic
+6. Provider transforms provider-specific response back to `AIResponse`
+7. Response returned to caller
 
-### Vapor Integration Patterns
+### Direct Usage (Device Apps)
 
-**Initialization in configure.swift:**
 ```swift
-import Vapor
 import SwiftlyAIKit
 
-func configure(_ app: Application) async throws {
-    // Company key strategy - simplest approach
-    let config = Configuration.withCompanyKey("sk-ant-...")
-    app.ai.initialize(with: config)
+// Create gateway with company API key
+let config = Configuration.withCompanyKey("sk-ant-...")
+let gateway = AIGateway(configuration: config)
 
-    // OR client key strategy - for multi-tenant apps
-    let config = Configuration.withClientKeys()
-    app.ai.initialize(with: config)
+// Send a message
+let request = AIRequest(model: .claude(.sonnet4_5), prompt: "Hello!")
+let response = try await gateway.sendMessage(request)
 
-    // OR hybrid strategy - best of both worlds
-    let config = Configuration.withHybridKeys(defaultKey: "sk-ant-...")
-    app.ai.initialize(with: config)
+// Streaming
+let stream = try await gateway.streamMessage(request)
+for try await chunk in stream {
+    print(chunk.content)
 }
 ```
 
-**Using in route handlers:**
-```swift
-// Method 1: Via app.ai (direct gateway access)
-app.get("ai", "chat") { req async throws -> AIResponse in
-    let request = AIRequest(model: "claude-sonnet-4-5", prompt: "Hello!")
-    return try await req.application.ai.sendMessage(request)
-}
-
-// Method 2: Via req.ai (with automatic client key extraction)
-app.post("ai", "chat") { req async throws -> AIResponse in
-    let input = try req.content.decode(ChatInput.self)
-    let request = AIRequest(model: input.model, prompt: input.prompt)
-    // Automatically extracts API key from X-API-Key header if present
-    return try await req.ai.sendMessage(request)
-}
-
-// Method 3: Streaming responses
-app.post("ai", "stream") { req async throws -> Response in
-    let request = AIRequest(model: "claude-sonnet-4-5", prompt: "Tell me a story")
-    return try await req.ai.streamMessage(request)
-}
-```
-
-**Client API Key Headers:**
-- Send client API keys via `X-API-Key` header
-- `Request+AI` automatically extracts and uses when strategy allows
-- Works with `clientKey`, `hybrid`, and `perProvider` strategies
+**Note:** For Vapor server integration patterns, see SwiftlyAIServerKit/CLAUDE.md.
 
 ## Current Implementation Status
 
@@ -306,8 +276,37 @@ app.post("ai", "stream") { req async throws -> Response in
 - ✅ Output limits: 8K tokens for all models
 - ✅ Bearer token authentication
 - ✅ Unique features: RAG with citations, safety_mode, response_format with JSON Schema
-- Implementation: `Sources/SwiftlyAIKit/Providers/CohereProvider.swift` (~465 lines)
-- Models: `Sources/SwiftlyAIKit/Models/Cohere/CohereModels.swift` (~454 lines)
+- Implementation: `Sources/SwiftlyAIKit/Providers/Cohere/CohereProvider.swift` (~465 lines)
+- Models: `Sources/SwiftlyAIKit/Providers/Cohere/CohereModels.swift` (~454 lines)
+
+**DeepSeek**
+- ✅ Chat Completions API (create, stream)
+- ✅ Server-Sent Events (SSE) streaming
+- ✅ Tool/function calling support
+- ✅ Prompt caching for cost reduction
+- ✅ Reasoning mode (DeepSeek-R1)
+- ✅ Support for DeepSeek Chat and DeepSeek Coder models
+- ✅ Bearer token authentication
+- Implementation: `Sources/SwiftlyAIKit/Providers/DeepSeek/DeepSeekProvider.swift`
+- Models: `Sources/SwiftlyAIKit/Providers/DeepSeek/DeepSeekModels.swift`
+
+**xAI Grok**
+- ✅ Chat Completions API (create, stream) - OpenAI-compatible
+- ✅ Server-Sent Events (SSE) streaming with delta accumulation
+- ✅ Reasoning tokens tracking (`AIUsage.reasoningTokens`, `completion_tokens_details.reasoning_tokens`)
+- ✅ Automatic prompt caching with cached_tokens tracking
+- ✅ Tool/function calling infrastructure (OpenAI-compatible format)
+- ✅ Vision support for Grok 2 Vision model (image URLs and base64 data URLs)
+- ✅ Token counting via dedicated `/tokenize-text` endpoint
+- ✅ Live web search via `search_parameters` option
+- ✅ Deferred completions for long-running requests
+- ✅ Image generation with Grok 2 Image model (`generateImage` method)
+- ✅ Support for 7 models: Grok 4, Grok 4 Latest, Grok 3, Grok 3 Mini, Grok 2 Vision, Grok Code Fast, Grok 2 Image
+- ✅ Context windows: 1M tokens (Grok 3/3 Mini), 128K tokens (Grok 4/Vision/Code)
+- ✅ Output limits: 8K tokens for all chat models
+- ✅ Bearer token authentication
+- Implementation: `Sources/SwiftlyAIKit/Providers/Grok/GrokProvider.swift` (~670 lines)
+- Models: `Sources/SwiftlyAIKit/Providers/Grok/GrokModels.swift` (~900 lines)
 
 ## Key Implementation Notes
 
@@ -500,9 +499,15 @@ git push origin --tags
 - `Sources/SwiftlyAIKit/Providers/Cohere/CohereModels.swift` (454 lines) - All Cohere types
 - `Sources/SwiftlyAIKit/Providers/Cohere/CohereProvider.swift` (465 lines) - Core implementation
 
-**Vapor Integration (2 files, ~413 lines):**
-- `Sources/SwiftlyAIKit/Extensions/Application+AI.swift` (173 lines) - App lifecycle
-- `Sources/SwiftlyAIKit/Extensions/Request+AI.swift` (240 lines) - Request helpers
+**DeepSeek Implementation (2 files):**
+- `Sources/SwiftlyAIKit/Providers/DeepSeek/DeepSeekModels.swift` - All DeepSeek types
+- `Sources/SwiftlyAIKit/Providers/DeepSeek/DeepSeekProvider.swift` - Core implementation
+
+**Grok Implementation (2 files, ~1,570 lines):**
+- `Sources/SwiftlyAIKit/Providers/Grok/GrokModels.swift` (~900 lines) - All Grok types
+- `Sources/SwiftlyAIKit/Providers/Grok/GrokProvider.swift` (~670 lines) - Core implementation
+
+**Note:** Vapor integration has been moved to SwiftlyAIServerKit package.
 
 **Testing Infrastructure (grouped by provider):**
 - `Tests/SwiftlyAIKitTests/Mocks/MockHTTPClient.swift` (278 lines)
@@ -512,6 +517,7 @@ git push origin --tags
 - `Tests/SwiftlyAIKitTests/ProviderTests/Perplexity/MockPerplexityAPI.swift` + PerplexityProviderTests
 - `Tests/SwiftlyAIKitTests/ProviderTests/Mistral/MockMistralAPI.swift` + MistralProviderTests
 - `Tests/SwiftlyAIKitTests/ProviderTests/Cohere/MockCohereAPI.swift` + CohereProviderTests
+- `Tests/SwiftlyAIKitTests/ProviderTests/Grok/MockGrokAPI.swift` + GrokProviderTests
 
 **Documentation:**
 - `CLAUDE.md` - This file (you are here)

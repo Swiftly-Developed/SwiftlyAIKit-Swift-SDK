@@ -286,12 +286,14 @@ public actor AIGateway {
         )
         providers[.anthropic] = anthropicProvider
 
-        // Register placeholder providers (will throw unsupported error)
+        // Register other providers
         providers[.openai] = OpenAIProvider()
         providers[.google] = GoogleProvider()
         providers[.cohere] = CohereProvider()
         providers[.mistral] = MistralProvider()
         providers[.deepseek] = DeepSeekProvider()
+        providers[.perplexity] = PerplexityProvider()
+        providers[.grok] = GrokProvider()
 
         return providers
     }
