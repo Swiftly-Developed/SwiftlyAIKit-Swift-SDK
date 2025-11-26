@@ -1,42 +1,40 @@
 # SwiftlyAIKit
 
-A unified, cross-platform Swift framework for interacting with multiple AI model providers. Use it in your Vapor server, iOS app, macOS app, or any Swift application.
+A unified, cross-platform Swift framework for interacting with multiple AI model providers. Use it in your iOS app, macOS app, server, or any Swift application.
 
 ## Features
 
-- **Multi-Provider Support**: Seamlessly integrate with OpenAI, Anthropic, Google AI, Cohere, Mistral, DeepSeek, and more
-- **Cross-Platform**: Works on iOS, macOS, watchOS, tvOS, visionOS, and server-side Swift
-- **Flexible API Key Management**: Support for both company-provided and client-provided API keys
-- **Optional Vapor Integration**: Use standalone or with native Vapor support via separate target
-- **Type-Safe**: Leveraging Swift's strong type system for safe AI interactions
-- **Async/Await**: Built with modern Swift concurrency
-- **Actor-Based**: Thread-safe gateway coordination using Swift actors
+- **8 AI Providers**: Anthropic Claude, OpenAI GPT, Google Gemini, Perplexity, Mistral, Cohere, DeepSeek, xAI Grok
+- **Cross-Platform**: iOS, macOS, watchOS, tvOS, visionOS, and Linux
+- **Streaming**: Server-Sent Events (SSE) for real-time responses
+- **Vision**: Image analysis support (OpenAI, Gemini, Mistral, Cohere, Grok)
+- **Tool Calling**: Function calling support (OpenAI, Gemini, Mistral, Cohere, DeepSeek, Grok)
+- **Token Counting**: Usage tracking (Anthropic, Gemini, Cohere, Grok)
+- **Web Search**: Real-time search with citations (Perplexity, Grok)
+- **Prompt Caching**: Cost reduction (Anthropic, DeepSeek, Grok)
+- **Reasoning Mode**: Extended thinking (DeepSeek, Mistral, Grok)
+- **Image Generation**: AI image creation (Grok)
+- **Batch Processing**: Async batch operations (Anthropic)
+- **RAG Support**: Retrieval with citations (Cohere)
+- **Swift 6**: Full strict concurrency with actor-based design
+- **Type-Safe**: Strong typing for all AI interactions
 
 ## Requirements
 
 - Swift 6.2+
-- **Platform Support:**
-  - iOS 16.0+
-  - macOS 13.0+
-  - watchOS 9.0+
-  - tvOS 16.0+
-  - visionOS 1.0+
-  - Linux (server-side)
-- Vapor 4.99.0+ (optional, only required for `SwiftlyAIKitVapor` target)
+- iOS 16.0+ / macOS 13.0+ / watchOS 9.0+ / tvOS 16.0+ / visionOS 1.0+ / Linux
 
 ## Installation
 
-Add SwiftlyAIKit to your Package.swift dependencies:
+Add SwiftlyAIKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Swiftly-Developed/SwiftlyAIKit.git", from: "0.1.0")
+    .package(url: "https://github.com/Swiftly-Developed/SwiftlyAIKit.git", from: "0.9.0")
 ]
 ```
 
-### For Device Apps (iOS, macOS, watchOS, tvOS, visionOS)
-
-Use the core `SwiftlyAIKit` target without Vapor dependencies:
+Add to your target:
 
 ```swift
 .target(
@@ -47,229 +45,166 @@ Use the core `SwiftlyAIKit` target without Vapor dependencies:
 )
 ```
 
-### For Vapor Server Applications
-
-Use the `SwiftlyAIKitVapor` target which includes Vapor integration:
-
-```swift
-.target(
-    name: "YourVaporApp",
-    dependencies: [
-        .product(name: "SwiftlyAIKitVapor", package: "SwiftlyAIKit"),
-        .product(name: "Vapor", package: "vapor")
-    ]
-)
-```
+> **Note:** For Vapor server integration, use [SwiftlyAIServerKit](https://github.com/Swiftly-Developed/SwiftlyAIServerKit) instead.
 
 ## Quick Start
 
-### Using SwiftlyAIKit in Device Apps
+### Basic Usage
 
 ```swift
 import SwiftlyAIKit
 
-// Initialize the AI gateway
-let config = Configuration.withCompanyKey("sk-ant-api03-...")
+// Create gateway with your API key
+let config = Configuration.withCompanyKey("sk-ant-...")
 let gateway = AIGateway(configuration: config)
 
 // Send a message
 let request = AIRequest(
-    model: "claude-sonnet-4-5",
+    model: .claude(.sonnet4_5),
     messages: [AIMessage(role: .user, content: [.text("Hello!")])]
 )
-
 let response = try await gateway.sendMessage(request)
-print(response.message.content)
+print(response.content)
+```
 
-// Stream a message
-let stream = gateway.streamMessage(request)
+### Streaming
+
+```swift
+let stream = try await gateway.streamMessage(request)
 for try await chunk in stream {
-    if let text = chunk.message.content.first?.text {
-        print(text, terminator: "")
-    }
+    print(chunk.content, terminator: "")
 }
 ```
 
-### Using SwiftlyAIKit with Vapor
+### Using Different Providers
 
 ```swift
-import Vapor
-import SwiftlyAIKitVapor
+// OpenAI
+let openAIRequest = AIRequest(
+    model: .openai(.gpt4o),
+    messages: [AIMessage(role: .user, content: [.text("Hello!")])]
+)
 
-// Configure the AI gateway in your Vapor application
-func configure(_ app: Application) async throws {
-    // Option 1: Company key strategy (simplest - use your own API keys)
-    let config = Configuration.withCompanyKey("sk-ant-api03-...")
-    app.ai.initialize(with: config)
+// Google Gemini
+let geminiRequest = AIRequest(
+    model: .gemini(.pro2_5),
+    messages: [AIMessage(role: .user, content: [.text("Hello!")])]
+)
 
-    // Option 2: Client key strategy (clients provide their own keys)
-    // let config = Configuration.withClientKeys()
-    // app.ai.initialize(with: config)
+// xAI Grok
+let grokRequest = AIRequest(
+    model: .grok(.grok3),
+    messages: [AIMessage(role: .user, content: [.text("Hello!")])]
+)
+```
 
-    // Option 3: Hybrid strategy (fallback to company key if client doesn't provide one)
-    // let config = Configuration.withHybridKeys(defaultKey: "sk-ant-api03-...")
-    // app.ai.initialize(with: config)
-}
+### Vision (Image Analysis)
 
-// Use the gateway in your routes
-func routes(_ app: Application) throws {
-    // Basic chat completion
-    app.post("ai", "chat") { req async throws -> AIResponse in
-        struct ChatRequest: Content {
-            let model: String
-            let prompt: String
-        }
+```swift
+let visionRequest = AIRequest(
+    model: .openai(.gpt4o),
+    messages: [
+        AIMessage(role: .user, content: [
+            .text("What's in this image?"),
+            .image(url: "https://example.com/image.jpg")
+        ])
+    ]
+)
+```
 
-        let input = try req.content.decode(ChatRequest.self)
-        let aiRequest = AIRequest(
-            model: input.model,
-            messages: [AIMessage(role: .user, content: [.text(input.prompt)])]
+### Tool Calling
+
+```swift
+let tools = [
+    AITool(
+        name: "get_weather",
+        description: "Get current weather for a location",
+        parameters: AIToolParameters(
+            properties: [
+                "location": AIToolProperty(type: "string", description: "City name")
+            ],
+            required: ["location"]
         )
+    )
+]
 
-        // Automatically uses client API key from X-API-Key header if present
-        return try await req.ai.sendMessage(aiRequest)
-    }
-
-    // Streaming response
-    app.post("ai", "stream") { req async throws -> Response in
-        let aiRequest = AIRequest(
-            model: "claude-sonnet-4-5",
-            messages: [AIMessage(role: .user, content: [.text("Tell me a story")])]
-        )
-        return try await req.ai.streamMessage(aiRequest)
-    }
-}
+let toolRequest = AIRequest(
+    model: .openai(.gpt4o),
+    messages: [AIMessage(role: .user, content: [.text("What's the weather in Paris?")])],
+    tools: tools,
+    toolChoice: .auto
+)
 ```
 
 ## Configuration
 
 ### API Key Strategies
 
-SwiftlyAIKit supports three API key management strategies:
-
-#### 1. Company Key Strategy (Recommended for Single-Tenant)
-Use your organization's API keys for all requests. Simplest setup.
-
 ```swift
-let config = Configuration.withCompanyKey("sk-ant-api03-...")
-app.ai.initialize(with: config)
-```
+// Single key for all providers
+let config = Configuration.withCompanyKey("sk-ant-...")
 
-**Use when:** You control all AI usage and want centralized billing.
+// Per-provider keys
+let config = Configuration.withPerProviderKeys([
+    .anthropic: "sk-ant-...",
+    .openai: "sk-...",
+    .google: "AIza...",
+    .grok: "xai-..."
+])
 
-#### 2. Client Key Strategy (Multi-Tenant)
-Clients provide their own API keys via the `X-API-Key` header.
-
-```swift
+// Client-provided keys (for multi-tenant apps)
 let config = Configuration.withClientKeys()
-app.ai.initialize(with: config)
+
+// Hybrid: fallback to company key if client doesn't provide one
+let config = Configuration.withHybridKeys(defaultKey: "sk-ant-...")
 ```
-
-**Use when:** Each client has their own AI provider accounts.
-
-#### 3. Hybrid Strategy (Recommended for Production)
-Fallback to company key if client doesn't provide one.
-
-```swift
-let config = Configuration.withHybridKeys(defaultKey: "sk-ant-api03-...")
-app.ai.initialize(with: config)
-```
-
-**Use when:** You want flexibility - some clients use their keys, others use yours.
 
 ## Supported Providers
 
-- **OpenAI** - GPT models and completions
-- **Anthropic** - Claude models with extended thinking and prompt caching
-- **Google AI** - Gemini models with multimodal support
-- **Cohere** - Command models with RAG and citations
-- **Mistral AI** - Mistral models with reasoning mode
-- **DeepSeek** - DeepSeek Chat and Reasoner models with prompt caching
-- **Perplexity** - Sonar models with real-time web search
-- Additional providers can be added via the provider protocol
+| Provider | Models | Features |
+|----------|--------|----------|
+| **Anthropic** | Claude 4, Sonnet 4.5, Haiku | Streaming, Vision, Tools, Batch, Caching |
+| **OpenAI** | GPT-4o, GPT-4 Turbo, GPT-3.5 | Streaming, Vision, Tools |
+| **Google Gemini** | 2.5 Pro, 2.5 Flash, 1.5 Pro | Streaming, Vision, Tools, Token Count |
+| **Perplexity** | Sonar, Sonar Pro, Reasoning | Streaming, Web Search, Citations |
+| **Mistral** | Large 2.1, Medium 3, Small 3.1 | Streaming, Vision, Tools, Reasoning |
+| **Cohere** | Command A, Command R | Streaming, Vision, Tools, RAG, Token Count |
+| **DeepSeek** | Chat, Coder, R1 | Streaming, Tools, Caching, Reasoning |
+| **xAI Grok** | Grok 4, Grok 3, Vision | Streaming, Vision, Tools, Web Search, Images |
 
 ## Architecture
 
-### Core Components
-
-- **AIGateway**: Main actor that coordinates provider calls and manages configuration
-- **Provider Protocol**: Defines the interface all AI providers must implement
-- **Models**: Type-safe request/response structures for AI interactions
-- **Vapor Extensions**: Optional Vapor integration helpers (separate target)
-
-### Multi-Target Structure
-
-SwiftlyAIKit uses a modular architecture with two targets:
-
-**SwiftlyAIKit (Core Target)**
-- Platform-agnostic AI gateway
-- All provider implementations
-- No Vapor dependencies
-- Works on iOS, macOS, watchOS, tvOS, visionOS, Linux
-
-**SwiftlyAIKitVapor (Vapor Extensions)**
-- Vapor-specific integration
-- Request/Application extensions
-- Requires Vapor 4.99.0+
-- Server-side only
-
-### Directory Structure
-
 ```
-Sources/
-├── SwiftlyAIKit/           # Core framework (no Vapor)
-│   ├── Models/             # Data models for requests, responses, and messages
-│   ├── Providers/          # Provider implementations (OpenAI, Anthropic, etc.)
-│   ├── Core/               # Gateway, configuration, and key management
-│   └── Utilities/          # HTTP client and JSON helpers
-└── SwiftlyAIKitVapor/      # Vapor integration (separate target)
-    ├── Application+AI.swift  # App lifecycle extensions
-    └── Request+AI.swift      # Request helpers
+Sources/SwiftlyAIKit/
+├── Core/           # AIGateway, Configuration, APIKeyStrategy, ProviderProtocol
+├── Models/         # AIRequest, AIResponse, AIMessage, AIError, AITool
+├── Providers/      # 8 provider implementations
+│   ├── Anthropic/
+│   ├── OpenAI/
+│   ├── Gemini/
+│   ├── Perplexity/
+│   ├── Mistral/
+│   ├── Cohere/
+│   ├── DeepSeek/
+│   └── Grok/
+└── Utilities/      # HTTPClientManager with retry logic
 ```
-
-## API Documentation
-
-Comprehensive API documentation will be generated using DocC and published as the framework matures.
 
 ## Testing
 
-Run the test suite:
-
 ```bash
-swift test
+swift build            # Build
+swift test             # Run all 520+ tests
+swift test --filter SwiftlyAIKitTests.AIGatewayTests  # Run specific tests
 ```
 
-Run specific tests:
+## Related Packages
 
-```bash
-swift test --filter SwiftlyAIKitTests.<TestName>
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-### Development Guidelines
-
-- Follow Swift API Design Guidelines
-- Use async/await for asynchronous operations
-- Maintain thread-safety with actors where appropriate
-- Add tests for new functionality
-- Document public APIs with DocC-style comments
+- **[SwiftlyAIServerKit](https://github.com/Swiftly-Developed/SwiftlyAIServerKit)** - Vapor server integration
+- **[SwiftlyAIClient](https://github.com/Swiftly-Developed/SwiftlyAIClient)** - iOS/macOS SDK for your server
+- **[SwiftlyAIVapor](https://github.com/Swiftly-Developed/SwiftlyAIVapor)** - Pre-built Vapor routes and middleware
+- **[SwiftlyAIHummingbird](https://github.com/Swiftly-Developed/SwiftlyAIHummingbird)** - Hummingbird integration
 
 ## License
 
-SwiftlyAIKit is available under the MIT license. See the LICENSE file for more info.
-
-## Roadmap
-
-The following features are planned for future releases:
-
-- [ ] Complete provider implementations for all supported services
-- [ ] Streaming response support
-- [ ] Rate limiting and retry logic
-- [ ] Caching layer for responses
-- [ ] Metrics and monitoring integration
-- [ ] Example Vapor application
-- [ ] Comprehensive API documentation
-- [ ] Performance benchmarks
+MIT License. See LICENSE file for details.
