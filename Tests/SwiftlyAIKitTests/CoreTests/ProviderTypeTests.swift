@@ -10,13 +10,16 @@ struct ProviderTypeTests {
     @Test("ProviderType is CaseIterable")
     func testCaseIterable() {
         let allCases = ProviderType.allCases
-        #expect(allCases.count == 6) // anthropic, openai, google, perplexity, mistral, cohere
+        #expect(allCases.count == 9) // anthropic, openai, google, perplexity, mistral, cohere, deepseek, grok, appleIntelligence
         #expect(allCases.contains(.openai))
         #expect(allCases.contains(.anthropic))
         #expect(allCases.contains(.google))
         #expect(allCases.contains(.perplexity))
         #expect(allCases.contains(.mistral))
         #expect(allCases.contains(.cohere))
+        #expect(allCases.contains(.deepseek))
+        #expect(allCases.contains(.grok))
+        #expect(allCases.contains(.appleIntelligence))
     }
 
     @Test("ProviderType has correct raw values")
@@ -60,7 +63,10 @@ struct ProviderTypeTests {
         for provider in ProviderType.allCases {
             let name = provider.displayName
             #expect(!name.isEmpty, "Provider \(provider) should have a display name")
-            #expect(name.first?.isUppercase == true, "Display name '\(name)' should start with uppercase")
+            // Most display names start with uppercase, except "xAI Grok" which starts with lowercase 'x'
+            if provider != .grok {
+                #expect(name.first?.isUppercase == true, "Display name '\(name)' should start with uppercase")
+            }
         }
     }
 
@@ -85,6 +91,10 @@ struct ProviderTypeTests {
     @Test("Base URLs use HTTPS")
     func testBaseURLsHTTPS() {
         for provider in ProviderType.allCases {
+            // Apple Intelligence runs on-device, no external API
+            if provider == .appleIntelligence {
+                continue
+            }
             #expect(provider.baseURL.hasPrefix("https://"), "Provider \(provider) should use HTTPS")
         }
     }
@@ -92,6 +102,11 @@ struct ProviderTypeTests {
     @Test("Base URLs are well-formed")
     func testBaseURLsWellFormed() {
         for provider in ProviderType.allCases {
+            // Apple Intelligence runs on-device, no external API
+            if provider == .appleIntelligence {
+                #expect(provider.baseURL.isEmpty, "Apple Intelligence should have empty base URL (on-device)")
+                continue
+            }
             let url = provider.baseURL
             #expect(!url.isEmpty, "Provider \(provider) should have a base URL")
             #expect(url.contains("://"), "Base URL should contain protocol separator")
@@ -102,8 +117,9 @@ struct ProviderTypeTests {
     @Test("Base URLs contain version suffix")
     func testBaseURLsVersion() {
         for provider in ProviderType.allCases {
-            // Perplexity doesn't use /v1 suffix
-            if provider == .perplexity {
+            // Perplexity and DeepSeek don't use /v1 suffix
+            // Apple Intelligence has no external API
+            if provider == .perplexity || provider == .deepseek || provider == .appleIntelligence {
                 continue
             }
             #expect(provider.baseURL.hasSuffix("/v1"), "Provider \(provider) base URL should end with /v1")
@@ -266,7 +282,10 @@ struct ProviderTypeTests {
         for provider in ProviderType.allCases {
             // Should not crash or return empty
             #expect(!provider.displayName.isEmpty, "Provider \(provider) missing display name")
-            #expect(!provider.baseURL.isEmpty, "Provider \(provider) missing base URL")
+            // Apple Intelligence runs on-device, no external API
+            if provider != .appleIntelligence {
+                #expect(!provider.baseURL.isEmpty, "Provider \(provider) missing base URL")
+            }
             #expect(!provider.rawValue.isEmpty, "Provider \(provider) missing raw value")
         }
     }
@@ -295,9 +314,10 @@ struct ProviderTypeTests {
             displayNames.append(provider.displayName)
         }
 
-        #expect(displayNames.count == 6)
+        #expect(displayNames.count == 9)
         #expect(displayNames.contains("Anthropic"))
         #expect(displayNames.contains("OpenAI"))
+        #expect(displayNames.contains("Apple Intelligence"))
     }
 
     @Test("Scenario: Build request URL for provider")
@@ -345,9 +365,10 @@ struct ProviderTypeTests {
             uniqueKeysWithValues: ProviderType.allCases.map { ($0, $0.baseURL) }
         )
 
-        #expect(urlMapping.count == 6)
+        #expect(urlMapping.count == 9)
         #expect(urlMapping[.anthropic] == "https://api.anthropic.com/v1")
         #expect(urlMapping[.openai] == "https://api.openai.com/v1")
+        #expect(urlMapping[.appleIntelligence] == "") // On-device, no external API
     }
 
     // MARK: - Edge Cases
@@ -355,6 +376,11 @@ struct ProviderTypeTests {
     @Test("Raw value is lowercase")
     func testRawValueLowercase() {
         for provider in ProviderType.allCases {
+            // appleIntelligence uses camelCase for readability
+            if provider == .appleIntelligence {
+                #expect(provider.rawValue == "appleIntelligence")
+                continue
+            }
             #expect(provider.rawValue == provider.rawValue.lowercased(),
                    "Raw value should be lowercase: \(provider.rawValue)")
         }
@@ -382,6 +408,8 @@ struct ProviderTypeTests {
             result = "deepseek"
         case .grok:
             result = "grok"
+        case .appleIntelligence:
+            result = "appleIntelligence"
         }
 
         #expect(result == "anthropic")
@@ -390,7 +418,7 @@ struct ProviderTypeTests {
     @Test("Can create Set of all providers")
     func testSetOfAllProviders() {
         let allProviders = Set(ProviderType.allCases)
-        #expect(allProviders.count == 8)
+        #expect(allProviders.count == 9)
     }
 
     @Test("Dictionary with provider keys maintains insertion")

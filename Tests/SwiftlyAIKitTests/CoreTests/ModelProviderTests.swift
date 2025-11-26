@@ -10,7 +10,8 @@ struct ModelProviderTests {
     @Test("ModelProvider is CaseIterable")
     func testCaseIterable() {
         let allCases = ModelProvider.allCases
-        #expect(allCases.count == 60) // 22 Claude + 8 GPT + 5 Gemini + 3 Perplexity + 11 Mistral + 11 Cohere
+        // 22 Claude + 8 GPT + 5 Gemini + 3 Perplexity + 11 Mistral + 11 Cohere + 2 DeepSeek + 7 Grok = 69
+        #expect(allCases.count == 69)
     }
 
     @Test("ModelProvider has correct raw values")
@@ -401,7 +402,10 @@ struct ModelProviderTests {
     func testAllModelsTokenLimits() {
         for model in ModelProvider.allCases {
             #expect(model.maxInputTokens > 0, "Model \(model) should have positive input tokens")
-            #expect(model.maxOutputTokens > 0, "Model \(model) should have positive output tokens")
+            // Image generation models (like grok2Image) have 0 output tokens
+            if model != .grok2Image {
+                #expect(model.maxOutputTokens > 0, "Model \(model) should have positive output tokens")
+            }
         }
     }
 

@@ -28,6 +28,10 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
     /// xAI (Grok models)
     case grok
 
+    /// Apple Intelligence (on-device Foundation Models and Image Playground)
+    /// Note: Requires iOS 26+/macOS 26+ for Foundation Models, iOS 18.4+/macOS 15.4+ for Image Playground
+    case appleIntelligence
+
     /// Human-readable name for the provider
     public var displayName: String {
         switch self {
@@ -39,6 +43,7 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
         case .mistral: return "Mistral AI"
         case .deepseek: return "DeepSeek"
         case .grok: return "xAI Grok"
+        case .appleIntelligence: return "Apple Intelligence"
         }
     }
 
@@ -61,6 +66,9 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
             return "https://api.deepseek.com"
         case .grok:
             return "https://api.x.ai/v1"
+        case .appleIntelligence:
+            // Apple Intelligence runs on-device, no external API
+            return ""
         }
     }
 }

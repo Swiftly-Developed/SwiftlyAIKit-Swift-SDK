@@ -1,7 +1,7 @@
 import Foundation
 
-/// OpenAI provider implementation for GPT models
-public struct OpenAIProvider: ProviderProtocol {
+/// OpenAI provider implementation for GPT models and DALL-E image generation
+public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
     public let providerType: ProviderType = .openai
 
     private let httpClient: HTTPClientManager
@@ -170,6 +170,116 @@ public struct OpenAIProvider: ProviderProtocol {
         // OpenAI doesn't have a separate token counting endpoint
         // Tokens are returned in the response usage field
         return nil
+    }
+
+    // MARK: - ImageGenerationProvider Implementation
+
+    /// Whether this provider supports image generation
+    public var supportsImageGeneration: Bool { true }
+
+    /// Available models for image generation
+    public var imageGenerationModels: [String] {
+        ["dall-e-3", "dall-e-2"]
+    }
+
+    /// Generate images from a text prompt using DALL-E
+    ///
+    /// - Parameters:
+    ///   - request: The image generation request
+    ///   - apiKey: OpenAI API key
+    /// - Returns: Generated images
+    /// - Throws: AIError on failure
+    public func generateImage(
+        _ request: ImageGenerationRequest,
+        apiKey: String
+    ) async throws -> ImageGenerationResponse {
+        // Map unified request to OpenAI-specific request
+        let openAIRequest = mapToOpenAIImageRequest(request)
+
+        let headers = [
+            ("Authorization", "Bearer \(apiKey)"),
+            ("Content-Type", "application/json")
+        ]
+
+        let jsonData = try JSONEncoder().encode(openAIRequest)
+
+        let responseData = try await httpClient.post(
+            url: "\(baseURL)/images/generations",
+            headers: headers,
+            body: jsonData
+        )
+
+        let openAIResponse = try JSONDecoder().decode(OpenAIImageResponse.self, from: responseData)
+
+        return mapToImageGenerationResponse(openAIResponse, request: request)
+    }
+
+    // MARK: - Private Image Generation Helpers
+
+    private func mapToOpenAIImageRequest(_ request: ImageGenerationRequest) -> OpenAIImageRequest {
+        // Map size enum to OpenAI string format
+        let sizeString = request.size.rawValue
+
+        // Map quality enum to OpenAI string
+        let qualityString = request.quality?.rawValue
+
+        // Map style enum to OpenAI string (only vivid/natural for OpenAI)
+        let styleString: String?
+        if let style = request.style {
+            switch style {
+            case .vivid, .natural:
+                styleString = style.rawValue
+            default:
+                styleString = nil // Apple styles not supported
+            }
+        } else {
+            styleString = nil
+        }
+
+        // Map response format
+        let responseFormatString: String?
+        switch request.responseFormat {
+        case .url:
+            responseFormatString = "url"
+        case .base64:
+            responseFormatString = "b64_json"
+        }
+
+        return OpenAIImageRequest(
+            prompt: request.prompt,
+            model: request.model,
+            n: request.numberOfImages,
+            size: sizeString,
+            quality: qualityString,
+            style: styleString,
+            responseFormat: responseFormatString,
+            user: request.user
+        )
+    }
+
+    private func mapToImageGenerationResponse(
+        _ response: OpenAIImageResponse,
+        request: ImageGenerationRequest
+    ) -> ImageGenerationResponse {
+        let images = response.data.enumerated().map { index, image in
+            GeneratedImage(
+                index: index,
+                url: image.url,
+                base64Data: image.b64Json,
+                revisedPrompt: image.revisedPrompt,
+                size: request.size,
+                contentType: "image/png"
+            )
+        }
+
+        return ImageGenerationResponse(
+            id: "img-\(UUID().uuidString.prefix(8))",
+            created: Date(timeIntervalSince1970: TimeInterval(response.created)),
+            provider: .openai,
+            model: request.model,
+            images: images,
+            usage: ImageGenerationUsage(imagesGenerated: images.count)
+        )
     }
 
     // MARK: - Private Helper Methods

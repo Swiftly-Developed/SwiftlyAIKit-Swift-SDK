@@ -84,8 +84,20 @@ public struct AnthropicProvider: ProviderProtocol {
     // MARK: - ProviderProtocol Implementation
 
     public func sendMessage(_ request: AIRequest, apiKey: String) async throws -> AIResponse {
+        let context = LogContext(
+            provider: "anthropic",
+            model: request.model,
+            operation: "sendMessage"
+        )
+
+        await aiLog(.debug, "Preparing Anthropic request", context: context, metadata: [
+            "model": request.model,
+            "messageCount": "\(request.messages.count)",
+            "baseURL": baseURL
+        ])
+
         let anthropicRequest = try mapToAnthropicRequest(request)
-        let anthropicResponse = try await createMessage(anthropicRequest, apiKey: apiKey)
+        let anthropicResponse = try await createMessage(anthropicRequest, apiKey: apiKey, context: context)
         return mapToAIResponse(anthropicResponse)
     }
 
@@ -183,27 +195,57 @@ public struct AnthropicProvider: ProviderProtocol {
     /// Create a message using Anthropic's Messages API
     public func createMessage(
         _ request: AnthropicRequest,
-        apiKey: String
+        apiKey: String,
+        context: LogContext? = nil
     ) async throws -> AnthropicResponse {
         let url = "\(baseURL)/messages"
+
+        let logContext = context ?? LogContext(
+            provider: "anthropic",
+            model: request.model,
+            operation: "createMessage"
+        )
+
+        await aiLog(.debug, "Building Anthropic API request", context: logContext, metadata: [
+            "url": url,
+            "model": request.model
+        ])
+
         let headers = buildHeaders(apiKey: apiKey, stream: false)
 
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
         let body = try encoder.encode(request)
 
-        let responseData = try await httpClient.post(url: url, headers: headers, body: body)
+        await aiLog(.debug, "Sending request to Anthropic API", context: logContext, metadata: [
+            "url": url,
+            "bodySize": "\(body.count) bytes"
+        ])
+
+        let responseData = try await httpClient.post(url: url, headers: headers, body: body, context: logContext)
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
         do {
-            return try decoder.decode(AnthropicResponse.self, from: responseData)
+            let response = try decoder.decode(AnthropicResponse.self, from: responseData)
+            await aiLog(.info, "Anthropic API response received", context: logContext, metadata: [
+                "responseId": response.id,
+                "stopReason": response.stopReason?.rawValue ?? "unknown"
+            ])
+            return response
         } catch {
             // Try to decode error response
             if let errorResponse = try? decoder.decode(AnthropicErrorResponse.self, from: responseData) {
+                await aiLog(.error, "Anthropic API error response", context: logContext, metadata: [
+                    "errorType": errorResponse.error.type,
+                    "errorMessage": errorResponse.error.message
+                ])
                 throw mapAnthropicError(errorResponse)
             }
+            await aiLog(.error, "Failed to decode Anthropic response", context: logContext, metadata: [
+                "error": error.localizedDescription
+            ])
             throw AIError.decodingError(message: error.localizedDescription)
         }
     }
@@ -211,32 +253,50 @@ public struct AnthropicProvider: ProviderProtocol {
     /// Stream a message using Server-Sent Events
     public func streamMessage(
         _ request: AnthropicRequest,
-        apiKey: String
+        apiKey: String,
+        context: LogContext? = nil
     ) async throws -> AsyncThrowingStream<AnthropicStreamEvent, Error> {
         let url = "\(baseURL)/messages"
+
+        let logContext = context ?? LogContext(
+            provider: "anthropic",
+            model: request.model,
+            operation: "streamMessage"
+        )
+
+        await aiLog(.debug, "Starting Anthropic streaming request", context: logContext, metadata: [
+            "url": url,
+            "model": request.model
+        ])
+
         let headers = buildHeaders(apiKey: apiKey, stream: true)
 
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
         let body = try encoder.encode(request)
 
-        let dataStream = httpClient.streamPost(url: url, headers: headers, body: body)
+        let dataStream = httpClient.streamPost(url: url, headers: headers, body: body, context: logContext)
 
         return AsyncThrowingStream { continuation in
             Task {
                 var buffer = Data()
+                var eventCount = 0
 
                 do {
                     for try await chunk in dataStream {
                         buffer.append(chunk)
 
                         // Process complete SSE events
-                        while let event = extractSSEEvent(from: &buffer) {
-                            if let streamEvent = try parseSSEEvent(event) {
+                        while let event = self.extractSSEEvent(from: &buffer) {
+                            if let streamEvent = try self.parseSSEEvent(event) {
+                                eventCount += 1
                                 continuation.yield(streamEvent)
 
                                 // Check for end of stream
                                 if case .messageStop = streamEvent {
+                                    await aiLog(.info, "Anthropic streaming completed", context: logContext, metadata: [
+                                        "eventCount": "\(eventCount)"
+                                    ])
                                     continuation.finish()
                                     return
                                 }
@@ -244,8 +304,15 @@ public struct AnthropicProvider: ProviderProtocol {
                         }
                     }
 
+                    await aiLog(.info, "Anthropic streaming finished", context: logContext, metadata: [
+                        "eventCount": "\(eventCount)"
+                    ])
                     continuation.finish()
                 } catch {
+                    await aiLog(.error, "Anthropic streaming failed", context: logContext, metadata: [
+                        "error": String(describing: error),
+                        "eventCount": "\(eventCount)"
+                    ])
                     continuation.finish(throwing: error)
                 }
             }
@@ -520,6 +587,7 @@ public struct AnthropicProvider: ProviderProtocol {
                     provider: .anthropic
                 )
             }
+            return nil
         case .messageStart(let start):
             return AIResponse(
                 id: start.message.id,
@@ -527,10 +595,26 @@ public struct AnthropicProvider: ProviderProtocol {
                 message: AIMessage(role: .assistant, text: ""),
                 provider: .anthropic
             )
-        default:
-            break
+        case .contentBlockStart:
+            return nil
+        case .contentBlockStop:
+            return nil
+        case .messageDelta:
+            return nil
+        case .messageStop:
+            return nil
+        case .ping:
+            return nil
+        case .error(let errorData):
+            // Log error but don't return a response
+            Task {
+                await aiLog(.error, "Anthropic stream error", context: nil, metadata: [
+                    "errorType": errorData.error.type,
+                    "errorMessage": errorData.error.message
+                ])
+            }
+            return nil
         }
-        return nil
     }
 
     private func extractSSEEvent(from buffer: inout Data) -> String? {
@@ -539,7 +623,10 @@ public struct AnthropicProvider: ProviderProtocol {
         }
 
         let eventData = buffer[..<doubleNewline.lowerBound]
-        buffer.removeSubrange(...doubleNewline.upperBound)
+
+        // Use half-open range to avoid out-of-bounds when upperBound == endIndex
+        // removeSubrange expects a valid range within the collection bounds
+        buffer.removeSubrange(buffer.startIndex..<doubleNewline.upperBound)
 
         return String(data: eventData, encoding: .utf8)
     }
@@ -558,10 +645,11 @@ public struct AnthropicProvider: ProviderProtocol {
             }
         }
 
-        guard let eventType = eventType, let _ = data else {
+        guard let eventType = eventType else {
             return nil
         }
 
+        // Handle events that don't require data parsing
         if eventType == "ping" {
             return .ping
         }
@@ -570,9 +658,67 @@ public struct AnthropicProvider: ProviderProtocol {
             return .messageStop
         }
 
-        // For other events, try to decode the data
-        // This is simplified - full implementation would decode all event types
-        return nil
+        // For events with data, parse the JSON
+        guard let data = data, let jsonData = data.data(using: .utf8) else {
+            Task {
+                await aiLog(.warning, "SSE event has no data", context: nil, metadata: [
+                    "eventType": eventType
+                ])
+            }
+            return nil
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        do {
+            switch eventType {
+            case "message_start":
+                let startData = try decoder.decode(AnthropicStreamEvent.AnthropicStreamMessageStart.self, from: jsonData)
+                return .messageStart(startData)
+
+            case "content_block_start":
+                let blockData = try decoder.decode(AnthropicStreamEvent.AnthropicStreamContentBlockStart.self, from: jsonData)
+                return .contentBlockStart(blockData)
+
+            case "content_block_delta":
+                let deltaData = try decoder.decode(AnthropicStreamEvent.AnthropicStreamContentBlockDelta.self, from: jsonData)
+                return .contentBlockDelta(deltaData)
+
+            case "content_block_stop":
+                let stopData = try decoder.decode(AnthropicStreamEvent.AnthropicStreamContentBlockStop.self, from: jsonData)
+                return .contentBlockStop(stopData)
+
+            case "message_delta":
+                let deltaData = try decoder.decode(AnthropicStreamEvent.AnthropicStreamMessageDelta.self, from: jsonData)
+                return .messageDelta(deltaData)
+
+            case "error":
+                // Handle error events
+                if let errorData = try? decoder.decode(AnthropicStreamEvent.AnthropicStreamError.self, from: jsonData) {
+                    return .error(errorData)
+                }
+                return nil
+
+            default:
+                // Unknown event type, skip it
+                Task {
+                    await aiLog(.debug, "Unknown SSE event type", context: nil, metadata: [
+                        "eventType": eventType
+                    ])
+                }
+                return nil
+            }
+        } catch {
+            Task {
+                await aiLog(.error, "Failed to decode SSE event", context: nil, metadata: [
+                    "eventType": eventType,
+                    "error": error.localizedDescription,
+                    "data": String(data.prefix(200))
+                ])
+            }
+            throw error
+        }
     }
 
     private func mapToBatchStatus(_ batch: AnthropicBatch) -> BatchStatus {

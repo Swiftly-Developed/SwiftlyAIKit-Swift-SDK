@@ -637,3 +637,93 @@ public struct OpenAIErrorResponse: Codable, Sendable {
         public let code: String?
     }
 }
+
+// MARK: - Image Generation Models
+
+/// OpenAI image generation request for DALL-E
+public struct OpenAIImageRequest: Codable, Sendable {
+    /// The text prompt describing the desired image
+    public let prompt: String
+
+    /// The model to use (dall-e-3 or dall-e-2)
+    public let model: String
+
+    /// Number of images to generate (1-10 for DALL-E 2, always 1 for DALL-E 3)
+    public let n: Int?
+
+    /// Size of the generated image
+    /// DALL-E 3: 1024x1024, 1792x1024, 1024x1792
+    /// DALL-E 2: 256x256, 512x512, 1024x1024
+    public let size: String?
+
+    /// Quality of the image (standard or hd, DALL-E 3 only)
+    public let quality: String?
+
+    /// Style of the generated image (vivid or natural, DALL-E 3 only)
+    public let style: String?
+
+    /// Response format (url or b64_json)
+    public let responseFormat: String?
+
+    /// Optional user identifier for abuse detection
+    public let user: String?
+
+    public init(
+        prompt: String,
+        model: String = "dall-e-3",
+        n: Int? = nil,
+        size: String? = nil,
+        quality: String? = nil,
+        style: String? = nil,
+        responseFormat: String? = nil,
+        user: String? = nil
+    ) {
+        self.prompt = prompt
+        self.model = model
+        self.n = n
+        self.size = size
+        self.quality = quality
+        self.style = style
+        self.responseFormat = responseFormat
+        self.user = user
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case prompt
+        case model
+        case n
+        case size
+        case quality
+        case style
+        case user
+        case responseFormat = "response_format"
+    }
+}
+
+/// OpenAI image generation response
+public struct OpenAIImageResponse: Codable, Sendable {
+    /// Unix timestamp of when the images were created
+    public let created: Int
+
+    /// Array of generated images
+    public let data: [OpenAIGeneratedImage]
+}
+
+/// A single generated image from OpenAI
+public struct OpenAIGeneratedImage: Codable, Sendable {
+    /// URL to the generated image (when response_format is url)
+    /// URLs expire after 1 hour
+    public let url: String?
+
+    /// Base64-encoded image data (when response_format is b64_json)
+    public let b64Json: String?
+
+    /// The prompt as revised by DALL-E 3 (may differ from input prompt)
+    public let revisedPrompt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case url
+        case revisedPrompt = "revised_prompt"
+        case b64Json = "b64_json"
+    }
+}

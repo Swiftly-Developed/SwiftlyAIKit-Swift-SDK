@@ -493,13 +493,17 @@ public enum AnthropicStreamEvent: Codable, Sendable {
             public let content: [AnthropicContentBlock]
             public let model: String
             public let stopReason: AnthropicStopReason?
-            public let usage: AnthropicUsage
+            public let usage: StreamUsage
+            // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
+        }
 
-            enum CodingKeys: String, CodingKey {
-                case id, type, role, content, model
-                case stopReason = "stop_reason"
-                case usage
-            }
+        /// Usage info in streaming - fields are optional since they may not be present initially
+        public struct StreamUsage: Codable, Sendable {
+            public let inputTokens: Int?
+            public let outputTokens: Int?
+            public let cacheCreationInputTokens: Int?
+            public let cacheReadInputTokens: Int?
+            // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
         }
     }
 
@@ -507,10 +511,7 @@ public enum AnthropicStreamEvent: Codable, Sendable {
         public let type: String
         public let index: Int
         public let contentBlock: AnthropicContentBlock
-
-        enum CodingKeys: String, CodingKey {
-            case type, index, contentBlock = "content_block"
-        }
+        // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
     }
 
     public struct AnthropicStreamContentBlockDelta: Codable, Sendable {
@@ -537,16 +538,21 @@ public enum AnthropicStreamEvent: Codable, Sendable {
     public struct AnthropicStreamMessageDelta: Codable, Sendable {
         public let type: String
         public let delta: Delta
-        public let usage: AnthropicUsage?
+        public let usage: StreamDeltaUsage?
 
         public struct Delta: Codable, Sendable {
             public let stopReason: AnthropicStopReason?
             public let stopSequence: String?
+            // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
+        }
 
-            enum CodingKeys: String, CodingKey {
-                case stopReason = "stop_reason"
-                case stopSequence = "stop_sequence"
-            }
+        /// Usage info in message_delta - all fields optional for flexibility
+        public struct StreamDeltaUsage: Codable, Sendable {
+            public let inputTokens: Int?
+            public let outputTokens: Int?
+            public let cacheCreationInputTokens: Int?
+            public let cacheReadInputTokens: Int?
+            // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
         }
     }
 

@@ -175,4 +175,36 @@ public struct Configuration: Sendable {
             defaultProvider: provider
         )
     }
+
+    /// Configure logging for this configuration
+    ///
+    /// This method sets up the global LoggingManager with the appropriate
+    /// logger implementation based on the platform (OSLog on Apple, PrintLogger elsewhere).
+    ///
+    /// - Parameters:
+    ///   - logger: Custom logger implementation (optional, uses platform default if nil)
+    ///   - logLevel: Minimum log level to output (default: .debug)
+    /// - Returns: The same configuration (logging is configured globally)
+    @discardableResult
+    public func configureLogging(
+        logger: AILogger? = nil,
+        logLevel: LogLevel = .debug
+    ) -> Configuration {
+        let effectiveLogger: AILogger
+        #if canImport(OSLog)
+        effectiveLogger = logger ?? OSLogLogger()
+        #else
+        effectiveLogger = logger ?? PrintLogger.shared
+        #endif
+
+        Task {
+            await LoggingManager.shared.configure(
+                logger: effectiveLogger,
+                minimumLevel: logLevel,
+                enabled: enableLogging
+            )
+        }
+
+        return self
+    }
 }

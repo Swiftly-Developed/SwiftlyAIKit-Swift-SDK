@@ -1,7 +1,7 @@
 import Foundation
 
 /// Grok provider implementation (xAI - OpenAI-compatible API)
-public struct GrokProvider: ProviderProtocol {
+public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
     public let providerType: ProviderType = .grok
 
     private let httpClient: HTTPClientManager
@@ -255,6 +255,64 @@ public struct GrokProvider: ProviderProtocol {
         )
 
         return try JSONDecoder().decode(GrokImageResponse.self, from: responseData)
+    }
+
+    // MARK: - ImageGenerationProvider Implementation
+
+    /// Whether this provider supports image generation
+    public var supportsImageGeneration: Bool { true }
+
+    /// Available models for image generation
+    public var imageGenerationModels: [String] {
+        ["grok-2-image"]
+    }
+
+    /// Generate images using the unified ImageGenerationRequest
+    ///
+    /// This method provides a unified interface that wraps the Grok-specific
+    /// `generateImage(GrokImageRequest)` method for cross-provider compatibility.
+    ///
+    /// - Parameters:
+    ///   - request: The unified image generation request
+    ///   - apiKey: API key for authentication
+    /// - Returns: Unified image generation response
+    /// - Throws: AIError on failure
+    public func generateImage(
+        _ request: ImageGenerationRequest,
+        apiKey: String
+    ) async throws -> ImageGenerationResponse {
+        // Map unified request to Grok-specific request
+        let grokRequest = GrokImageRequest(
+            prompt: request.prompt,
+            model: request.model.isEmpty ? "grok-2-image" : request.model,
+            n: request.numberOfImages,
+            response_format: request.responseFormat == .base64 ? .b64_json : .url,
+            user: request.user
+        )
+
+        // Use existing Grok implementation
+        let grokResponse = try await generateImage(grokRequest, apiKey: apiKey)
+
+        // Map Grok response to unified response
+        let images = grokResponse.data.enumerated().map { index, image in
+            GeneratedImage(
+                index: index,
+                url: image.url,
+                base64Data: image.b64_json,
+                revisedPrompt: image.revised_prompt,
+                size: .square1024, // Grok only supports 1024x1024
+                contentType: "image/png"
+            )
+        }
+
+        return ImageGenerationResponse(
+            id: "grok-img-\(UUID().uuidString.prefix(8))",
+            created: Date(timeIntervalSince1970: TimeInterval(grokResponse.created)),
+            provider: .grok,
+            model: request.model.isEmpty ? "grok-2-image" : request.model,
+            images: images,
+            usage: ImageGenerationUsage(imagesGenerated: images.count)
+        )
     }
 
     /// Get status of a deferred completion

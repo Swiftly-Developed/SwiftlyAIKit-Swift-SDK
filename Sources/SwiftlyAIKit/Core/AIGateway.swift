@@ -83,10 +83,61 @@ public actor AIGateway {
         clientAPIKey: String? = nil
     ) async throws -> AIResponse {
         let providerType = provider ?? configuration.defaultProvider
-        let providerImpl = try getProvider(providerType)
-        let apiKey = try resolveAPIKey(for: providerType, clientKey: clientAPIKey)
 
-        return try await providerImpl.sendMessage(request, apiKey: apiKey)
+        let context = LogContext(
+            provider: providerType.rawValue,
+            model: request.model,
+            operation: "sendMessage"
+        )
+
+        await aiLog(.info, "Starting AI request", context: context, metadata: [
+            "provider": providerType.rawValue,
+            "model": request.model,
+            "messageCount": "\(request.messages.count)"
+        ])
+
+        let providerImpl: ProviderProtocol
+        do {
+            providerImpl = try getProvider(providerType)
+        } catch {
+            await aiLog(.error, "Provider not registered", context: context, metadata: [
+                "provider": providerType.rawValue
+            ])
+            throw error
+        }
+
+        let apiKey: String
+        do {
+            apiKey = try resolveAPIKey(for: providerType, clientKey: clientAPIKey)
+            await aiLog(.debug, "API key resolved", context: context, metadata: [
+                "keySource": clientAPIKey != nil ? "client" : "configuration"
+            ])
+        } catch {
+            await aiLog(.error, "Failed to resolve API key", context: context, metadata: [
+                "provider": providerType.rawValue,
+                "hasClientKey": "\(clientAPIKey != nil)"
+            ])
+            throw error
+        }
+
+        await aiLog(.debug, "Routing to provider", context: context)
+
+        do {
+            let response = try await providerImpl.sendMessage(request, apiKey: apiKey)
+
+            await aiLog(.info, "AI request completed", context: context, metadata: [
+                "hasMessage": "\(response.message.content.count > 0)",
+                "stopReason": response.stopReason?.rawValue ?? "unknown"
+            ])
+
+            return response
+        } catch {
+            await aiLog(.error, "AI request failed", context: context, metadata: [
+                "error": String(describing: error),
+                "errorType": String(describing: type(of: error))
+            ])
+            throw error
+        }
     }
 
     /// Stream a message from an AI provider
@@ -101,21 +152,48 @@ public actor AIGateway {
         to provider: ProviderType? = nil,
         clientAPIKey: String? = nil
     ) -> AsyncThrowingStream<AIResponse, Error> {
-        AsyncThrowingStream { continuation in
+        let providerType = provider ?? self.configuration.defaultProvider
+
+        let context = LogContext(
+            provider: providerType.rawValue,
+            model: request.model,
+            operation: "streamMessage"
+        )
+
+        return AsyncThrowingStream { continuation in
             Task {
                 do {
-                    let providerType = provider ?? self.configuration.defaultProvider
+                    await aiLog(.info, "Starting AI streaming request", context: context, metadata: [
+                        "provider": providerType.rawValue,
+                        "model": request.model,
+                        "messageCount": "\(request.messages.count)"
+                    ])
+
                     let providerImpl = try self.getProvider(providerType)
                     let apiKey = try self.resolveAPIKey(for: providerType, clientKey: clientAPIKey)
 
+                    await aiLog(.debug, "API key resolved, starting stream", context: context, metadata: [
+                        "keySource": clientAPIKey != nil ? "client" : "configuration"
+                    ])
+
                     let stream = providerImpl.streamMessage(request, apiKey: apiKey)
 
+                    var chunkCount = 0
                     for try await response in stream {
+                        chunkCount += 1
                         continuation.yield(response)
                     }
 
+                    await aiLog(.info, "AI streaming request completed", context: context, metadata: [
+                        "chunks": "\(chunkCount)"
+                    ])
+
                     continuation.finish()
                 } catch {
+                    await aiLog(.error, "AI streaming request failed", context: context, metadata: [
+                        "error": String(describing: error),
+                        "errorType": String(describing: type(of: error))
+                    ])
                     continuation.finish(throwing: error)
                 }
             }
@@ -259,6 +337,117 @@ public actor AIGateway {
         }
     }
 
+    // MARK: - Image Generation
+
+    /// Generate images from a text prompt
+    ///
+    /// - Parameters:
+    ///   - request: Image generation request
+    ///   - provider: Provider to use (if not specified, determined from request model)
+    ///   - clientAPIKey: Optional client-provided API key
+    /// - Returns: Image generation response
+    /// - Throws: AIError on failure
+    ///
+    /// ## Usage
+    /// ```swift
+    /// // Using convenience initializer
+    /// let request = ImageGenerationRequest.dallE3(prompt: "A sunset over mountains")
+    /// let response = try await gateway.generateImage(request)
+    ///
+    /// // Using explicit provider
+    /// let request = ImageGenerationRequest(prompt: "A sunset", model: "dall-e-3")
+    /// let response = try await gateway.generateImage(request, using: .openai)
+    /// ```
+    public func generateImage(
+        _ request: ImageGenerationRequest,
+        using provider: ProviderType? = nil,
+        clientAPIKey: String? = nil
+    ) async throws -> ImageGenerationResponse {
+        // Determine provider from request model if not specified
+        let providerType = provider ?? determineImageProvider(for: request.model)
+
+        let context = LogContext(
+            provider: providerType.rawValue,
+            model: request.model,
+            operation: "generateImage"
+        )
+
+        await aiLog(.info, "Starting image generation request", context: context, metadata: [
+            "provider": providerType.rawValue,
+            "model": request.model,
+            "numberOfImages": "\(request.numberOfImages)"
+        ])
+
+        // Get provider and verify it supports image generation
+        let providerImpl = try getProvider(providerType)
+
+        guard let imageProvider = providerImpl as? ImageGenerationProvider,
+              imageProvider.supportsImageGeneration else {
+            throw AIError.unsupportedFeature(feature: "image generation", provider: providerType)
+        }
+
+        let apiKey = try resolveAPIKey(for: providerType, clientKey: clientAPIKey)
+
+        let response = try await imageProvider.generateImage(request, apiKey: apiKey)
+
+        await aiLog(.info, "Image generation completed", context: context, metadata: [
+            "imagesGenerated": "\(response.images.count)"
+        ])
+
+        return response
+    }
+
+    /// Check if a provider supports image generation
+    ///
+    /// - Parameter provider: Provider type to check
+    /// - Returns: True if the provider supports image generation
+    public func supportsImageGeneration(for provider: ProviderType) -> Bool {
+        guard let providerImpl = providers[provider] else {
+            return false
+        }
+
+        if let imageProvider = providerImpl as? ImageGenerationProvider {
+            return imageProvider.supportsImageGeneration
+        }
+
+        return false
+    }
+
+    /// Get available image generation models for a provider
+    ///
+    /// - Parameter provider: Provider type
+    /// - Returns: Array of available model identifiers
+    public func imageGenerationModels(for provider: ProviderType) -> [String] {
+        guard let providerImpl = providers[provider] else {
+            return []
+        }
+
+        if let imageProvider = providerImpl as? ImageGenerationProvider {
+            return imageProvider.imageGenerationModels
+        }
+
+        return []
+    }
+
+    /// Determine the appropriate provider for an image model
+    ///
+    /// - Parameter model: Model identifier
+    /// - Returns: Provider type
+    private func determineImageProvider(for model: String) -> ProviderType {
+        let lowercased = model.lowercased()
+
+        if lowercased.contains("dall-e") || lowercased.contains("dalle") {
+            return .openai
+        } else if lowercased.contains("grok") {
+            return .grok
+        } else if lowercased.contains("apple") || lowercased.contains("image-playground") {
+            return .appleIntelligence
+        }
+
+        // Default to OpenAI for image generation
+        return .openai
+    }
+
     // MARK: - Private Methods
 
     /// Resolve API key based on strategy
@@ -294,6 +483,9 @@ public actor AIGateway {
         providers[.deepseek] = DeepSeekProvider()
         providers[.perplexity] = PerplexityProvider()
         providers[.grok] = GrokProvider()
+
+        // Register Apple Intelligence provider (on-device, no API key required)
+        providers[.appleIntelligence] = AppleIntelligenceProvider()
 
         return providers
     }

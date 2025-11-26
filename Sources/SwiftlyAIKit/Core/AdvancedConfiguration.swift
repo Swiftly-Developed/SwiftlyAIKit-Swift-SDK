@@ -75,15 +75,15 @@ public struct LoggingConfig: Sendable {
     /// Redact sensitive information from logs
     public let redactSensitiveData: Bool
 
-    /// Custom logger instance
-    public let logger: (any LoggerProtocol)?
+    /// Custom logger instance (uses AILogger from Logger.swift)
+    public let logger: (any AILogger)?
 
     public init(
         logRequests: Bool = true,
         logResponses: Bool = true,
         logFullBodies: Bool = false,
         redactSensitiveData: Bool = true,
-        logger: (any LoggerProtocol)? = nil
+        logger: (any AILogger)? = nil
     ) {
         self.logRequests = logRequests
         self.logResponses = logResponses
@@ -93,15 +93,9 @@ public struct LoggingConfig: Sendable {
     }
 }
 
-/// Protocol for custom logger implementations
-public protocol LoggerProtocol: Sendable {
-    func log(level: LogLevel, message: String, metadata: [String: String]?)
-}
-
-/// Log levels
-public enum LogLevel: String, Sendable {
-    case debug, info, warning, error
-}
+/// Protocol for custom logger implementations (deprecated - use AILogger from Logger.swift)
+@available(*, deprecated, renamed: "AILogger", message: "Use AILogger from Logger.swift instead")
+public typealias LoggerProtocol = AILogger
 
 // MARK: - Monitoring Configuration
 
