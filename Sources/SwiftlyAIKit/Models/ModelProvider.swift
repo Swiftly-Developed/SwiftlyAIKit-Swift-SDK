@@ -4,26 +4,29 @@ import Foundation
 public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     // MARK: - Anthropic Claude Models
 
-    /// Claude Opus 4.1 - Latest Opus model (2025)
-    case claudeOpus41 = "claude-opus-4-1"
+    /// Claude Opus 4.5 - Latest Opus model (November 2025)
+    case claudeOpus45Latest = "claude-opus-4-5"
 
-    /// Claude Opus 4 - Latest version
-    case claudeOpus4Latest = "claude-opus-4"
+    /// Claude Opus 4.5 - Version 20251101
+    case claudeOpus4520251101 = "claude-opus-4-5-20251101"
 
-    /// Claude Opus 4 - Version 20250514
-    case claudeOpus420250514 = "claude-opus-4-20250514"
+    /// Claude Opus 4.1 - Opus 4.1 model (August 2025)
+    case claudeOpus41Latest = "claude-opus-4-1"
 
-    /// Claude Sonnet 4.5 - Latest Sonnet model (2025)
+    /// Claude Opus 4.1 - Version 20250805
+    case claudeOpus4120250805 = "claude-opus-4-1-20250805"
+
+    /// Claude Sonnet 4.5 - Latest Sonnet model (September 2025)
     case claudeSonnet45Latest = "claude-sonnet-4-5"
 
-    /// Claude Sonnet 4.5 - Version 20250514
-    case claudeSonnet4520250514 = "claude-sonnet-4-5-20250514"
+    /// Claude Sonnet 4.5 - Version 20250929
+    case claudeSonnet4520250929 = "claude-sonnet-4-5-20250929"
 
-    /// Claude Sonnet 4 - Latest version
+    /// Claude Sonnet 4 - Latest version (legacy)
     case claudeSonnet4Latest = "claude-sonnet-4"
 
-    /// Claude Sonnet 4 - Version 20250115
-    case claudeSonnet420250115 = "claude-sonnet-4-20250115"
+    /// Claude Sonnet 4 - Version 20250514
+    case claudeSonnet420250514 = "claude-sonnet-4-20250514"
 
     /// Claude 3.7 Sonnet - Latest 3.7 model
     case claude37Sonnet = "claude-3-7-sonnet"
@@ -230,9 +233,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// The provider for this model
     public var providerType: ProviderType {
         switch self {
-        case .claudeOpus41, .claudeOpus4Latest, .claudeOpus420250514,
-             .claudeSonnet45Latest, .claudeSonnet4520250514,
-             .claudeSonnet4Latest, .claudeSonnet420250115,
+        case .claudeOpus45Latest, .claudeOpus4520251101,
+             .claudeOpus41Latest, .claudeOpus4120250805,
+             .claudeSonnet45Latest, .claudeSonnet4520250929,
+             .claudeSonnet4Latest, .claudeSonnet420250514,
              .claude37Sonnet, .claude37Sonnet20250219,
              .claudeHaiku45Latest, .claudeHaiku4520251001,
              .claude35Sonnet, .claude35Sonnet20241022, .claude35Sonnet20240620,
@@ -281,13 +285,14 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Human-readable name for the model
     public var displayName: String {
         switch self {
-        case .claudeOpus41: return "Claude Opus 4.1"
-        case .claudeOpus4Latest: return "Claude Opus 4"
-        case .claudeOpus420250514: return "Claude Opus 4 (20250514)"
+        case .claudeOpus45Latest: return "Claude Opus 4.5"
+        case .claudeOpus4520251101: return "Claude Opus 4.5 (20251101)"
+        case .claudeOpus41Latest: return "Claude Opus 4.1"
+        case .claudeOpus4120250805: return "Claude Opus 4.1 (20250805)"
         case .claudeSonnet45Latest: return "Claude Sonnet 4.5"
-        case .claudeSonnet4520250514: return "Claude Sonnet 4.5 (20250514)"
+        case .claudeSonnet4520250929: return "Claude Sonnet 4.5 (20250929)"
         case .claudeSonnet4Latest: return "Claude Sonnet 4"
-        case .claudeSonnet420250115: return "Claude Sonnet 4 (20250115)"
+        case .claudeSonnet420250514: return "Claude Sonnet 4 (20250514)"
         case .claude37Sonnet: return "Claude 3.7 Sonnet"
         case .claude37Sonnet20250219: return "Claude 3.7 Sonnet (20250219)"
         case .claudeHaiku45Latest: return "Claude Haiku 4.5"
@@ -356,9 +361,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Check if model supports vision/images
     public var supportsVision: Bool {
         switch self {
-        case .claudeOpus41, .claudeOpus4Latest, .claudeOpus420250514,
-             .claudeSonnet45Latest, .claudeSonnet4520250514,
-             .claudeSonnet4Latest, .claudeSonnet420250115,
+        case .claudeOpus45Latest, .claudeOpus4520251101,
+             .claudeOpus41Latest, .claudeOpus4120250805,
+             .claudeSonnet45Latest, .claudeSonnet4520250929,
+             .claudeSonnet4Latest, .claudeSonnet420250514,
              .claude37Sonnet, .claude37Sonnet20250219,
              .claudeHaiku45Latest, .claudeHaiku4520251001,
              .claude35Sonnet, .claude35Sonnet20241022, .claude35Sonnet20240620,
@@ -406,9 +412,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Check if model supports prompt caching
     public var supportsPromptCaching: Bool {
         switch self {
-        case .claudeOpus41, .claudeOpus4Latest, .claudeOpus420250514,
-             .claudeSonnet45Latest, .claudeSonnet4520250514,
-             .claudeSonnet4Latest, .claudeSonnet420250115,
+        case .claudeOpus45Latest, .claudeOpus4520251101,
+             .claudeOpus41Latest, .claudeOpus4120250805,
+             .claudeSonnet45Latest, .claudeSonnet4520250929,
+             .claudeSonnet4Latest, .claudeSonnet420250514,
              .claude37Sonnet, .claude37Sonnet20250219,
              .claudeHaiku45Latest, .claudeHaiku4520251001,
              .claude35Haiku, .claude35Haiku20241022,
@@ -430,8 +437,8 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Check if model supports extended thinking
     public var supportsExtendedThinking: Bool {
         switch self {
-        case .claudeOpus4Latest, .claudeOpus420250514,
-             .claudeSonnet4Latest, .claudeSonnet420250115,
+        case .claudeOpus45Latest, .claudeOpus4520251101,
+             .claudeSonnet4Latest, .claudeSonnet420250514,
              .claude37Sonnet, .claude37Sonnet20250219:
             return true
         default:
@@ -442,9 +449,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Check if model supports PDF documents
     public var supportsPDF: Bool {
         switch self {
-        case .claudeOpus41, .claudeOpus4Latest, .claudeOpus420250514,
-             .claudeSonnet45Latest, .claudeSonnet4520250514,
-             .claudeSonnet4Latest, .claudeSonnet420250115,
+        case .claudeOpus45Latest, .claudeOpus4520251101,
+             .claudeOpus41Latest, .claudeOpus4120250805,
+             .claudeSonnet45Latest, .claudeSonnet4520250929,
+             .claudeSonnet4Latest, .claudeSonnet420250514,
              .claude37Sonnet, .claude37Sonnet20250219,
              .claudeHaiku45Latest, .claudeHaiku4520251001,
              .claude35Sonnet, .claude35Sonnet20241022, .claude35Sonnet20240620,
@@ -463,9 +471,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Maximum input tokens (context window)
     public var maxInputTokens: Int {
         switch self {
-        case .claudeOpus41, .claudeOpus4Latest, .claudeOpus420250514,
-             .claudeSonnet45Latest, .claudeSonnet4520250514,
-             .claudeSonnet4Latest, .claudeSonnet420250115,
+        case .claudeOpus45Latest, .claudeOpus4520251101,
+             .claudeOpus41Latest, .claudeOpus4120250805,
+             .claudeSonnet45Latest, .claudeSonnet4520250929,
+             .claudeSonnet4Latest, .claudeSonnet420250514,
              .claude37Sonnet, .claude37Sonnet20250219:
             return 200_000
         case .claudeHaiku45Latest, .claudeHaiku4520251001,
@@ -535,9 +544,10 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     /// Maximum output tokens
     public var maxOutputTokens: Int {
         switch self {
-        case .claudeOpus41, .claudeOpus4Latest, .claudeOpus420250514,
-             .claudeSonnet45Latest, .claudeSonnet4520250514,
-             .claudeSonnet4Latest, .claudeSonnet420250115,
+        case .claudeOpus45Latest, .claudeOpus4520251101,
+             .claudeOpus41Latest, .claudeOpus4120250805,
+             .claudeSonnet45Latest, .claudeSonnet4520250929,
+             .claudeSonnet4Latest, .claudeSonnet420250514,
              .claude37Sonnet, .claude37Sonnet20250219,
              .claudeHaiku45Latest, .claudeHaiku4520251001:
             return 16_384

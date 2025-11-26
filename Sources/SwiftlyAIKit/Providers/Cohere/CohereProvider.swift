@@ -111,7 +111,7 @@ public struct CohereProvider: ProviderProtocol {
 
                     // Create stream
                     let endpoint = "\(baseURL)/chat"
-                    let stream = try await httpClient.streamPost(
+                    let stream = httpClient.streamPost(
                         url: endpoint,
                         headers: headers,
                         body: jsonData
@@ -297,14 +297,15 @@ public struct CohereProvider: ProviderProtocol {
         // Map tools if present
         let tools = request.tools?.map { mapTool($0) }
 
-        // Extract Cohere-specific options from metadata if present
+        // Extract Cohere-specific options from providerOptions if present
         var documents: [CohereDocument]? = nil
         var responseFormat: CohereResponseFormat? = nil
         var safetyMode: CohereRequest.SafetyMode? = nil
 
-        if let metadata = request.metadata {
+        if let providerOptions = request.providerOptions {
             // Check for documents (RAG)
-            if let docs = metadata["documents"] as? [[String: String]] {
+            if let docsValue = providerOptions["documents"],
+               let docs = docsValue.value as? [[String: String]] {
                 documents = docs.compactMap { doc in
                     guard let id = doc["id"], let text = doc["text"] else { return nil }
                     return CohereDocument(id: id, text: text)
@@ -312,12 +313,14 @@ public struct CohereProvider: ProviderProtocol {
             }
 
             // Check for safety mode
-            if let mode = metadata["safety_mode"] as? String {
+            if let modeValue = providerOptions["safety_mode"],
+               let mode = modeValue.value as? String {
                 safetyMode = CohereRequest.SafetyMode(rawValue: mode)
             }
 
             // Check for response format (JSON mode)
-            if let format = metadata["response_format"] as? [String: Any],
+            if let formatValue = providerOptions["response_format"],
+               let format = formatValue.value as? [String: Any],
                let type = format["type"] as? String {
                 if type == "json_object" {
                     let schema = format["schema"] as? [String: Any]

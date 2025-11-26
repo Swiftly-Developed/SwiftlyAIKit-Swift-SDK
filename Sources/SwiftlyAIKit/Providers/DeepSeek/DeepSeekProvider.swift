@@ -122,7 +122,7 @@ public struct DeepSeekProvider: ProviderProtocol {
                     var accumulatedContent = ""
                     var accumulatedReasoningContent = ""
 
-                    let stream = try await httpClient.streamPost(
+                    let stream = httpClient.streamPost(
                         url: endpoint,
                         headers: headers,
                         body: requestData

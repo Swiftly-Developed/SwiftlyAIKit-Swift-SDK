@@ -106,7 +106,7 @@ public struct MistralProvider: ProviderProtocol {
 
                     // Create stream
                     let endpoint = "\(baseURL)/chat/completions"
-                    let stream = try await httpClient.streamPost(
+                    let stream = httpClient.streamPost(
                         url: endpoint,
                         headers: headers,
                         body: jsonData

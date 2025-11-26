@@ -66,7 +66,7 @@ public struct GeminiProvider: ProviderProtocol {
         )
 
         let geminiResponse = try JSONDecoder().decode(GeminiResponse.self, from: responseData)
-        return try mapToAIResponse(geminiResponse, model: request.model)
+        return mapToAIResponse(geminiResponse, model: request.model)
     }
 
     public func streamMessage(_ request: AIRequest, apiKey: String) -> AsyncThrowingStream<AIResponse, Error> {
@@ -78,7 +78,7 @@ public struct GeminiProvider: ProviderProtocol {
                     let jsonData = try JSONEncoder().encode(geminiRequest)
 
                     let url = "\(baseURL)/models/\(request.model):streamGenerateContent?alt=sse&key=\(apiKey)"
-                    let stream = try await httpClient.streamPost(
+                    let stream = httpClient.streamPost(
                         url: url,
                         headers: headers,
                         body: jsonData
@@ -285,7 +285,7 @@ public struct GeminiProvider: ProviderProtocol {
         }
     }
 
-    private func mapToAIResponse(_ response: GeminiResponse, model: String) throws -> AIResponse {
+    private func mapToAIResponse(_ response: GeminiResponse, model: String) -> AIResponse {
         guard let candidate = response.candidates.first else {
             let emptyMessage = AIMessage(role: .assistant, content: [])
             return AIResponse(
@@ -299,7 +299,7 @@ public struct GeminiProvider: ProviderProtocol {
         }
 
         // Extract content from parts
-        let content: [AIMessageContent] = try candidate.content.parts.compactMap { part in
+        let content: [AIMessageContent] = candidate.content.parts.compactMap { part in
             switch part {
             case .text(let text):
                 return .text(text)

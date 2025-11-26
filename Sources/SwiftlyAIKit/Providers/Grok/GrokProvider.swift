@@ -106,7 +106,7 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
                     var accumulatedContent = ""
                     var accumulatedToolCalls: [GrokToolCall] = []
 
-                    let stream = try await httpClient.streamPost(
+                    let stream = httpClient.streamPost(
                         url: endpoint,
                         headers: headers,
                         body: requestData

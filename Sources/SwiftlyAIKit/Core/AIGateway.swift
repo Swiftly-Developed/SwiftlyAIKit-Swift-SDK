@@ -458,6 +458,10 @@ public actor AIGateway {
     /// - Returns: Resolved API key
     /// - Throws: AIError.missingAPIKey if key cannot be resolved
     private func resolveAPIKey(for provider: ProviderType, clientKey: String?) throws -> String {
+        // Apple Intelligence runs on-device and doesn't need an API key
+        if provider == .appleIntelligence {
+            return ""
+        }
         return try configuration.keyStrategy.resolveKey(for: provider, clientKey: clientKey)
     }
 

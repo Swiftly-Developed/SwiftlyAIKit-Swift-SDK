@@ -189,7 +189,7 @@ public class ConfigurationBuilder {
         logResponses: Bool = true,
         logFullBodies: Bool = false,
         redactSensitiveData: Bool = true,
-        logger: (any LoggerProtocol)? = nil
+        logger: (any AILogger)? = nil
     ) -> Self {
         loggingConfig = LoggingConfig(
             logRequests: logRequests,

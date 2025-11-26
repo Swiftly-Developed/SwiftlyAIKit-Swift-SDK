@@ -85,7 +85,7 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
                     let headers = buildHeaders(apiKey: apiKey, stream: true)
                     let jsonData = try JSONEncoder().encode(openAIRequest)
 
-                    let stream = try await httpClient.streamPost(
+                    let stream = httpClient.streamPost(
                         url: "\(baseURL)/chat/completions",
                         headers: headers,
                         body: jsonData

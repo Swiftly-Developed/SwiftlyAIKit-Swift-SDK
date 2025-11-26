@@ -81,7 +81,7 @@ public struct PerplexityProvider: ProviderProtocol {
 
                     let jsonData = try JSONEncoder().encode(streamRequest)
 
-                    let stream = try await httpClient.streamPost(
+                    let stream = httpClient.streamPost(
                         url: url,
                         headers: headers,
                         body: jsonData

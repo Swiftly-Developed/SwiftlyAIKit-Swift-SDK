@@ -16,7 +16,7 @@ struct ModelProviderTests {
 
     @Test("ModelProvider has correct raw values")
     func testRawValues() {
-        #expect(ModelProvider.claudeOpus41.rawValue == "claude-opus-4-1")
+        #expect(ModelProvider.claudeOpus41Latest.rawValue == "claude-opus-4-1")
         #expect(ModelProvider.claudeSonnet45Latest.rawValue == "claude-sonnet-4-5")
         #expect(ModelProvider.claudeHaiku45Latest.rawValue == "claude-haiku-4-5")
         #expect(ModelProvider.gpt4Turbo.rawValue == "gpt-4-turbo")
@@ -24,32 +24,33 @@ struct ModelProviderTests {
 
     @Test("ModelProvider is Codable (encode)")
     func testCodableEncode() throws {
-        let model = ModelProvider.claudeSonnet4520250514
+        let model = ModelProvider.claudeSonnet4520250929
         let data = try JSONEncoder().encode(model)
         let decoded = String(data: data, encoding: .utf8)
 
-        #expect(decoded?.contains("claude-sonnet-4-5-20250514") == true)
+        #expect(decoded?.contains("claude-sonnet-4-5-20250929") == true)
     }
 
     @Test("ModelProvider is Codable (decode)")
     func testCodableDecode() throws {
-        let json = "\"claude-opus-4-20250514\"".data(using: .utf8)!
+        let json = "\"claude-opus-4-5-20251101\"".data(using: .utf8)!
         let model = try JSONDecoder().decode(ModelProvider.self, from: json)
 
-        #expect(model == .claudeOpus420250514)
+        #expect(model == .claudeOpus4520251101)
     }
 
     // MARK: - Provider Type
 
     @Test("All Claude 4 models return Anthropic provider")
     func testClaude4ModelsProvider() {
-        #expect(ModelProvider.claudeOpus41.providerType == .anthropic)
-        #expect(ModelProvider.claudeOpus4Latest.providerType == .anthropic)
-        #expect(ModelProvider.claudeOpus420250514.providerType == .anthropic)
+        #expect(ModelProvider.claudeOpus45Latest.providerType == .anthropic)
+        #expect(ModelProvider.claudeOpus4520251101.providerType == .anthropic)
+        #expect(ModelProvider.claudeOpus41Latest.providerType == .anthropic)
+        #expect(ModelProvider.claudeOpus4120250805.providerType == .anthropic)
         #expect(ModelProvider.claudeSonnet45Latest.providerType == .anthropic)
-        #expect(ModelProvider.claudeSonnet4520250514.providerType == .anthropic)
+        #expect(ModelProvider.claudeSonnet4520250929.providerType == .anthropic)
         #expect(ModelProvider.claudeSonnet4Latest.providerType == .anthropic)
-        #expect(ModelProvider.claudeSonnet420250115.providerType == .anthropic)
+        #expect(ModelProvider.claudeSonnet420250514.providerType == .anthropic)
         #expect(ModelProvider.claudeHaiku45Latest.providerType == .anthropic)
         #expect(ModelProvider.claudeHaiku4520251001.providerType == .anthropic)
     }
@@ -98,7 +99,7 @@ struct ModelProviderTests {
 
     @Test("Display names are human-readable")
     func testDisplayNames() {
-        #expect(ModelProvider.claudeOpus41.displayName == "Claude Opus 4.1")
+        #expect(ModelProvider.claudeOpus41Latest.displayName == "Claude Opus 4.1")
         #expect(ModelProvider.claudeSonnet45Latest.displayName == "Claude Sonnet 4.5")
         #expect(ModelProvider.claudeHaiku45Latest.displayName == "Claude Haiku 4.5")
         #expect(ModelProvider.claude37Sonnet.displayName == "Claude 3.7 Sonnet")
@@ -109,8 +110,8 @@ struct ModelProviderTests {
 
     @Test("Display names include version dates when specified")
     func testDisplayNamesWithDates() {
-        #expect(ModelProvider.claudeOpus420250514.displayName.contains("20250514"))
-        #expect(ModelProvider.claudeSonnet4520250514.displayName.contains("20250514"))
+        #expect(ModelProvider.claudeOpus4520251101.displayName.contains("20251101"))
+        #expect(ModelProvider.claudeSonnet4520250929.displayName.contains("20250929"))
         #expect(ModelProvider.claude35Sonnet20241022.displayName.contains("20241022"))
     }
 
@@ -125,7 +126,7 @@ struct ModelProviderTests {
 
     @Test("All Claude models support vision")
     func testClaudeModelsVision() {
-        #expect(ModelProvider.claudeOpus41.supportsVision)
+        #expect(ModelProvider.claudeOpus41Latest.supportsVision)
         #expect(ModelProvider.claudeSonnet45Latest.supportsVision)
         #expect(ModelProvider.claudeHaiku45Latest.supportsVision)
         #expect(ModelProvider.claude37Sonnet.supportsVision)
@@ -149,17 +150,18 @@ struct ModelProviderTests {
 
     @Test("Claude 4 Opus models support prompt caching")
     func testClaude4OpusCaching() {
-        #expect(ModelProvider.claudeOpus41.supportsPromptCaching)
-        #expect(ModelProvider.claudeOpus4Latest.supportsPromptCaching)
-        #expect(ModelProvider.claudeOpus420250514.supportsPromptCaching)
+        #expect(ModelProvider.claudeOpus45Latest.supportsPromptCaching)
+        #expect(ModelProvider.claudeOpus4520251101.supportsPromptCaching)
+        #expect(ModelProvider.claudeOpus41Latest.supportsPromptCaching)
+        #expect(ModelProvider.claudeOpus4120250805.supportsPromptCaching)
     }
 
     @Test("Claude 4 Sonnet models support prompt caching")
     func testClaude4SonnetCaching() {
         #expect(ModelProvider.claudeSonnet45Latest.supportsPromptCaching)
-        #expect(ModelProvider.claudeSonnet4520250514.supportsPromptCaching)
+        #expect(ModelProvider.claudeSonnet4520250929.supportsPromptCaching)
         #expect(ModelProvider.claudeSonnet4Latest.supportsPromptCaching)
-        #expect(ModelProvider.claudeSonnet420250115.supportsPromptCaching)
+        #expect(ModelProvider.claudeSonnet420250514.supportsPromptCaching)
     }
 
     @Test("Claude 3.7 models support prompt caching")
@@ -191,16 +193,16 @@ struct ModelProviderTests {
 
     // MARK: - Extended Thinking Support
 
-    @Test("Claude Opus 4 supports extended thinking")
-    func testClaudeOpus4ExtendedThinking() {
-        #expect(ModelProvider.claudeOpus4Latest.supportsExtendedThinking)
-        #expect(ModelProvider.claudeOpus420250514.supportsExtendedThinking)
+    @Test("Claude Opus 4.5 supports extended thinking")
+    func testClaudeOpus45ExtendedThinking() {
+        #expect(ModelProvider.claudeOpus45Latest.supportsExtendedThinking)
+        #expect(ModelProvider.claudeOpus4520251101.supportsExtendedThinking)
     }
 
     @Test("Claude Sonnet 4 supports extended thinking")
     func testClaudeSonnet4ExtendedThinking() {
         #expect(ModelProvider.claudeSonnet4Latest.supportsExtendedThinking)
-        #expect(ModelProvider.claudeSonnet420250115.supportsExtendedThinking)
+        #expect(ModelProvider.claudeSonnet420250514.supportsExtendedThinking)
     }
 
     @Test("Claude 3.7 Sonnet supports extended thinking")
@@ -211,7 +213,7 @@ struct ModelProviderTests {
 
     @Test("Claude Opus 4.1 does not support extended thinking")
     func testClaudeOpus41NoExtendedThinking() {
-        #expect(!ModelProvider.claudeOpus41.supportsExtendedThinking)
+        #expect(!ModelProvider.claudeOpus41Latest.supportsExtendedThinking)
     }
 
     @Test("Haiku models do not support extended thinking")
@@ -232,7 +234,7 @@ struct ModelProviderTests {
 
     @Test("Claude 4 models support PDF")
     func testClaude4PDF() {
-        #expect(ModelProvider.claudeOpus41.supportsPDF)
+        #expect(ModelProvider.claudeOpus41Latest.supportsPDF)
         #expect(ModelProvider.claudeSonnet45Latest.supportsPDF)
         #expect(ModelProvider.claudeHaiku45Latest.supportsPDF)
     }
@@ -269,7 +271,7 @@ struct ModelProviderTests {
 
     @Test("Claude 4 models have 200k context window")
     func testClaude4InputTokens() {
-        #expect(ModelProvider.claudeOpus41.maxInputTokens == 200_000)
+        #expect(ModelProvider.claudeOpus41Latest.maxInputTokens == 200_000)
         #expect(ModelProvider.claudeSonnet45Latest.maxInputTokens == 200_000)
         #expect(ModelProvider.claudeSonnet4Latest.maxInputTokens == 200_000)
         #expect(ModelProvider.claude37Sonnet.maxInputTokens == 200_000)
@@ -287,7 +289,7 @@ struct ModelProviderTests {
 
     @Test("Latest Claude models have 16k output tokens")
     func testLatestClaudeOutputTokens() {
-        #expect(ModelProvider.claudeOpus41.maxOutputTokens == 16_384)
+        #expect(ModelProvider.claudeOpus41Latest.maxOutputTokens == 16_384)
         #expect(ModelProvider.claudeSonnet45Latest.maxOutputTokens == 16_384)
         #expect(ModelProvider.claudeHaiku45Latest.maxOutputTokens == 16_384)
         #expect(ModelProvider.claudeSonnet4Latest.maxOutputTokens == 16_384)
@@ -444,8 +446,8 @@ struct ModelProviderTests {
         let thinkingModels = ModelProvider.allCases.filter { $0.supportsExtendedThinking }
         #expect(thinkingModels.count > 0)
 
-        // Opus 4 and Sonnet 4 should support extended thinking
-        #expect(thinkingModels.contains(.claudeOpus4Latest))
+        // Opus 4.5 and Sonnet 4 should support extended thinking
+        #expect(thinkingModels.contains(.claudeOpus45Latest))
         #expect(thinkingModels.contains(.claudeSonnet4Latest))
     }
 
@@ -455,7 +457,7 @@ struct ModelProviderTests {
         #expect(pdfModels.count > 0)
 
         // Latest models should support PDF
-        #expect(pdfModels.contains(.claudeOpus41))
+        #expect(pdfModels.contains(.claudeOpus41Latest))
         #expect(pdfModels.contains(.claudeSonnet45Latest))
     }
 
