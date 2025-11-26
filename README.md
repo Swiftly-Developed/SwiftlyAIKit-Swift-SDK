@@ -30,7 +30,7 @@ Add SwiftlyAIKit to your Package.swift dependencies:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/SwiftlyWorkspace/SwiftlyAIKit.git", from: "0.1.0")
+    .package(url: "https://github.com/Swiftly-Developed/SwiftlyAIKit.git", from: "0.1.0")
 ]
 ```
 

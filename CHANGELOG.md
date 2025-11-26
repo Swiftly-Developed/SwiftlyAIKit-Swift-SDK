@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 No changes needed! Continue using SwiftlyAIKit as before:
 
 ```swift
-.package(url: "https://github.com/SwiftlyWorkspace/SwiftlyAIKit.git", from: "0.8.0")
+.package(url: "https://github.com/Swiftly-Developed/SwiftlyAIKit.git", from: "0.8.0")
 // import SwiftlyAIKit
 ```
 
@@ -67,7 +67,7 @@ You need to add a second package dependency. Change from:
 
 ```swift
 // Before (v0.7.0)
-.package(url: "https://github.com/SwiftlyWorkspace/SwiftlyAIKit.git", from: "0.7.0")
+.package(url: "https://github.com/Swiftly-Developed/SwiftlyAIKit.git", from: "0.7.0")
 // import SwiftlyAIKitVapor
 ```
 
@@ -75,7 +75,7 @@ To:
 
 ```swift
 // After (v0.8.0+)
-.package(url: "https://github.com/SwiftlyWorkspace/SwiftlyAIServerKit.git", from: "0.1.0")
+.package(url: "https://github.com/Swiftly-Developed/SwiftlyAIServerKit.git", from: "0.1.0")
 // import SwiftlyAIServerKit
 ```
 
@@ -378,14 +378,14 @@ All APIs remain identical - only the import name changes.
 - Comprehensive README with installation and usage guidelines
 - Basic test structure using Swift Testing framework
 
-[Unreleased]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.9.0...HEAD
-[0.9.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.4.1...v0.5.0
-[0.4.1]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.4.0...v0.4.1
-[0.4.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/SwiftlyWorkspace/SwiftlyAIKit/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/Swiftly-Developed/SwiftlyAIKit/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Swiftly-Developed/SwiftlyAIKit/releases/tag/v0.1.0

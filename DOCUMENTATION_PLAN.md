@@ -1006,7 +1006,7 @@ jobs:
 ```markdown
 [![Documentation](https://img.shields.io/badge/documentation-latest-blue.svg)](https://swiftlyworkspace.github.io/SwiftlyAIKit/documentation/swiftlyaikit/)
 [![Swift](https://img.shields.io/badge/Swift-6.2-orange.svg)](https://swift.org)
-[![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20watchOS%20%7C%20tvOS%20%7C%20visionOS%20%7C%20Linux-lightgrey.svg)](https://github.com/SwiftlyWorkspace/SwiftlyAIKit)
+[![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20watchOS%20%7C%20tvOS%20%7C%20visionOS%20%7C%20Linux-lightgrey.svg)](https://github.com/Swiftly-Developed/SwiftlyAIKit)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 ```
 
@@ -1574,8 +1574,8 @@ Create a documentation dashboard showing:
     <ul>
         <li><a href="../documentation/swiftlyaikit/">Full Documentation</a></li>
         <li><a href="../tutorials/">Tutorials</a></li>
-        <li><a href="https://github.com/SwiftlyWorkspace/SwiftlyAIKit">GitHub Repository</a></li>
-        <li><a href="https://github.com/SwiftlyWorkspace/SwiftlyAIKit/issues">Report Issues</a></li>
+        <li><a href="https://github.com/Swiftly-Developed/SwiftlyAIKit">GitHub Repository</a></li>
+        <li><a href="https://github.com/Swiftly-Developed/SwiftlyAIKit/issues">Report Issues</a></li>
     </ul>
 </body>
 </html>
@@ -1589,7 +1589,7 @@ Create a documentation dashboard showing:
 <!-- Meta tags for SEO -->
 <meta name="description" content="SwiftlyAIKit - A unified Swift framework for AI providers including Anthropic Claude, OpenAI, Google Gemini, and more. Cross-platform support for iOS, macOS, and server-side Swift.">
 <meta name="keywords" content="Swift, AI, Anthropic, OpenAI, Gemini, Claude, GPT, iOS, macOS, Vapor, Machine Learning, AI SDK">
-<meta name="author" content="SwiftlyWorkspace">
+<meta name="author" content="Swiftly-Developed">
 
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content="website">
@@ -1983,7 +1983,7 @@ After implementation, these URLs will be live:
 
 [![Documentation](https://img.shields.io/badge/documentation-latest-blue.svg)](https://swiftlyworkspace.github.io/SwiftlyAIKit/documentation/swiftlyaikit/)
 [![Swift](https://img.shields.io/badge/Swift-6.2-orange.svg)](https://swift.org)
-[![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20watchOS%20%7C%20tvOS%20%7C%20visionOS%20%7C%20Linux-lightgrey.svg)](https://github.com/SwiftlyWorkspace/SwiftlyAIKit)
+[![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20watchOS%20%7C%20tvOS%20%7C%20visionOS%20%7C%20Linux-lightgrey.svg)](https://github.com/Swiftly-Developed/SwiftlyAIKit)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A unified, cross-platform Swift framework for interacting with multiple AI model providers.
