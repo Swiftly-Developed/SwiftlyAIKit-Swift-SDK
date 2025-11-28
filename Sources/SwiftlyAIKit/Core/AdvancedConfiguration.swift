@@ -3,6 +3,17 @@ import Foundation
 // MARK: - Rate Limiting
 
 /// Rate limiting configuration
+///
+/// ## Topics
+///
+/// ### Configuration
+/// - ``requestsPerMinute``
+/// - ``requestsPerHour``
+/// - ``scope``
+/// - ``storage``
+///
+/// ## See Also
+/// - ``ConfigurationBuilder``
 public struct RateLimitConfig: Sendable {
     /// Maximum requests per minute
     public let requestsPerMinute: Int?

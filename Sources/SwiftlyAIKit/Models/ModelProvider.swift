@@ -1,6 +1,42 @@
 import Foundation
 
 /// Enum listing all supported AI models across providers
+///
+/// Type-safe model identifiers for all supported providers.
+///
+/// ## Overview
+///
+/// Use these enums for type-safe model selection:
+/// - Claude models: `.claude(.sonnet4_5)`, `.claude(.haiku3_5)`
+/// - GPT models: `.gpt4(.o)`, `.gpt4(.oMini)`
+/// - Gemini models: `.gemini(.pro2_5)`, `.gemini(.flash2)`
+/// - Or use custom strings: `.custom("model-name")`
+///
+/// ## Usage
+///
+/// ```swift
+/// let request = AIRequest(model: .claude(.sonnet4_5), prompt: "Hello")
+/// let request2 = AIRequest(model: .gpt4(.o), prompt: "Hello")
+/// let request3 = AIRequest(model: .custom("custom-model"), prompt: "Hello")
+/// ```
+///
+/// ## Topics
+///
+/// ### Claude Models
+/// - All Anthropic Claude model variants
+///
+/// ### GPT Models
+/// - All OpenAI GPT model variants
+///
+/// ### Gemini Models
+/// - All Google Gemini model variants
+///
+/// ### Other Providers
+/// - Perplexity, Mistral, Cohere, DeepSeek, Grok, Apple models
+///
+/// ## See Also
+/// - <doc:ProvidersOverview>
+/// - ``AIRequest``
 public enum ModelProvider: String, Codable, Sendable, CaseIterable {
     // MARK: - Anthropic Claude Models
 

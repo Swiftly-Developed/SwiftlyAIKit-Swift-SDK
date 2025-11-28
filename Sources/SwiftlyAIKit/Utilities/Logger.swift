@@ -6,6 +6,17 @@ import OSLog
 // MARK: - Log Level
 
 /// Logging severity levels for SwiftlyAIKit
+///
+/// ## Topics
+///
+/// ### Levels
+/// - ``debug``
+/// - ``info``
+/// - ``warning``
+/// - ``error``
+///
+/// ## See Also
+/// - <doc:MonitoringAndDebugging>
 public enum LogLevel: Int, Comparable, Sendable {
     case debug = 0
     case info = 1
