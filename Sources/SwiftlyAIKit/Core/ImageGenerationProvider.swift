@@ -2,8 +2,15 @@ import Foundation
 
 /// Protocol for providers that support image generation
 ///
-/// Providers that can generate images (OpenAI, Grok, Apple Intelligence)
-/// should conform to this protocol in addition to `ProviderProtocol`.
+/// Providers that can generate images from text prompts should conform to this protocol
+/// in addition to ``ProviderProtocol``.
+///
+/// ## Overview
+///
+/// Three providers support image generation:
+/// - **OpenAI** - DALL-E 3 and DALL-E 2
+/// - **xAI Grok** - Grok 2 Image
+/// - **Apple Intelligence** - Image Playground (on-device)
 ///
 /// ## Conforming to ImageGenerationProvider
 ///
@@ -19,10 +26,50 @@ import Foundation
 ///         _ request: ImageGenerationRequest,
 ///         apiKey: String
 ///     ) async throws -> ImageGenerationResponse {
-///         // Implementation...
+///         // 1. Transform request to provider format
+///         // 2. Make HTTP call
+///         // 3. Parse response
+///         // 4. Return ImageGenerationResponse
 ///     }
 /// }
 /// ```
+///
+/// ## Usage
+///
+/// ```swift
+/// let request = ImageGenerationRequest.dallE3(
+///     prompt: "A sunset over mountains",
+///     size: .square1024,
+///     quality: .hd
+/// )
+///
+/// let response = try await gateway.generateImage(request, using: .openai)
+///
+/// for image in response.images {
+///     print("Generated: \(image.url ?? "data")")
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Protocol Requirements
+/// - ``supportsImageGeneration``
+/// - ``imageGenerationModels``
+/// - ``generateImage(_:apiKey:)``
+///
+/// ### Helper Types
+/// - ``ImageGenerationCapabilities``
+///
+/// ### Related Types
+/// - ``ImageGenerationRequest``
+/// - ``ImageGenerationResponse``
+/// - ``AIGateway/generateImage(_:using:clientAPIKey:)``
+///
+/// ## See Also
+/// - <doc:ImageGeneration>
+/// - <doc:OpenAIGuide>
+/// - <doc:GrokGuide>
+/// - <doc:AppleIntelligenceGuide>
 public protocol ImageGenerationProvider: Sendable {
     /// Whether this provider supports image generation
     var supportsImageGeneration: Bool { get }

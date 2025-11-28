@@ -2,20 +2,108 @@ import Foundation
 
 /// Flexible builder for creating EnhancedConfiguration
 ///
-/// Provides a fluent API for configuring all aspects of the AI gateway.
+/// `ConfigurationBuilder` provides a fluent, chainable API for configuring all aspects of
+/// the AI gateway with advanced features like rate limiting, monitoring, and model restrictions.
 ///
-/// Usage:
+/// ## Overview
+///
+/// Use the builder pattern when you need fine-grained control over gateway configuration:
+/// - Rate limiting per client or globally
+/// - Request/response logging
+/// - Token usage monitoring
+/// - Model allowlists/blocklists
+/// - Custom metrics handlers
+///
+/// ## Basic Usage
+///
 /// ```swift
 /// let config = ConfigurationBuilder()
 ///     .setProviderKey("sk-ant-...", for: .anthropic)
 ///     .setProviderKey("sk-...", for: .openai)
+///     .timeout(120)
+///     .maxRetries(5)
+///     .enableLogging()
+///     .build()
+/// ```
+///
+/// ## Advanced Features
+///
+/// ### Rate Limiting
+///
+/// ```swift
+/// let config = ConfigurationBuilder()
+///     .setProviderKey("sk-ant-...", for: .anthropic)
+///     .rateLimit(requestsPerMinute: 60, per: .perClientKey)
+///     .build()
+/// ```
+///
+/// ### Model Restrictions
+///
+/// ```swift
+/// let config = ConfigurationBuilder()
+///     .setProviderKey("sk-ant-...", for: .anthropic)
 ///     .allowModels("claude-3-5-sonnet-20241022", "gpt-4")
 ///     .defaultModel("claude-3-5-sonnet-20241022", provider: .anthropic)
-///     .rateLimit(requestsPerMinute: 60, per: .perClientKey)
-///     .enableLogging(logRequests: true, logResponses: true)
+///     .build()
+/// ```
+///
+/// ### Monitoring
+///
+/// ```swift
+/// let config = ConfigurationBuilder()
+///     .setProviderKey("sk-ant-...", for: .anthropic)
 ///     .enableMonitoring(trackTokenUsage: true, trackErrors: true)
 ///     .build()
 /// ```
+///
+/// ## Topics
+///
+/// ### Creating a Builder
+/// - ``init()``
+///
+/// ### API Keys
+/// - ``setProviderKey(_:for:)``
+/// - ``setProviderKeys(_:)``
+/// - ``keyStrategy(_:)``
+///
+/// ### Base Configuration
+/// - ``timeout(_:)``
+/// - ``maxRetries(_:)``
+/// - ``defaultProvider(_:)``
+/// - ``enableBetaFeatures(_:for:)``
+/// - ``customBaseURL(_:for:)``
+///
+/// ### Model Restrictions
+/// - ``allowModels(_:)-8shry``
+/// - ``blockModels(_:)-9cp3w``
+/// - ``defaultModel(_:provider:)``
+///
+/// ### Rate Limiting
+/// - ``rateLimit(requestsPerMinute:requestsPerHour:per:storage:)``
+///
+/// ### Logging
+/// - ``enableLogging(logRequests:logResponses:logFullBodies:redactSensitiveData:logger:)``
+/// - ``enableSimpleLogging()``
+/// - ``enableVerboseLogging()``
+///
+/// ### Monitoring
+/// - ``enableMonitoring(trackTokenUsage:trackErrors:trackLatency:trackThroughput:metricsHandler:)``
+/// - ``enableFullMonitoring(metricsHandler:)``
+///
+/// ### Building
+/// - ``build()``
+///
+/// ### Related Types
+/// - ``Configuration``
+/// - ``EnhancedConfiguration``
+/// - ``APIKeyStrategy``
+/// - ``RateLimitConfig``
+/// - ``LoggingConfig``
+/// - ``MonitoringConfig``
+///
+/// ## See Also
+/// - <doc:ConfigurationSystem>
+/// - ``Configuration``
 public class ConfigurationBuilder {
     // Base configuration properties
     private var keyStrategy: APIKeyStrategy?
