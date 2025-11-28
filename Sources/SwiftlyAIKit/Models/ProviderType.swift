@@ -2,7 +2,59 @@ import Foundation
 
 /// Represents the supported AI provider types
 ///
-/// Each case corresponds to a specific AI provider that implements the `ProviderProtocol`.
+/// Each case corresponds to a specific AI provider that implements the ``ProviderProtocol``.
+///
+/// ## Overview
+///
+/// SwiftlyAIKit supports 9 AI providers:
+/// - ``openai`` - OpenAI GPT models
+/// - ``anthropic`` - Anthropic Claude models
+/// - ``google`` - Google Gemini models
+/// - ``perplexity`` - Perplexity AI with web search
+/// - ``cohere`` - Cohere models optimized for RAG
+/// - ``mistral`` - Mistral AI models (EU-hosted)
+/// - ``deepseek`` - DeepSeek models (cost-optimized)
+/// - ``grok`` - xAI Grok models
+/// - ``appleIntelligence`` - Apple on-device models
+///
+/// ## Usage
+///
+/// ```swift
+/// // Explicit provider selection
+/// let response = try await gateway.sendMessage(request, to: .anthropic)
+///
+/// // Use provider's display name
+/// print(ProviderType.anthropic.displayName) // "Anthropic"
+///
+/// // Get base URL
+/// print(ProviderType.anthropic.baseURL) // "https://api.anthropic.com/v1"
+/// ```
+///
+/// ## Topics
+///
+/// ### Providers
+/// - ``openai``
+/// - ``anthropic``
+/// - ``google``
+/// - ``perplexity``
+/// - ``cohere``
+/// - ``mistral``
+/// - ``deepseek``
+/// - ``grok``
+/// - ``appleIntelligence``
+///
+/// ### Properties
+/// - ``displayName``
+/// - ``baseURL``
+///
+/// ### Related Types
+/// - ``ProviderProtocol``
+/// - ``AIGateway``
+/// - ``Configuration``
+///
+/// ## See Also
+/// - <doc:ProvidersOverview>
+/// - <doc:ChoosingAProvider>
 public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
     /// OpenAI (GPT models)
     case openai

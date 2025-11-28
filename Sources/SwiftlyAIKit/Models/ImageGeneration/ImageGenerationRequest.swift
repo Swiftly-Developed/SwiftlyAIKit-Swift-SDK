@@ -3,27 +3,72 @@ import Foundation
 /// Unified image generation request
 ///
 /// This request type works across all image generation providers (OpenAI DALL-E, Grok, Apple Image Playground).
-/// Provider-specific options can be passed via `providerOptions`.
 ///
-/// ## Usage
+/// ## Overview
+///
+/// Generate images from text prompts using AI. Supported providers:
+/// - **OpenAI DALL-E 3** - Highest quality
+/// - **xAI Grok 2 Image** - Fast, competitive
+/// - **Apple Intelligence** - On-device, free
+///
+/// ## Basic Usage
 ///
 /// ```swift
-/// // Basic request
 /// let request = ImageGenerationRequest(
 ///     prompt: "A serene mountain landscape at sunset",
 ///     model: "dall-e-3"
 /// )
 ///
-/// // Advanced request with options
-/// let request = ImageGenerationRequest(
-///     prompt: "A serene mountain landscape at sunset",
-///     model: "dall-e-3",
-///     numberOfImages: 1,
+/// let response = try await gateway.generateImage(request, using: .openai)
+/// ```
+///
+/// ## Convenience Constructors
+///
+/// ```swift
+/// // DALL-E 3 with options
+/// let request = ImageGenerationRequest.dallE3(
+///     prompt: "A sunset",
 ///     size: .landscape1792x1024,
 ///     quality: .hd,
 ///     style: .vivid
 /// )
+///
+/// // DALL-E 2
+/// let request = ImageGenerationRequest.dallE2(
+///     prompt: "A sunset",
+///     numberOfImages: 4
+/// )
 /// ```
+///
+/// ## Topics
+///
+/// ### Creating Requests
+/// - ``init(prompt:model:numberOfImages:size:responseFormat:quality:style:user:providerOptions:)``
+/// - ``dallE3(prompt:size:quality:style:user:)``
+/// - ``dallE2(prompt:numberOfImages:size:user:)``
+///
+/// ### Request Properties
+/// - ``prompt``
+/// - ``model``
+/// - ``numberOfImages``
+/// - ``size``
+/// - ``responseFormat``
+/// - ``quality``
+/// - ``style``
+/// - ``user``
+/// - ``providerOptions``
+///
+/// ### Related Types
+/// - ``ImageGenerationResponse``
+/// - ``ImageSize``
+/// - ``ImageQuality``
+/// - ``ImageStyle``
+/// - ``ImageResponseFormat``
+///
+/// ## See Also
+/// - <doc:ImageGeneration>
+/// - ``AIGateway/generateImage(_:using:clientAPIKey:)``
+/// - ``ImageGenerationProvider``
 public struct ImageGenerationRequest: Sendable {
     /// The text prompt describing the desired image
     public let prompt: String
