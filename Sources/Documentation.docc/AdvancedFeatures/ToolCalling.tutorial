@@ -1,0 +1,165 @@
+@Tutorial(time: 20) {
+    @Intro(title: "Implementing Function Calling") {
+        Learn how to give AI models access to custom functions and real-time data.
+
+        Function calling (also called tool calling) lets AI models request execution of your functions when they need real-time data or want to perform actions.
+    }
+
+    @Section(title: "Define Your Tools") {
+        @ContentAndMedia {
+            Create tool definitions that describe what functions are available to the AI.
+
+            Tools are defined using the ``AITool`` struct with a name, description, and parameter schema.
+        }
+
+        @Steps {
+            @Step {
+                Start with a simple tool - getting the current weather:
+
+                @Code(name: "Tools.swift", file: toolcalling-01-define.swift)
+            }
+
+            @Step {
+                Define the tool's parameters using a schema:
+
+                @Code(name: "Tools.swift", file: toolcalling-02-parameters.swift)
+            }
+
+            @Step {
+                Add multiple tools for a more capable assistant:
+
+                @Code(name: "Tools.swift", file: toolcalling-03-multiple.swift)
+            }
+        }
+    }
+
+    @Section(title: "Send Request with Tools") {
+        @ContentAndMedia {
+            Include your tools when sending a request to the AI.
+
+            The AI will decide whether to call your tools based on the user's message.
+        }
+
+        @Steps {
+            @Step {
+                Create a request with tools attached:
+
+                @Code(name: "main.swift", file: toolcalling-04-request.swift)
+            }
+
+            @Step {
+                Send the request and check if tools were called:
+
+                @Code(name: "main.swift", file: toolcalling-05-check.swift)
+            }
+        }
+    }
+
+    @Section(title: "Execute Tool Calls") {
+        @ContentAndMedia {
+            When the AI wants to call a tool, execute the function and gather results.
+
+            Tool calls include the function name and arguments as a dictionary.
+        }
+
+        @Steps {
+            @Step {
+                Implement the actual tool functions:
+
+                @Code(name: "Tools.swift", file: toolcalling-06-implement.swift)
+            }
+
+            @Step {
+                Execute tool calls and collect results:
+
+                @Code(name: "main.swift", file: toolcalling-07-execute.swift)
+            }
+        }
+    }
+
+    @Section(title: "Return Results to AI") {
+        @ContentAndMedia {
+            Send the tool results back to the AI for it to formulate a final response.
+
+            This creates a multi-turn conversation where the AI uses real data.
+        }
+
+        @Steps {
+            @Step {
+                Build a follow-up request with tool results:
+
+                @Code(name: "main.swift", file: toolcalling-08-results.swift)
+            }
+
+            @Step {
+                Send the follow-up and get the final response:
+
+                @Code(name: "main.swift", file: toolcalling-09-final.swift)
+            }
+
+            @Step {
+                Complete example tying it all together:
+
+                @Code(name: "main.swift", file: toolcalling-10-complete.swift)
+            }
+        }
+    }
+
+    @Assessments {
+        @MultipleChoice {
+            When does the AI call your tools?
+
+            @Choice(isCorrect: false) {
+                Automatically on every request
+
+                @Justification(isCorrect: false) {
+                    The AI only calls tools when it determines they're needed based on the user's message.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                When it needs real-time data or wants to perform an action
+
+                @Justification(isCorrect: true) {
+                    Correct! The AI analyzes the user's message and calls tools when it needs information or actions your tools provide.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                Never - you must call them manually
+
+                @Justification(isCorrect: false) {
+                    The AI autonomously decides when to call tools based on the conversation context.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            What do you do with tool call results?
+
+            @Choice(isCorrect: false) {
+                Display them directly to the user
+
+                @Justification(isCorrect: false) {
+                    Tool results should be sent back to the AI, which will formulate a user-friendly response.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                Send them back to the AI in a follow-up request
+
+                @Justification(isCorrect: true) {
+                    Correct! Tool results are sent back to the AI, which uses them to generate a final response for the user.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                Store them in a database
+
+                @Justification(isCorrect: false) {
+                    While you can store them, the primary purpose is to send them back to the AI for response generation.
+                }
+            }
+        }
+    }
+}
