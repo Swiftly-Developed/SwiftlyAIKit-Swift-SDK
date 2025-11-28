@@ -1,0 +1,181 @@
+@Tutorial(time: 10) {
+    @Intro(title: "Generating Images with AI") {
+        Create images from text descriptions using DALL-E, Grok, or Apple Intelligence.
+
+        Learn how to generate images, customize parameters, and display results in your app.
+    }
+
+    @Section(title: "Choose Your Provider") {
+        @ContentAndMedia {
+            Three providers support image generation, each with different strengths.
+
+            - **OpenAI DALL-E 3**: Highest quality, most control
+            - **xAI Grok 2 Image**: Fast, competitive quality
+            - **Apple Intelligence**: On-device, free, privacy-focused
+        }
+
+        @Steps {
+            @Step {
+                Set up your project with SwiftlyAIKit.
+
+                @Code(name: "Package.swift", file: imagegen-01-setup.swift)
+            }
+
+            @Step {
+                Get an API key from your chosen provider (skip for Apple Intelligence).
+
+                - DALL-E: [platform.openai.com](https://platform.openai.com)
+                - Grok: [console.x.ai](https://console.x.ai)
+                - Apple: No key needed (on-device)
+            }
+        }
+    }
+
+    @Section(title: "Generate Your First Image") {
+        @ContentAndMedia {
+            Create an image generation request and execute it.
+
+            Start with the simplest approach, then explore customization options.
+        }
+
+        @Steps {
+            @Step {
+                Create a basic image request.
+
+                @Code(name: "main.swift", file: imagegen-02-basic.swift)
+            }
+
+            @Step {
+                Execute the request and get the response.
+
+                @Code(name: "main.swift", file: imagegen-03-execute.swift)
+            }
+
+            @Step {
+                Access the generated image.
+
+                @Code(name: "main.swift", file: imagegen-04-access.swift)
+            }
+        }
+    }
+
+    @Section(title: "Customize Image Generation") {
+        @ContentAndMedia {
+            Control size, quality, and style for better results.
+
+            Different providers support different options.
+        }
+
+        @Steps {
+            @Step {
+                Use the DALL-E 3 convenience constructor.
+
+                @Code(name: "main.swift", file: imagegen-05-dalle3.swift)
+            }
+
+            @Step {
+                Try different sizes and orientations.
+
+                @Code(name: "main.swift", file: imagegen-06-sizes.swift)
+            }
+
+            @Step {
+                Control quality and style.
+
+                @Code(name: "main.swift", file: imagegen-07-quality.swift)
+            }
+        }
+    }
+
+    @Section(title: "Display in SwiftUI") {
+        @ContentAndMedia {
+            Build a complete image generation interface.
+
+            Create a view that lets users enter prompts and see generated images.
+        }
+
+        @Steps {
+            @Step {
+                Create the basic view structure.
+
+                @Code(name: "ImageGenView.swift", file: imagegen-08-view.swift)
+            }
+
+            @Step {
+                Add image generation logic.
+
+                @Code(name: "ImageGenView.swift", file: imagegen-09-logic.swift)
+            }
+
+            @Step {
+                Download and display the image.
+
+                @Code(name: "ImageGenView.swift", file: imagegen-10-display.swift)
+            }
+
+            @Step {
+                Add error handling and loading states.
+
+                @Code(name: "ImageGenView.swift", file: imagegen-11-complete.swift)
+            }
+        }
+    }
+
+    @Assessments {
+        @MultipleChoice {
+            Which providers support image generation?
+
+            @Choice(isCorrect: false) {
+                All providers
+
+                @Justification(isCorrect: false) {
+                    Only OpenAI (DALL-E), xAI (Grok), and Apple Intelligence support image generation.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                OpenAI, xAI Grok, and Apple Intelligence
+
+                @Justification(isCorrect: true) {
+                    Correct! These three providers can generate images from text prompts.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                Only OpenAI
+
+                @Justification(isCorrect: false) {
+                    OpenAI has the most advanced image generation (DALL-E 3), but Grok and Apple Intelligence also support it.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            What happens to image URLs from DALL-E?
+
+            @Choice(isCorrect: false) {
+                They last forever
+
+                @Justification(isCorrect: false) {
+                    Image URLs from DALL-E expire after approximately 1 hour.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                They expire after ~1 hour
+
+                @Justification(isCorrect: true) {
+                    Correct! Download and save images if you need them long-term.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                They never work
+
+                @Justification(isCorrect: false) {
+                    URLs work fine, they just expire after about an hour.
+                }
+            }
+        }
+    }
+}
