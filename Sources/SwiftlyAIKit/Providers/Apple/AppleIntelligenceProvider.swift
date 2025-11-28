@@ -10,34 +10,22 @@ import ImagePlayground
 
 /// Apple Intelligence provider for on-device AI
 ///
-/// This provider integrates with Apple's on-device AI capabilities:
-/// - **Foundation Models** (iOS 26+, macOS 26+): Text generation using Apple's on-device LLM
-/// - **Image Playground** (iOS 18.4+, macOS 15.4+): Image generation with animation, illustration, and sketch styles
+/// On-device AI with perfect privacy - no network required, completely free.
 ///
-/// ## Key Characteristics
-/// - **On-device**: All processing happens locally, no data sent to external servers
-/// - **No API key required**: Uses device capabilities, not cloud services
-/// - **Privacy-focused**: Data never leaves the device
+/// ## Topics
 ///
-/// ## Usage
-/// ```swift
-/// let provider = AppleIntelligenceProvider()
+/// ### ProviderProtocol
+/// - ``providerType``
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
 ///
-/// // Check availability
-/// if provider.supportsImageGeneration {
-///     let request = ImageGenerationRequest.imagePlayground(
-///         prompt: "A happy golden retriever",
-///         style: .animation
-///     )
-///     let response = try await provider.generateImage(request, apiKey: "")
-/// }
-/// ```
+/// ### ImageGenerationProvider
+/// - ``supportsImageGeneration``
+/// - ``imageGenerationModels``
+/// - ``generateImage(_:apiKey:)``
 ///
-/// ## Platform Requirements
-/// | Feature | iOS | macOS | Hardware |
-/// |---------|-----|-------|----------|
-/// | Foundation Models | 26.0+ | 26.0+ | A17 Pro+ or Apple Silicon |
-/// | Image Playground | 18.4+ | 15.4+ | A17 Pro+ or Apple Silicon |
+/// ## See Also
+/// - <doc:AppleIntelligenceGuide>
 public struct AppleIntelligenceProvider: ProviderProtocol, ImageGenerationProvider {
     public let providerType: ProviderType = .appleIntelligence
 

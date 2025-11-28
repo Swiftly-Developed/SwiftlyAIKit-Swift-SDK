@@ -2,23 +2,17 @@ import Foundation
 
 /// Mistral AI provider implementation
 ///
-/// Supports chat completions with the Mistral AI API, which uses an OpenAI-compatible format.
-/// API Documentation: https://docs.mistral.ai/api
+/// EU-hosted AI with vision and function calling support.
 ///
-/// Features:
-/// - Chat completions (standard and streaming)
-/// - Vision support (image URLs)
-/// - Function calling with tools
-/// - JSON mode via response_format
-/// - Safety prompts and deterministic sampling
+/// ## Topics
 ///
-/// Models:
-/// - Mistral Large 2.1 (128K context)
-/// - Mistral Medium 3 (128K context)
-/// - Mistral Small 3.1 (128K context)
-/// - Codestral (32K context, code generation)
-/// - Magistral models (reasoning with chain-of-thought)
-/// - Ministral models (edge computing)
+/// ### ProviderProtocol
+/// - ``providerType``
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
+///
+/// ## See Also
+/// - <doc:MistralGuide>
 public struct MistralProvider: ProviderProtocol {
     public let providerType: ProviderType = .mistral
     private let httpClient: HTTPClientManager

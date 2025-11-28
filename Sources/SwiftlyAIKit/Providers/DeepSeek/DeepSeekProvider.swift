@@ -1,6 +1,19 @@
 import Foundation
 
 /// DeepSeek provider implementation (OpenAI-compatible API)
+///
+/// Cost-optimized AI with reasoning mode and prompt caching.
+///
+/// ## Topics
+///
+/// ### ProviderProtocol
+/// - ``providerType``
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
+///
+/// ## See Also
+/// - <doc:DeepSeekGuide>
+/// - <doc:PromptCaching>
 public struct DeepSeekProvider: ProviderProtocol {
     public let providerType: ProviderType = .deepseek
 

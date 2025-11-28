@@ -4,6 +4,18 @@ import FoundationNetworking
 #endif
 
 /// Provider implementation for Perplexity AI
+///
+/// Real-time web search with automatic citations.
+///
+/// ## Topics
+///
+/// ### ProviderProtocol
+/// - ``providerType``
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
+///
+/// ## See Also
+/// - <doc:PerplexityGuide>
 public struct PerplexityProvider: ProviderProtocol {
     public let providerType: ProviderType = .perplexity
 

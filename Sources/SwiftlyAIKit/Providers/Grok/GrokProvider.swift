@@ -1,6 +1,25 @@
 import Foundation
 
 /// Grok provider implementation (xAI - OpenAI-compatible API)
+///
+/// Real-time web access, image generation, and reasoning token tracking.
+///
+/// ## Topics
+///
+/// ### ProviderProtocol
+/// - ``providerType``
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
+/// - ``countTokens(_:apiKey:)``
+///
+/// ### ImageGenerationProvider
+/// - ``supportsImageGeneration``
+/// - ``imageGenerationModels``
+/// - ``generateImage(_:apiKey:)``
+///
+/// ## See Also
+/// - <doc:GrokGuide>
+/// - <doc:ImageGeneration>
 public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
     public let providerType: ProviderType = .grok
 

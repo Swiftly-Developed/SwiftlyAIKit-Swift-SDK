@@ -2,22 +2,19 @@ import Foundation
 
 /// Cohere AI provider implementation
 ///
-/// Supports chat completions with the Cohere v2 API.
-/// API Documentation: https://docs.cohere.com/v2/reference/chat
+/// RAG-optimized AI with automatic citations and token counting.
 ///
-/// Features:
-/// - Chat completions (standard and streaming)
-/// - RAG (Retrieval Augmented Generation) with citations
-/// - Function/tool calling
-/// - Token counting via tokenize endpoint
-/// - Structured JSON outputs with optional schema validation
-/// - Safety modes (NONE, CONTEXTUAL, STRICT)
-/// - Vision support (Command A Vision model)
+/// ## Topics
 ///
-/// Models:
-/// - Command A family (256K context, 111B parameters)
-/// - Command R family (256K context, optimized for RAG)
-/// - Command R7B (efficient, 7B parameters)
+/// ### ProviderProtocol
+/// - ``providerType``
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
+/// - ``countTokens(_:apiKey:)``
+///
+/// ## See Also
+/// - <doc:CohereGuide>
+/// - <doc:RAGOptimization>
 public struct CohereProvider: ProviderProtocol {
     public let providerType: ProviderType = .cohere
     private let httpClient: HTTPClientManager
