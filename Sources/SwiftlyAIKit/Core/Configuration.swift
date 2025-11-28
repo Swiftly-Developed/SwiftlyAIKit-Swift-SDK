@@ -2,11 +2,141 @@ import Foundation
 
 /// Framework configuration for SwiftlyAIKit
 ///
-/// Defines settings for AI gateway operation, including:
-/// - API key management strategy
-/// - Provider-specific configurations
-/// - HTTP client settings
-/// - Logging and debugging options
+/// `Configuration` defines all settings for the AI gateway, including API key management,
+/// HTTP client behavior, logging, and provider-specific options.
+///
+/// ## Overview
+///
+/// Configuration is the foundation of SwiftlyAIKit. It determines:
+/// - How API keys are managed and resolved (``APIKeyStrategy``)
+/// - HTTP request timeouts and retry behavior
+/// - Which provider is used by default
+/// - Whether logging is enabled for debugging
+/// - Provider-specific beta features and custom endpoints
+///
+/// ## Quick Start
+///
+/// The simplest configuration uses a single API key for all providers:
+///
+/// ```swift
+/// let config = Configuration.withCompanyKey("sk-ant-...")
+/// let gateway = AIGateway(configuration: config)
+/// ```
+///
+/// ## API Key Strategies
+///
+/// SwiftlyAIKit supports four key management strategies:
+///
+/// ### Company Key (Server-Managed)
+/// ```swift
+/// let config = Configuration.withCompanyKey(
+///     "sk-ant-...",
+///     provider: .anthropic,
+///     enableLogging: false
+/// )
+/// ```
+///
+/// ### Client Keys (User-Provided)
+/// ```swift
+/// let config = Configuration.withClientKeys(
+///     provider: .anthropic,
+///     enableLogging: false
+/// )
+/// // Clients pass their key with each request
+/// let response = try await gateway.sendMessage(request, clientAPIKey: userKey)
+/// ```
+///
+/// ### Hybrid Keys (Optional Client Keys)
+/// ```swift
+/// let config = Configuration.withHybridKeys(
+///     defaultKey: "sk-ant-...",
+///     provider: .anthropic
+/// )
+/// // Uses client key if provided, falls back to default
+/// ```
+///
+/// ### Per-Provider Keys
+/// ```swift
+/// let config = Configuration.withProviderKeys([
+///     .anthropic: "sk-ant-...",
+///     .openai: "sk-...",
+///     .google: "..."
+/// ])
+/// ```
+///
+/// ## Development vs Production
+///
+/// Use pre-configured environments:
+///
+/// ```swift
+/// // Development: verbose logging, longer timeouts
+/// let devConfig = Configuration.development(
+///     companyKey: "sk-ant-...",
+///     provider: .anthropic
+/// )
+///
+/// // Production: minimal logging, aggressive retries
+/// let prodConfig = Configuration.production(
+///     keyStrategy: .companyKey("sk-ant-..."),
+///     provider: .anthropic
+/// )
+/// ```
+///
+/// ## Advanced Configuration
+///
+/// For fine-grained control, use the full initializer:
+///
+/// ```swift
+/// let config = Configuration(
+///     keyStrategy: .companyKey("sk-ant-..."),
+///     timeout: 120,           // 2 minute timeout
+///     maxRetries: 5,          // Retry 5 times
+///     enableLogging: true,
+///     betaFeatures: [
+///         .anthropic: ["prompt-caching-2024-07-31"]
+///     ],
+///     customBaseURLs: [
+///     .anthropic: "https://api.anthropic.com"
+///     ],
+///     defaultProvider: .anthropic
+/// )
+/// ```
+///
+/// ## Topics
+///
+/// ### Creating Configurations
+/// - ``init(keyStrategy:providerKeys:timeout:maxRetries:enableLogging:betaFeatures:customBaseURLs:defaultProvider:)``
+/// - ``withCompanyKey(_:provider:enableLogging:)``
+/// - ``withClientKeys(provider:enableLogging:)``
+/// - ``withHybridKeys(defaultKey:provider:enableLogging:)``
+/// - ``withProviderKeys(_:defaultProvider:enableLogging:)``
+///
+/// ### Environment Presets
+/// - ``development(companyKey:provider:)``
+/// - ``production(keyStrategy:provider:)``
+///
+/// ### Configuration Properties
+/// - ``keyStrategy``
+/// - ``providerKeys``
+/// - ``timeout``
+/// - ``maxRetries``
+/// - ``enableLogging``
+/// - ``betaFeatures``
+/// - ``customBaseURLs``
+/// - ``defaultProvider``
+///
+/// ### Logging Configuration
+/// - ``configureLogging(logger:logLevel:)``
+///
+/// ### Related Types
+/// - ``APIKeyStrategy``
+/// - ``ProviderType``
+/// - ``AIGateway``
+///
+/// ## See Also
+/// - <doc:QuickStart>
+/// - <doc:APIKeyManagement>
+/// - <doc:ConfigurationSystem>
 public struct Configuration: Sendable {
     /// API key management strategy
     public let keyStrategy: APIKeyStrategy

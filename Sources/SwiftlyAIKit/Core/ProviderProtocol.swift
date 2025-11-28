@@ -2,8 +2,96 @@ import Foundation
 
 /// Protocol that all AI providers must conform to
 ///
-/// This protocol defines the standard interface for interacting with different AI providers.
-/// Implementations handle provider-specific request/response formatting and API calls.
+/// `ProviderProtocol` defines the standard interface for AI providers in SwiftlyAIKit. Every
+/// provider (Anthropic, OpenAI, Gemini, etc.) implements this protocol to handle provider-specific
+/// request/response formatting and API communication.
+///
+/// ## Overview
+///
+/// This protocol abstracts away provider differences, allowing ``AIGateway`` to work with any
+/// AI provider through a unified interface. Providers handle:
+/// - Transforming ``AIRequest`` to provider-specific format
+/// - Making HTTP calls to the provider's API
+/// - Parsing responses back into ``AIResponse``
+/// - Handling streaming, batching, and token counting
+///
+/// ## Implementing a Custom Provider
+///
+/// To add support for a new AI provider:
+///
+/// ```swift
+/// public struct CustomProvider: ProviderProtocol {
+///     public let providerType: ProviderType = .custom("MyProvider")
+///
+///     public func sendMessage(_ request: AIRequest, apiKey: String) async throws -> AIResponse {
+///         // 1. Transform AIRequest to provider format
+///         let providerRequest = transformRequest(request)
+///
+///         // 2. Make HTTP request
+///         let response = try await httpClient.post(url, body: providerRequest)
+///
+///         // 3. Transform response to AIResponse
+///         return try parseResponse(response)
+///     }
+///
+///     public func streamMessage(_ request: AIRequest, apiKey: String) -> AsyncThrowingStream<AIResponse, Error> {
+///         AsyncThrowingStream { continuation in
+///             Task {
+///                 // Stream implementation
+///             }
+///         }
+///     }
+/// }
+/// ```
+///
+/// ## Required Methods
+///
+/// All providers must implement:
+/// - ``sendMessage(_:apiKey:)`` - Send a single message
+/// - ``streamMessage(_:apiKey:)`` - Stream responses in real-time
+///
+/// ## Optional Methods
+///
+/// Providers can optionally implement:
+/// - ``countTokens(_:apiKey:)`` - Count tokens without making a request
+/// - ``createBatch(_:apiKey:)`` - Create asynchronous batch operations
+/// - ``retrieveBatch(_:apiKey:)`` - Check batch status
+/// - ``cancelBatch(_:apiKey:)`` - Cancel a running batch
+/// - ``listBatches(limit:afterId:apiKey:)`` - List all batches
+/// - ``getBatchResults(_:apiKey:)`` - Stream batch results
+///
+/// ## Topics
+///
+/// ### Provider Identity
+/// - ``providerType``
+///
+/// ### Core Operations
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
+/// - ``countTokens(_:apiKey:)``
+///
+/// ### Batch Operations
+/// - ``createBatch(_:apiKey:)``
+/// - ``retrieveBatch(_:apiKey:)``
+/// - ``cancelBatch(_:apiKey:)``
+/// - ``listBatches(limit:afterId:apiKey:)``
+/// - ``getBatchResults(_:apiKey:)``
+///
+/// ### Supporting Types
+/// - ``BatchStatus``
+/// - ``BatchResult``
+///
+/// ### Related Types
+/// - ``AIRequest``
+/// - ``AIResponse``
+/// - ``AIError``
+/// - ``ProviderType``
+/// - ``AIGateway``
+///
+/// ## See Also
+/// - <doc:ArchitectureOverview>
+/// - <doc:ProviderProtocolGuide>
+/// - <doc:ExtensibilityPoints>
 public protocol ProviderProtocol: Sendable {
     /// The type of provider this implementation represents
     var providerType: ProviderType { get }

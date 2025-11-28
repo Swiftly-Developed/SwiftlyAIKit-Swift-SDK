@@ -2,20 +2,108 @@ import Foundation
 
 /// AI Gateway - Main coordinator for multi-provider AI operations
 ///
-/// The AIGateway is a thread-safe actor that:
-/// - Manages multiple AI provider implementations
-/// - Resolves API keys based on configured strategy
-/// - Routes requests to appropriate providers
-/// - Handles provider registration and lifecycle
+/// The AIGateway is a thread-safe actor that coordinates all AI operations across multiple
+/// providers. It provides a unified interface for sending messages, streaming responses,
+/// managing batches, and generating images.
 ///
-/// Usage:
+/// ## Overview
+///
+/// `AIGateway` acts as the central hub for all AI operations in SwiftlyAIKit. It:
+/// - Manages multiple AI provider implementations (Anthropic, OpenAI, Gemini, etc.)
+/// - Resolves API keys based on your configured ``APIKeyStrategy``
+/// - Routes requests to the appropriate provider automatically
+/// - Handles provider registration and lifecycle
+/// - Supports streaming, batching, and image generation
+///
+/// ## Quick Start
+///
 /// ```swift
-/// let config = Configuration.withCompanyKey("sk-...")
+/// import SwiftlyAIKit
+///
+/// // Create configuration with your API key
+/// let config = Configuration.withCompanyKey("sk-ant-...")
 /// let gateway = AIGateway(configuration: config)
 ///
-/// let request = AIRequest(model: "claude-sonnet-4-5", prompt: "Hello!")
+/// // Send a message
+/// let request = AIRequest(model: .claude(.sonnet4_5), prompt: "Hello!")
 /// let response = try await gateway.sendMessage(request)
+/// print(response.message.content)
 /// ```
+///
+/// ## Streaming Responses
+///
+/// For real-time responses (like ChatGPT), use streaming:
+///
+/// ```swift
+/// let request = AIRequest(model: .claude(.sonnet4_5), prompt: "Write a story")
+/// let stream = try await gateway.streamMessage(request)
+///
+/// for try await chunk in stream {
+///     print(chunk.message.content, terminator: "")
+/// }
+/// ```
+///
+/// ## Multi-Provider Support
+///
+/// Switch between providers easily by specifying the provider parameter:
+///
+/// ```swift
+/// // Use Claude
+/// let claudeResponse = try await gateway.sendMessage(request, to: .anthropic)
+///
+/// // Use GPT-4
+/// let gptResponse = try await gateway.sendMessage(request, to: .openai)
+///
+/// // Use Gemini
+/// let geminiResponse = try await gateway.sendMessage(request, to: .google)
+/// ```
+///
+/// ## Topics
+///
+/// ### Creating a Gateway
+/// - ``init(configuration:)``
+/// - ``init(configuration:providers:)``
+/// - ``Configuration``
+///
+/// ### Sending Messages
+/// - ``sendMessage(_:to:clientAPIKey:)``
+/// - ``streamMessage(_:to:clientAPIKey:)``
+/// - ``countTokens(_:for:clientAPIKey:)``
+///
+/// ### Batch Operations
+/// - ``createBatch(_:for:clientAPIKey:)``
+/// - ``retrieveBatch(_:from:clientAPIKey:)``
+/// - ``cancelBatch(_:from:clientAPIKey:)``
+/// - ``listBatches(limit:afterId:from:clientAPIKey:)``
+/// - ``getBatchResults(_:from:clientAPIKey:)``
+///
+/// ### Image Generation
+/// - ``generateImage(_:using:clientAPIKey:)``
+/// - ``supportsImageGeneration(for:)``
+/// - ``imageGenerationModels(for:)``
+///
+/// ### Provider Management
+/// - ``registerProvider(_:for:)``
+/// - ``isProviderRegistered(_:)``
+/// - ``registeredProviders``
+/// - ``config``
+///
+/// ### Related Types
+/// - ``AIRequest``
+/// - ``AIResponse``
+/// - ``AIMessage``
+/// - ``AIError``
+/// - ``ProviderType``
+/// - ``ImageGenerationRequest``
+/// - ``ImageGenerationResponse``
+/// - ``BatchStatus``
+/// - ``BatchResult``
+///
+/// ## See Also
+/// - <doc:QuickStart>
+/// - <doc:StreamingResponses>
+/// - <doc:ErrorHandling>
+/// - <doc:ChoosingAProvider>
 public actor AIGateway {
     /// Framework configuration
     private let configuration: Configuration

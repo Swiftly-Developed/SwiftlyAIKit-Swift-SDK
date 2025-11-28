@@ -2,13 +2,115 @@ import Foundation
 
 /// Defines key management strategies for AI provider API keys
 ///
-/// SwiftlyAIKit supports multiple strategies for managing API keys, allowing flexibility
-/// in how your application authenticates with AI providers.
+/// `APIKeyStrategy` determines how SwiftlyAIKit authenticates with AI providers. Choose a
+/// strategy based on your security requirements, billing preferences, and architecture.
 ///
-/// - `companyKey`: Use a server-managed API key for all requests
-/// - `clientKey`: Require clients to provide their own API key with each request
-/// - `hybrid`: Use client key if provided, otherwise fall back to a default company key
-/// - `perProvider`: Use different company keys for different providers
+/// ## Overview
+///
+/// API key management is critical for both security and cost control. SwiftlyAIKit supports
+/// four strategies to handle keys:
+///
+/// - ``companyKey(_:)`` - Server controls a single key for all providers
+/// - ``clientKey`` - Clients must provide their own keys
+/// - ``hybrid(defaultKey:)`` - Client keys preferred, with company fallback
+/// - ``perProvider(_:)`` - Different keys for different providers
+///
+/// ## Security Considerations
+///
+/// **Never expose API keys in client applications!** Keys embedded in client code can be
+/// extracted and abused. For production iOS/macOS apps:
+///
+/// ✅ **Recommended:** Use ``clientKey`` strategy with your own server proxy
+/// ✅ **Recommended:** Use ``hybrid(defaultKey:)`` with server-side rate limiting
+/// ❌ **Not Recommended:** Embedding keys directly in Swift code
+///
+/// ## Usage Examples
+///
+/// ### Company Key (Server-Managed)
+///
+/// Best for: Server-side applications, internal tools, centralized billing
+///
+/// ```swift
+/// let strategy = APIKeyStrategy.companyKey("sk-ant-...")
+/// let config = Configuration(keyStrategy: strategy)
+/// let gateway = AIGateway(configuration: config)
+///
+/// // All requests use the company key automatically
+/// let response = try await gateway.sendMessage(request)
+/// ```
+///
+/// ### Client Key (User-Provided)
+///
+/// Best for: SaaS applications, cost pass-through to users, zero key storage
+///
+/// ```swift
+/// let strategy = APIKeyStrategy.clientKey
+/// let config = Configuration(keyStrategy: strategy)
+/// let gateway = AIGateway(configuration: config)
+///
+/// // Client must provide key with each request
+/// let userKey = getUserAPIKey() // From user's account settings
+/// let response = try await gateway.sendMessage(request, clientAPIKey: userKey)
+/// ```
+///
+/// ### Hybrid (Optional Client Keys)
+///
+/// Best for: Freemium models, premium features, flexible billing
+///
+/// ```swift
+/// let strategy = APIKeyStrategy.hybrid(defaultKey: "sk-ant-...")
+/// let config = Configuration(keyStrategy: strategy)
+/// let gateway = AIGateway(configuration: config)
+///
+/// // Free tier users (no key provided)
+/// let freeResponse = try await gateway.sendMessage(request)
+///
+/// // Premium users (provide their own key for higher limits)
+/// let premiumResponse = try await gateway.sendMessage(request, clientAPIKey: premiumUserKey)
+/// ```
+///
+/// ### Per-Provider Keys
+///
+/// Best for: Multi-provider applications, separate billing accounts
+///
+/// ```swift
+/// let strategy = APIKeyStrategy.perProvider([
+///     .anthropic: "sk-ant-...",
+///     .openai: "sk-...",
+///     .google: "..."
+/// ])
+/// let config = Configuration(keyStrategy: strategy)
+/// let gateway = AIGateway(configuration: config)
+///
+/// // Each provider uses its own key automatically
+/// let claudeResponse = try await gateway.sendMessage(request, to: .anthropic)
+/// let gptResponse = try await gateway.sendMessage(request, to: .openai)
+/// ```
+///
+/// ## Topics
+///
+/// ### Strategy Cases
+/// - ``companyKey(_:)``
+/// - ``clientKey``
+/// - ``hybrid(defaultKey:)``
+/// - ``perProvider(_:)``
+///
+/// ### Resolving Keys
+/// - ``resolveKey(for:clientKey:)``
+///
+/// ### Strategy Properties
+/// - ``requiresClientKey``
+/// - ``acceptsClientKey``
+///
+/// ### Related Types
+/// - ``Configuration``
+/// - ``ProviderType``
+/// - ``AIError``
+///
+/// ## See Also
+/// - <doc:APIKeyManagement>
+/// - <doc:ConfigurationSystem>
+/// - <doc:ChoosingDeploymentPattern>
 public enum APIKeyStrategy: Sendable {
     /// Server manages a single API key for all requests to all providers
     ///
