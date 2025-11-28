@@ -1,5 +1,13 @@
 import Foundation
 
+/// OpenAI API Models
+///
+/// Provider-specific request and response types for OpenAI's Chat Completions and Images API.
+///
+/// ## See Also
+/// - ``OpenAIProvider``
+/// - <doc:OpenAIGuide>
+
 // MARK: - Content Blocks
 
 /// Represents different types of content that can be sent in OpenAI messages

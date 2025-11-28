@@ -1,5 +1,13 @@
 import Foundation
 
+/// xAI Grok API Models
+///
+/// Provider-specific types for Grok's Chat Completions and Image Generation APIs.
+///
+/// ## See Also
+/// - ``GrokProvider``
+/// - <doc:GrokGuide>
+
 // MARK: - Request Models
 
 /// Grok chat completion request (OpenAI-compatible)

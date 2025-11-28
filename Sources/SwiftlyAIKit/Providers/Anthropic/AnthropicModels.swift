@@ -1,5 +1,13 @@
 import Foundation
 
+/// Anthropic Claude API Models
+///
+/// Provider-specific request and response types for Anthropic's Messages API.
+///
+/// ## See Also
+/// - ``AnthropicProvider``
+/// - <doc:AnthropicGuide>
+
 // MARK: - Content Blocks
 
 /// Represents different types of content blocks in Anthropic messages

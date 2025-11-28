@@ -1,5 +1,13 @@
 import Foundation
 
+/// Perplexity AI API Models
+///
+/// Provider-specific types for Perplexity's Chat Completions API with web search.
+///
+/// ## See Also
+/// - ``PerplexityProvider``
+/// - <doc:PerplexityGuide>
+
 // MARK: - Message and Content
 
 /// Message role for Perplexity API

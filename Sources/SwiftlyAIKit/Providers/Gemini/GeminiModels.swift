@@ -1,5 +1,13 @@
 import Foundation
 
+/// Google Gemini API Models
+///
+/// Provider-specific types for Gemini's GenerateContent API.
+///
+/// ## See Also
+/// - ``GeminiProvider``
+/// - <doc:GeminiGuide>
+
 // MARK: - Content and Parts
 
 /// Content part for Gemini API

@@ -1,12 +1,12 @@
 import Foundation
 
-// MARK: - Cohere API Models
-//
-// This file contains all type definitions for Cohere's v2 API.
-//
-// API Reference: https://docs.cohere.com/v2/reference/chat
-// Base URL: https://api.cohere.com/v2
-// Authentication: Bearer token
+/// Cohere API Models
+///
+/// Provider-specific types for Cohere's Chat API v2 with RAG support.
+///
+/// ## See Also
+/// - ``CohereProvider``
+/// - <doc:CohereGuide>
 
 // MARK: - Content Blocks
 

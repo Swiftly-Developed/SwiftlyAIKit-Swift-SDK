@@ -1,5 +1,13 @@
 import Foundation
 
+/// DeepSeek API Models
+///
+/// Provider-specific types for DeepSeek's Chat Completions API.
+///
+/// ## See Also
+/// - ``DeepSeekProvider``
+/// - <doc:DeepSeekGuide>
+
 // MARK: - Request Models
 
 /// DeepSeek chat completion request (OpenAI-compatible)

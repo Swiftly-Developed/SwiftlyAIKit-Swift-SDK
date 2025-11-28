@@ -1,13 +1,12 @@
 import Foundation
 
-// MARK: - Mistral AI API Models
-//
-// This file contains all type definitions for Mistral AI's API.
-// Mistral uses an OpenAI-compatible API format with some unique features.
-//
-// API Reference: https://docs.mistral.ai/api
-// Base URL: https://api.mistral.ai/v1
-// Authentication: Bearer token
+/// Mistral AI API Models
+///
+/// Provider-specific types for Mistral's Chat Completions API.
+///
+/// ## See Also
+/// - ``MistralProvider``
+/// - <doc:MistralGuide>
 
 // MARK: - Content Blocks
 

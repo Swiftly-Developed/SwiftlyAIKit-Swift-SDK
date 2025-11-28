@@ -1,5 +1,13 @@
 import Foundation
 
+/// Apple Intelligence API Models
+///
+/// Types for Apple's on-device Foundation Models and Image Playground.
+///
+/// ## See Also
+/// - ``AppleIntelligenceProvider``
+/// - <doc:AppleIntelligenceGuide>
+
 // MARK: - Apple Intelligence Models
 
 /// Available Apple Intelligence models
