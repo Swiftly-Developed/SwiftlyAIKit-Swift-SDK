@@ -104,7 +104,67 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
 /// Represents a message in the conversation
 ///
 /// Messages are the primary way to communicate with AI models. Each message
-/// has a role (user, assistant, or system) and can contain multiple content parts.
+/// has a role (user, assistant, or system) and can contain multiple content parts
+/// (text, images, documents, tool calls).
+///
+/// ## Overview
+///
+/// `AIMessage` supports multimodal content:
+/// - Text messages
+/// - Images (URLs or base64)
+/// - Documents (PDFs)
+/// - Tool calls and results
+///
+/// ## Simple Text Message
+///
+/// ```swift
+/// let message = AIMessage(role: .user, text: "Hello!")
+/// ```
+///
+/// ## Multimodal Message
+///
+/// ```swift
+/// let message = AIMessage(role: .user, content: [
+///     .text("What's in this image?"),
+///     .image(url: "https://example.com/photo.jpg")
+/// ])
+/// ```
+///
+/// ## Convenience Constructors
+///
+/// ```swift
+/// // User message
+/// let user = AIMessage.user("Your question")
+///
+/// // Assistant message
+/// let assistant = AIMessage.assistant("AI response")
+///
+/// // System message
+/// let system = AIMessage.system("You are a helpful assistant")
+/// ```
+///
+/// ## Topics
+///
+/// ### Creating Messages
+/// - ``init(role:text:metadata:)``
+/// - ``init(role:content:metadata:)``
+///
+/// ### Message Properties
+/// - ``role``
+/// - ``content``
+/// - ``metadata``
+/// - ``textContent``
+///
+/// ### Related Types
+/// - ``AIMessageRole``
+/// - ``AIMessageContent``
+/// - ``AIRequest``
+/// - ``AIResponse``
+///
+/// ## See Also
+/// - ``AIRequest``
+/// - ``AIMessageContent``
+/// - <doc:VisionAndImageAnalysis>
 public struct AIMessage: Codable, Sendable, Equatable {
     /// The role of the message sender
     public let role: AIMessageRole

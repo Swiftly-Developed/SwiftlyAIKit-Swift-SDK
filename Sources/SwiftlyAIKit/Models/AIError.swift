@@ -4,6 +4,73 @@ import Foundation
 ///
 /// Comprehensive error types covering authentication, network, validation,
 /// provider-specific errors, and rate limiting scenarios.
+///
+/// ## Overview
+///
+/// `AIError` provides typed errors for all failure modes in SwiftlyAIKit. Handle specific
+/// cases to provide better user experience and implement appropriate retry logic.
+///
+/// ## Common Error Handling
+///
+/// ```swift
+/// do {
+///     let response = try await gateway.sendMessage(request)
+/// } catch AIError.invalidAPIKey(let provider, _) {
+///     print("Bad API key for \(provider)")
+/// } catch AIError.rateLimitExceeded(let provider, let retryAfter) {
+///     print("Rate limited. Retry after \(retryAfter ?? 60)s")
+/// } catch AIError.networkError(let message) {
+///     print("Network issue: \(message)")
+/// } catch {
+///     print("Other error: \(error)")
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Authentication Errors
+/// - ``missingAPIKey(provider:)``
+/// - ``invalidAPIKey(provider:message:)``
+/// - ``permissionDenied(provider:message:)``
+///
+/// ### Network Errors
+/// - ``networkError(underlying:)``
+/// - ``timeout``
+/// - ``invalidURL(_:)``
+/// - ``connectionFailed(_:)``
+///
+/// ### Validation Errors
+/// - ``invalidRequest(message:)``
+/// - ``missingParameter(name:)``
+/// - ``invalidModel(model:provider:)``
+/// - ``requestTooLarge(size:limit:)``
+/// - ``invalidContentType(expected:got:)``
+///
+/// ### Rate Limiting
+/// - ``rateLimitExceeded(provider:retryAfter:)``
+/// - ``quotaExceeded(provider:)``
+///
+/// ### Provider Errors
+/// - ``providerError(provider:statusCode:message:)``
+/// - ``serviceUnavailable(provider:)``
+/// - ``internalError(provider:message:)``
+/// - ``overloaded(provider:)``
+///
+/// ### Response Errors
+/// - ``decodingError(message:)``
+/// - ``emptyResponse``
+/// - ``invalidResponse(message:)``
+/// - ``streamingError(message:)``
+///
+/// ### Unsupported Operations
+/// - ``notFound(resource:provider:)``
+/// - ``unsupportedFeature(feature:provider:)``
+/// - ``providerNotRegistered(_:)``
+///
+/// ## See Also
+/// - <doc:ErrorHandling>
+/// - <doc:CommonPitfalls>
+/// - ``AIGateway``
 public enum AIError: Error, Sendable, Equatable {
     // MARK: - Authentication Errors
 

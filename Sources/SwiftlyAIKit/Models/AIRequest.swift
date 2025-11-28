@@ -2,8 +2,84 @@ import Foundation
 
 /// Represents a provider-agnostic AI completion request
 ///
-/// This structure provides a unified interface for making requests to different AI providers.
-/// Provider-specific implementations will map this to their native request formats.
+/// `AIRequest` is the universal request format used across all AI providers in SwiftlyAIKit.
+/// Create a request once, send to any provider.
+///
+/// ## Overview
+///
+/// Every AI interaction starts with an `AIRequest`. It contains:
+/// - The model to use
+/// - Conversation messages
+/// - Optional parameters (temperature, max tokens, etc.)
+/// - Optional tools for function calling
+///
+/// ## Quick Example
+///
+/// ```swift
+/// let request = AIRequest(
+///     model: .claude(.sonnet4_5),
+///     prompt: "Explain quantum computing"
+/// )
+///
+/// let response = try await gateway.sendMessage(request)
+/// ```
+///
+/// ## With Conversation History
+///
+/// ```swift
+/// let request = AIRequest(
+///     model: .gpt4(.o),
+///     messages: [
+///         .user("What is AI?"),
+///         .assistant("AI is..."),
+///         .user("Tell me more")
+///     ]
+/// )
+/// ```
+///
+/// ## With Parameters
+///
+/// ```swift
+/// let request = AIRequest(
+///     model: .claude(.sonnet4_5),
+///     messages: [.user("Be creative!")],
+///     temperature: 0.9,
+///     maxTokens: 500
+/// )
+/// ```
+///
+/// ## Topics
+///
+/// ### Creating Requests
+/// - ``init(model:messages:maxTokens:systemPrompt:temperature:topP:topK:stopSequences:stream:metadata:providerOptions:tools:toolChoice:)``
+/// - ``init(model:prompt:maxTokens:systemPrompt:temperature:)``
+///
+/// ### Request Properties
+/// - ``model``
+/// - ``messages``
+/// - ``maxTokens``
+/// - ``systemPrompt``
+/// - ``temperature``
+/// - ``topP``
+/// - ``topK``
+/// - ``stopSequences``
+/// - ``stream``
+/// - ``metadata``
+/// - ``providerOptions``
+/// - ``tools``
+/// - ``toolChoice``
+///
+/// ### Related Types
+/// - ``AIMessage``
+/// - ``AIResponse``
+/// - ``AITool``
+/// - ``AIToolChoice``
+/// - ``ModelProvider``
+///
+/// ## See Also
+/// - <doc:QuickStart>
+/// - ``AIGateway/sendMessage(_:to:clientAPIKey:)``
+/// - ``AIGateway/streamMessage(_:to:clientAPIKey:)``
 public struct AIRequest: Codable, Sendable {
     /// The model to use for completion
     public let model: String

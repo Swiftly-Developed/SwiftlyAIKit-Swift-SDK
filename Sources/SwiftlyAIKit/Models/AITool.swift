@@ -5,7 +5,15 @@ import Foundation
 /// Tools allow AI models to interact with external systems by calling functions.
 /// The model can decide when to call a tool based on the user's request.
 ///
-/// Example:
+/// ## Overview
+///
+/// Function calling (tool use) enables AI models to:
+/// - Access real-time data (weather, stock prices, database queries)
+/// - Perform actions (send emails, create records, make API calls)
+/// - Use your custom logic when needed
+///
+/// ## Simple Tool
+///
 /// ```swift
 /// let weatherTool = AITool(
 ///     name: "get_weather",
@@ -27,6 +35,51 @@ import Foundation
 ///     )
 /// )
 /// ```
+///
+/// ## Using Tools
+///
+/// ```swift
+/// let request = AIRequest(
+///     model: .claude(.sonnet4_5),
+///     messages: [.user("What's the weather in Tokyo?")],
+///     tools: [weatherTool]
+/// )
+///
+/// let response = try await gateway.sendMessage(request)
+///
+/// if let toolCalls = response.toolCalls {
+///     for call in toolCalls {
+///         if call.name == "get_weather" {
+///             let location = call.arguments["location"] as? String
+///             // Execute your function
+///         }
+///     }
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Creating Tools
+/// - ``init(name:description:parameters:)``
+///
+/// ### Tool Properties
+/// - ``name``
+/// - ``description``
+/// - ``parameters``
+///
+/// ### Parameter Schemas
+/// - ``AIToolParameters``
+/// - ``AIToolProperty``
+/// - ``AIToolChoice``
+/// - ``AIToolCall``
+///
+/// ### Related Types
+/// - ``AIRequest``
+/// - ``AIResponse``
+///
+/// ## See Also
+/// - <doc:ToolCalling>
+/// - ``AIGateway``
 public struct AITool: Codable, Sendable, Hashable {
     /// Unique name of the tool/function
     public let name: String

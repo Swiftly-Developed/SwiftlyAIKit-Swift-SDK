@@ -55,8 +55,77 @@ public struct AIUsage: Codable, Sendable {
 
 /// Represents a provider-agnostic AI completion response
 ///
-/// This structure provides a unified interface for responses from different AI providers.
-/// Provider-specific implementations will map their native responses to this format.
+/// `AIResponse` is the universal response format returned by all AI providers in SwiftlyAIKit.
+///
+/// ## Overview
+///
+/// Every successful AI request returns an `AIResponse` containing:
+/// - The AI's message (``message``)
+/// - Why it stopped generating (``stopReason``)
+/// - Token usage for billing (``usage``)
+/// - Metadata and provider-specific data
+///
+/// ## Quick Example
+///
+/// ```swift
+/// let response = try await gateway.sendMessage(request)
+///
+/// print(response.message.content)
+/// print("Tokens used: \(response.usage?.totalTokens ?? 0)")
+/// print("Stop reason: \(response.stopReason?.rawValue ?? "unknown")")
+/// ```
+///
+/// ## Accessing Content
+///
+/// ```swift
+/// // Get text content directly
+/// let text = response.message.content
+///
+/// // Or use convenience property
+/// let text2 = response.textContent
+/// ```
+///
+/// ## Token Usage
+///
+/// ```swift
+/// if let usage = response.usage {
+///     print("Input tokens: \(usage.inputTokens)")
+///     print("Output tokens: \(usage.outputTokens)")
+///     print("Total: \(usage.totalTokens)")
+///
+///     // Calculate cost
+///     let cost = Double(usage.totalTokens) * 0.000003
+///     print("Cost: $\(cost)")
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Response Properties
+/// - ``id``
+/// - ``model``
+/// - ``message``
+/// - ``stopReason``
+/// - ``usage``
+/// - ``provider``
+/// - ``createdAt``
+/// - ``metadata``
+/// - ``providerData``
+///
+/// ### Convenience Properties
+/// - ``textContent``
+///
+/// ### Related Types
+/// - ``AIMessage``
+/// - ``AIStopReason``
+/// - ``AIUsage``
+/// - ``ProviderType``
+/// - ``AIRequest``
+///
+/// ## See Also
+/// - ``AIGateway/sendMessage(_:to:clientAPIKey:)``
+/// - ``AIMessage``
+/// - ``AIUsage``
 public struct AIResponse: Codable, Sendable {
     /// Unique identifier for this response
     public let id: String
