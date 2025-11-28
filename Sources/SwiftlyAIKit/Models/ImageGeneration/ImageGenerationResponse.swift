@@ -3,6 +3,54 @@ import Foundation
 /// Unified image generation response
 ///
 /// Contains the generated images from any provider (OpenAI, Grok, Apple).
+///
+/// ## Overview
+///
+/// After requesting image generation, you receive an `ImageGenerationResponse` containing:
+/// - One or more generated images (``images``)
+/// - Metadata about the generation (ID, timestamp, provider)
+/// - Optional usage statistics
+///
+/// ## Accessing Generated Images
+///
+/// ```swift
+/// let response = try await gateway.generateImage(request, using: .openai)
+///
+/// for image in response.images {
+///     if let url = image.url {
+///         // Download from URL (expires in ~1 hour)
+///         let (data, _) = try await URLSession.shared.data(from: URL(string: url)!)
+///         let uiImage = UIImage(data: data)
+///     } else if let base64 = image.base64Data {
+///         // Use base64 data directly
+///         let data = Data(base64Encoded: base64)!
+///         let uiImage = UIImage(data: data)
+///     }
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Response Properties
+/// - ``id``
+/// - ``created``
+/// - ``provider``
+/// - ``model``
+/// - ``images``
+/// - ``usage``
+///
+/// ### Generated Images
+/// - ``GeneratedImage``
+/// - ``ImageGenerationUsage``
+///
+/// ### Related Types
+/// - ``ImageGenerationRequest``
+/// - ``ImageSize``
+/// - ``ImageQuality``
+///
+/// ## See Also
+/// - <doc:ImageGeneration>
+/// - ``AIGateway/generateImage(_:using:clientAPIKey:)``
 public struct ImageGenerationResponse: Sendable {
     /// Unique identifier for this generation
     public let id: String

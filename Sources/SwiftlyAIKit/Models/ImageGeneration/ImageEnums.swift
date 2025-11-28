@@ -5,6 +5,47 @@ import Foundation
 /// Standard image sizes for generation
 ///
 /// Different providers support different sizes. Use `supportedBy(_:)` to check compatibility.
+///
+/// ## Overview
+///
+/// Available sizes:
+/// - ``square256`` - 256x256 (DALL-E 2)
+/// - ``square512`` - 512x512 (DALL-E 2)
+/// - ``square1024`` - 1024x1024 (All providers)
+/// - ``landscape1792x1024`` - 1792x1024 (DALL-E 3)
+/// - ``portrait1024x1792`` - 1024x1792 (DALL-E 3)
+///
+/// ## Usage
+///
+/// ```swift
+/// let request = ImageGenerationRequest.dallE3(
+///     prompt: "A landscape",
+///     size: .landscape1792x1024
+/// )
+///
+/// // Check compatibility
+/// if ImageSize.landscape1792x1024.supportedBy(.openai) {
+///     // Supported!
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Sizes
+/// - ``square256``
+/// - ``square512``
+/// - ``square1024``
+/// - ``landscape1792x1024``
+/// - ``portrait1024x1792``
+///
+/// ### Properties
+/// - ``width``
+/// - ``height``
+/// - ``supportedBy(_:)``
+///
+/// ## See Also
+/// - ``ImageGenerationRequest``
+/// - <doc:ImageGeneration>
 public enum ImageSize: String, Codable, Sendable, CaseIterable {
     /// 256x256 pixels (DALL-E 2 only)
     case square256 = "256x256"

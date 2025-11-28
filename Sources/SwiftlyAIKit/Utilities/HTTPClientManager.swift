@@ -9,10 +9,59 @@ import NIOHTTP1
 /// - Automatic retry logic with exponential backoff
 /// - Request/response logging
 /// - Timeout management
-/// - Proper resource cleanup
+/// - Server-Sent Events (SSE) streaming
+/// - Proper error mapping
 ///
-/// Uses a shared singleton HTTPClient to avoid shutdown issues when
-/// managers are deallocated.
+/// ## Overview
+///
+/// `HTTPClientManager` is the HTTP layer for all provider communications. It handles:
+/// - Making HTTP requests with timeout
+/// - Retrying failed requests (exponential backoff)
+/// - Streaming Server-Sent Events
+/// - Mapping HTTP status codes to ``AIError``
+///
+/// Uses a shared singleton HTTPClient to avoid shutdown issues.
+///
+/// ## Usage
+///
+/// ```swift
+/// let manager = HTTPClientManager()
+///
+/// let data = try await manager.post(
+///     url: "https://api.anthropic.com/v1/messages",
+///     headers: [("x-api-key", apiKey)],
+///     body: requestData
+/// )
+/// ```
+///
+/// ## Retry Logic
+///
+/// Automatically retries on:
+/// - Network errors (connection failed, timeout)
+/// - 5xx server errors (provider issues)
+/// - 429 rate limit (with backoff)
+///
+/// Does NOT retry on:
+/// - 4xx client errors (bad request, invalid key)
+/// - Successful responses
+///
+/// ## Topics
+///
+/// ### Creating Managers
+/// - ``init(httpClient:maxRetries:timeout:enableLogging:)``
+///
+/// ### HTTP Methods
+/// - ``post(url:headers:body:context:)``
+/// - ``get(url:headers:context:)``
+/// - ``streamPost(url:headers:body:context:)``
+///
+/// ### Related Types
+/// - ``AIError``
+/// - ``LogContext``
+///
+/// ## See Also
+/// - <doc:ArchitectureOverview>
+/// - <doc:ErrorHandling>
 public actor HTTPClientManager {
     /// Shared HTTPClient singleton - lives for app lifetime, no shutdown needed
     private static let sharedHTTPClient = HTTPClient(eventLoopGroupProvider: .singleton)
