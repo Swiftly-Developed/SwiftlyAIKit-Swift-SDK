@@ -1,6 +1,10 @@
 import Foundation
 
-/// Google AI provider implementation (placeholder)
+/// Google AI provider implementation (alias for GeminiProvider)
+///
+/// ## See Also
+/// - ``GeminiProvider``
+/// - <doc:GeminiGuide>
 public struct GoogleProvider: ProviderProtocol {
     public let providerType: ProviderType = .google
 
