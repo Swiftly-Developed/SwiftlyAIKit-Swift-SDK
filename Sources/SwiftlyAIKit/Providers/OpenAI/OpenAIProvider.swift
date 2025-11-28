@@ -1,6 +1,52 @@
 import Foundation
 
 /// OpenAI provider implementation for GPT models and DALL-E image generation
+///
+/// Complete implementation supporting GPT-4, GPT-4o, and DALL-E.
+///
+/// ## Overview
+///
+/// `OpenAIProvider` implements:
+/// - Chat Completions API (GPT models)
+/// - Streaming with SSE
+/// - Vision (image analysis with GPT-4o)
+/// - Tool/function calling
+/// - DALL-E image generation
+///
+/// ## Basic Usage
+///
+/// ```swift
+/// let provider = OpenAIProvider()
+/// let request = AIRequest(model: .gpt4(.o), prompt: "Hello")
+/// let response = try await provider.sendMessage(request, apiKey: "sk-...")
+/// ```
+///
+/// ## With Organization ID
+///
+/// ```swift
+/// let provider = OpenAIProvider(organizationId: "org-xxxxx")
+/// ```
+///
+/// ## Topics
+///
+/// ### Creating Providers
+/// - ``init(baseURL:organizationId:timeout:maxRetries:enableLogging:)``
+/// - ``init(httpClient:baseURL:organizationId:timeout:maxRetries:enableLogging:)``
+///
+/// ### ProviderProtocol Implementation
+/// - ``providerType``
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
+///
+/// ### ImageGenerationProvider Implementation
+/// - ``supportsImageGeneration``
+/// - ``imageGenerationModels``
+/// - ``generateImage(_:apiKey:)``
+///
+/// ## See Also
+/// - <doc:OpenAIGuide>
+/// - <doc:ImageGeneration>
+/// - <doc:VisionAndImageAnalysis>
 public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
     public let providerType: ProviderType = .openai
 

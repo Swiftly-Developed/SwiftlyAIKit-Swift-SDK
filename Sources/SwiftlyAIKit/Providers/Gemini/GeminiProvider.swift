@@ -1,6 +1,42 @@
 import Foundation
 
 /// Google Gemini provider implementation
+///
+/// Complete implementation supporting Gemini 2.5 Pro, 2.0 Flash, and 1.5 models.
+///
+/// ## Overview
+///
+/// `GeminiProvider` implements:
+/// - GenerateContent API with 2M token context
+/// - Streaming responses
+/// - Token counting API
+/// - Function calling
+/// - Multimodal (text, images, audio, video)
+/// - Safety settings
+///
+/// ## Basic Usage
+///
+/// ```swift
+/// let provider = GeminiProvider()
+/// let request = AIRequest(model: .gemini(.pro2_5), prompt: "Analyze this document")
+/// let response = try await provider.sendMessage(request, apiKey: "YOUR_GOOGLE_API_KEY")
+/// ```
+///
+/// ## Topics
+///
+/// ### Creating Providers
+/// - ``init(baseURL:timeout:maxRetries:enableLogging:)``
+/// - ``init(httpClient:baseURL:timeout:maxRetries:enableLogging:)``
+///
+/// ### ProviderProtocol Implementation
+/// - ``providerType``
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
+/// - ``countTokens(_:apiKey:)``
+///
+/// ## See Also
+/// - <doc:GeminiGuide>
+/// - <doc:VisionAndImageAnalysis>
 public struct GeminiProvider: ProviderProtocol {
     public let providerType: ProviderType = .google
 

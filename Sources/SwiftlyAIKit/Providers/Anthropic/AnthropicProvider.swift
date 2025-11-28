@@ -2,11 +2,65 @@ import Foundation
 
 /// Anthropic Claude API Provider
 ///
-/// Complete implementation of Anthropic's Messages API, including:
+/// Complete implementation of Anthropic's Messages API with full support for Claude models.
+///
+/// ## Overview
+///
+/// `AnthropicProvider` implements all Anthropic Claude features:
 /// - Messages API (create, stream)
 /// - Token counting
-/// - Batch API (create, retrieve, cancel, list, results)
-/// - All advanced features (caching, thinking, tools, vision, PDFs)
+/// - Batch API (async bulk processing)
+/// - Prompt caching (90% cost reduction)
+/// - Extended thinking mode
+/// - Tool calling
+/// - Vision (images and PDFs)
+///
+/// ## Basic Usage
+///
+/// ```swift
+/// let provider = AnthropicProvider()
+/// let request = AIRequest(model: .claude(.sonnet4_5), prompt: "Hello")
+/// let response = try await provider.sendMessage(request, apiKey: "sk-ant-...")
+/// ```
+///
+/// ## With Beta Features
+///
+/// ```swift
+/// let provider = AnthropicProvider(
+///     enableBetaFeatures: ["prompt-caching-2024-07-31"]
+/// )
+/// ```
+///
+/// ## Topics
+///
+/// ### Creating Providers
+/// - ``init(apiVersion:baseURL:enableBetaFeatures:)``
+/// - ``init(httpClient:apiVersion:baseURL:enableBetaFeatures:)``
+/// - ``init(apiVersion:baseURL:timeout:maxRetries:enableLogging:enableBetaFeatures:)``
+///
+/// ### ProviderProtocol Implementation
+/// - ``providerType``
+/// - ``sendMessage(_:apiKey:)``
+/// - ``streamMessage(_:apiKey:)``
+/// - ``countTokens(_:apiKey:)``
+/// - ``createBatch(_:apiKey:)``
+/// - ``retrieveBatch(_:apiKey:)``
+/// - ``cancelBatch(_:apiKey:)``
+/// - ``listBatches(limit:afterId:apiKey:)``
+/// - ``getBatchResults(_:apiKey:)``
+///
+/// ### Related Types
+/// - ``ProviderProtocol``
+/// - ``AIRequest``
+/// - ``AIResponse``
+/// - ``BatchStatus``
+/// - ``BatchResult``
+///
+/// ## See Also
+/// - <doc:AnthropicGuide>
+/// - <doc:PromptCaching>
+/// - <doc:BatchProcessing>
+/// - <doc:ToolCalling>
 public struct AnthropicProvider: ProviderProtocol {
     public let providerType: ProviderType = .anthropic
 
