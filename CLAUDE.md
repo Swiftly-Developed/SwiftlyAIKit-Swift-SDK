@@ -48,6 +48,41 @@ swift package clean
 swift package update
 ```
 
+## Documentation Structure
+
+SwiftlyAIKit uses DocC for comprehensive documentation with provider-first organization.
+
+**Building Documentation:**
+DocC documentation is built automatically when you build the package in Xcode or use Xcode's documentation tools. The documentation is organized using extension files that group types by provider and feature.
+
+**Documentation Organization:**
+- **Extension files** in `Documentation.docc/APIReference/` group types by provider and core feature
+- **Provider pages**: Each of the 9 providers has a dedicated page grouping all related types together
+  - `APIReference/Providers/AnthropicProvider.md` - All 22 Anthropic types
+  - `APIReference/Providers/OpenAIProvider.md` - All 18 OpenAI types
+  - `APIReference/Providers/GeminiProvider.md` - All Gemini types
+  - Plus 6 more provider pages (Perplexity, Mistral, Cohere, DeepSeek, Grok, Apple Intelligence)
+- **Core API pages**: 6 extension files organize framework-level types
+  - `APIReference/Core/AIGateway.md` - Gateway actor and methods
+  - `APIReference/Core/Configuration.md` - Configuration and API key strategies
+  - `APIReference/Core/AIRequest.md` - Request types
+  - `APIReference/Core/AIResponse.md` - Response types
+  - `APIReference/Core/ImageGeneration.md` - Image generation types
+  - `APIReference/Core/ModelProvider.md` - Model enums
+- **Guide files**: 41 comprehensive guides covering concepts, tutorials, and platform integration
+- **Root page**: `Documentation.docc/SwiftlyAIKit.md` presents provider-first navigation
+
+**Navigation Structure:**
+Documentation is organized provider-first rather than by type kind:
+- Getting Started
+- Core Framework (AIGateway, Configuration, etc.)
+- AI Providers (Anthropic, OpenAI, Gemini, etc.)
+  - Each provider shows API Reference + Complete Guide
+  - Provider capabilities listed (context window, features, model count)
+- Core Concepts, Advanced Features, Platform Integration, etc.
+
+This structure makes it easy to find all Anthropic-specific or OpenAI-specific types together, rather than scattered across Protocols, Structures, and Enumerations.
+
 ## Architecture
 
 ### Core Components
@@ -461,6 +496,55 @@ git tag -a v0.2.0 -m "Release v0.2.0: Complete Anthropic Claude API integration"
 git push origin main
 git push origin --tags
 ```
+
+### Creating GitHub Releases
+
+**IMPORTANT: Create GitHub Releases after pushing tags**
+
+GitHub Releases provide a user-friendly way to distribute versions with release notes, binary assets, and automatic archive downloads.
+
+**Release Process**:
+
+1. **Push your tag first**:
+   ```bash
+   git tag -a v0.11.0 -m "Release v0.11.0"
+   git push origin v0.11.0
+   ```
+
+2. **Create the GitHub Release**:
+   - Go to https://github.com/Swiftly-Developed/SwiftlyAIKit/releases
+   - Click "Draft a new release"
+   - Select your tag (e.g., v0.11.0)
+   - Click "Generate release notes" button for automatic categorization
+   - Review the generated notes and edit if needed
+   - Mark as "pre-release" if version is 0.y.z
+   - Click "Publish release"
+
+3. **Automated Release Notes**:
+   This repository has `.github/release.yml` configured to automatically categorize pull requests:
+   - 💥 Breaking Changes (labels: breaking-change, breaking, major)
+   - 🚀 New Features (labels: feature, enhancement, new-feature)
+   - 🐛 Bug Fixes (labels: bug, bugfix, fix)
+   - 🔒 Security (labels: security, vulnerability)
+   - ⚡ Performance (labels: performance, optimization)
+   - 📝 Documentation (labels: documentation, docs)
+   - 🧪 Testing (labels: test, testing)
+   - 🔧 Maintenance (labels: maintenance, chore, refactor, dependencies)
+
+**Link to Latest Release**:
+Users can always access the latest version at:
+```
+https://github.com/Swiftly-Developed/SwiftlyAIKit/releases/latest
+```
+
+**Semantic Versioning Rules**:
+- **MAJOR (X.0.0)**: Breaking API changes (e.g., v0.10.0 → v1.0.0)
+- **MINOR (0.X.0)**: New features, backward compatible (e.g., v0.10.0 → v0.11.0)
+- **PATCH (0.0.X)**: Bug fixes, backward compatible (e.g., v0.10.0 → v0.10.1)
+- **Note**: Version 0.y.z is for initial development. Version 1.0.0 defines first stable public API.
+
+**Version Alignment**:
+SwiftlyAIKit releases must be coordinated with other SwiftlyAI packages (SwiftlyAIServerKit, SwiftlyAIClient, SwiftlyAIVapor, SwiftlyAIHummingbird) to maintain version synchronization across the ecosystem. See the workspace CLAUDE.md for multi-package release procedures.
 
 ## Quick Reference
 
