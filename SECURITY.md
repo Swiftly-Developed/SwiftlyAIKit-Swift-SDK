@@ -17,7 +17,7 @@ We take security seriously. If you discover a security vulnerability, please rep
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please send an email to: **security@swiftly-developed.com**
+Instead, please send an email to: **info@swiftly-developed.com**
 
 Include the following information:
 - Type of vulnerability
