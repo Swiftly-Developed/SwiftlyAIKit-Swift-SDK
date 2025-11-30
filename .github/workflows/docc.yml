@@ -30,7 +30,8 @@ jobs:
             generate-documentation --target SwiftlyAIKit \
             --output-path ./docs \
             --transform-for-static-hosting \
-            --hosting-base-path SwiftlyAIKit
+            --hosting-base-path SwiftlyAIKit \
+            --disable-indexing
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
