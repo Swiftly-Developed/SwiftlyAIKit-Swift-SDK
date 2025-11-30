@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Documentation**: Complete restructure of DocC documentation for provider-first navigation
+- **Documentation**: Added 15 new API reference extension files grouping types by provider and feature
+- **Documentation**: Reorganized root documentation page (SwiftlyAIKit.md) with provider-first Topics hierarchy
+- **Documentation**: Each provider now has dedicated API reference page grouping all related types together
+- **Documentation**: Core framework types organized into logical groups (AIGateway, Configuration, AIRequest, AIResponse, ImageGeneration, ModelProvider)
+
+### Technical Details
+- Created 9 provider-specific extension files in `Documentation.docc/APIReference/Providers/`:
+  - AnthropicProvider.md (22 types)
+  - OpenAIProvider.md (18 types)
+  - GeminiProvider.md (Gemini types + GoogleProvider alias)
+  - PerplexityProvider.md (Perplexity types + PerplexityOptions)
+  - MistralProvider.md (Mistral types)
+  - CohereProvider.md (Cohere types)
+  - DeepSeekProvider.md (DeepSeek types)
+  - GrokProvider.md (Grok types)
+  - AppleIntelligenceProvider.md (Apple Intelligence types)
+- Created 6 core API extension files in `Documentation.docc/APIReference/Core/`:
+  - AIGateway.md
+  - Configuration.md
+  - AIRequest.md
+  - AIResponse.md
+  - ImageGeneration.md
+  - ModelProvider.md
+- Updated SwiftlyAIKit.md Topics section with provider-first organization
+- All 41 existing guide files remain accessible and functional
+
 ## [0.9.0] - 2025-11-25
 
 ### Added
