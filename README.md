@@ -4,7 +4,7 @@ A unified, cross-platform Swift framework for interacting with multiple AI model
 
 ## Features
 
-- **8 AI Providers**: Anthropic Claude, OpenAI GPT, Google Gemini, Perplexity, Mistral, Cohere, DeepSeek, xAI Grok
+- **9 AI Providers**: Anthropic Claude, OpenAI GPT, Google Gemini, Perplexity, Mistral, Cohere, DeepSeek, xAI Grok, Apple Intelligence
 - **Cross-Platform**: iOS, macOS, watchOS, tvOS, visionOS, and Linux
 - **Streaming**: Server-Sent Events (SSE) for real-time responses
 - **Vision**: Image analysis support (OpenAI, Gemini, Mistral, Cohere, Grok)
@@ -21,7 +21,7 @@ A unified, cross-platform Swift framework for interacting with multiple AI model
 
 ## Requirements
 
-- Swift 6.2+
+- Swift 6.0+
 - iOS 16.0+ / macOS 13.0+ / watchOS 9.0+ / tvOS 16.0+ / visionOS 1.0+ / Linux
 
 ## Installation
@@ -30,7 +30,7 @@ Add SwiftlyAIKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Swiftly-Developed/SwiftlyAIKit.git", from: "0.9.0")
+    .package(url: "https://github.com/Swiftly-Developed/SwiftlyAIKit.git", from: "0.10.0")
 ]
 ```
 
@@ -45,7 +45,7 @@ Add to your target:
 )
 ```
 
-> **Note:** For Vapor server integration, use [SwiftlyAIServerKit](https://github.com/Swiftly-Developed/SwiftlyAIServerKit) instead.
+> **Note:** For server-side integration (Vapor or Hummingbird), use [SwiftlyAIServerKit](https://github.com/Swiftly-Developed/SwiftlyAIServerKit) which provides server-specific extensions and helpers.
 
 ## Quick Start
 
@@ -171,6 +171,7 @@ let config = Configuration.withHybridKeys(defaultKey: "sk-ant-...")
 | **Cohere** | Command A, Command R | Streaming, Vision, Tools, RAG, Token Count |
 | **DeepSeek** | Chat, Coder, R1 | Streaming, Tools, Caching, Reasoning |
 | **xAI Grok** | Grok 4, Grok 3, Vision | Streaming, Vision, Tools, Web Search, Images |
+| **Apple Intelligence** | Foundation Models | On-device, Privacy-first, No API key needed |
 
 ## Architecture
 
@@ -178,7 +179,7 @@ let config = Configuration.withHybridKeys(defaultKey: "sk-ant-...")
 Sources/SwiftlyAIKit/
 ├── Core/           # AIGateway, Configuration, APIKeyStrategy, ProviderProtocol
 ├── Models/         # AIRequest, AIResponse, AIMessage, AIError, AITool
-├── Providers/      # 8 provider implementations
+├── Providers/      # 9 provider implementations
 │   ├── Anthropic/
 │   ├── OpenAI/
 │   ├── Gemini/
@@ -186,7 +187,8 @@ Sources/SwiftlyAIKit/
 │   ├── Mistral/
 │   ├── Cohere/
 │   ├── DeepSeek/
-│   └── Grok/
+│   ├── Grok/
+│   └── Apple/     # Apple Intelligence (on-device)
 └── Utilities/      # HTTPClientManager with retry logic
 ```
 
