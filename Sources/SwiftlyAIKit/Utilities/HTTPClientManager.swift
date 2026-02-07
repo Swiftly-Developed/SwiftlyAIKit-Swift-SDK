@@ -216,10 +216,6 @@ public actor HTTPClientManager {
                     // Set body
                     request.body = .bytes(ByteBuffer(data: body))
 
-                    if self.enableLogging {
-                        print("[HTTP] Streaming POST \(url)")
-                    }
-
                     // Execute request with streaming
                     let response = try await self.httpClient.execute(request, timeout: self.timeout)
 
@@ -300,18 +296,19 @@ public actor HTTPClientManager {
             request.body = .bytes(ByteBuffer(data: body))
         }
 
-        if enableLogging {
-            print("[HTTP] \(method.rawValue) \(url)")
-            print("[HTTP] Headers: \(headers)")
-            if let body = body, let bodyString = String(data: body, encoding: .utf8) {
-                print("[HTTP] Body: \(bodyString)")
-            }
-        }
-
         await aiLog(.debug, "Executing HTTP request", context: context, metadata: [
             "method": method.rawValue,
             "url": url
         ])
+
+        if enableLogging {
+            await aiLog(.debug, "HTTP request details", context: context, metadata: [
+                "method": method.rawValue,
+                "url": url,
+                "headers": "\(headers)",
+                "bodySize": body.map { "\($0.count) bytes" } ?? "none"
+            ])
+        }
 
         let response: HTTPClientResponse
         do {
@@ -333,9 +330,11 @@ public actor HTTPClientManager {
         ])
 
         if enableLogging {
-            print("[HTTP] Status: \(response.status.code)")
             let bodyString = responseBody.getString(at: 0, length: responseBody.readableBytes) ?? ""
-            print("[HTTP] Response: \(bodyString)")
+            await aiLog(.debug, "HTTP response details", context: context, metadata: [
+                "status": "\(response.status.code)",
+                "response": String(bodyString.prefix(500))
+            ])
         }
 
         // Handle error status codes
@@ -386,11 +385,7 @@ public actor HTTPClientManager {
                     "error": error.localizedDescription
                 ])
 
-                if enableLogging {
-                    print("[HTTP] Retry attempt \(attempt + 1) after \(delay)s delay")
-                }
-
-                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                try await Task.sleep(for: .seconds(delay))
                 attempt += 1
             } catch {
                 // Non-AIError - log it and don't retry
