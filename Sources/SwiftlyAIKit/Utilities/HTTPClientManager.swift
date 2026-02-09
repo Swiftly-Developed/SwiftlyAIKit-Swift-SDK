@@ -214,7 +214,7 @@ public actor HTTPClientManager {
                     }
 
                     // Set body
-                    request.body = .bytes(ByteBuffer(data: body))
+                    request.body = .bytes(ByteBuffer(bytes: body))
 
                     // Execute request with streaming
                     let response = try await self.httpClient.execute(request, timeout: self.timeout)
@@ -239,7 +239,7 @@ public actor HTTPClientManager {
                     var chunkCount = 0
                     for try await buffer in response.body {
                         chunkCount += 1
-                        continuation.yield(Data(buffer: buffer))
+                        continuation.yield(Data(buffer.readableBytesView))
                     }
 
                     await aiLog(.info, "Stream completed", context: streamContext, metadata: [
@@ -293,7 +293,7 @@ public actor HTTPClientManager {
 
         // Set body if provided
         if let body = body {
-            request.body = .bytes(ByteBuffer(data: body))
+            request.body = .bytes(ByteBuffer(bytes: body))
         }
 
         await aiLog(.debug, "Executing HTTP request", context: context, metadata: [
@@ -352,7 +352,7 @@ public actor HTTPClientManager {
             "status": "\(response.status.code)"
         ])
 
-        return Data(buffer: responseBody)
+        return Data(responseBody.readableBytesView)
     }
 
     private func executeWithRetry<T>(context: LogContext? = nil, _ operation: @escaping () async throws -> T) async throws -> T {
