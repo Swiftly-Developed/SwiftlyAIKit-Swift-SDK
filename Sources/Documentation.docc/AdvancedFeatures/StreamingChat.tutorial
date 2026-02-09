@@ -1,0 +1,191 @@
+@Tutorial(time: 15) {
+    @Intro(title: "Building a Streaming Chat App") {
+        Create a ChatGPT-style interface with real-time streaming responses.
+
+        Learn how to build a complete SwiftUI chat application that displays AI responses as they're generated, providing a modern, responsive user experience.
+    }
+
+    @Section(title: "Set Up the Project") {
+        @ContentAndMedia {
+            Create a new SwiftUI project and add SwiftlyAIKit.
+
+            You'll build a chat interface with message history, streaming responses, and a clean UI.
+        }
+
+        @Steps {
+            @Step {
+                Create a new SwiftUI app in Xcode.
+
+                File → New → Project → iOS → App
+
+                @Code(name: "Package.swift", file: streaming-01-setup.swift)
+            }
+
+            @Step {
+                Add SwiftlyAIKit dependency.
+
+                @Code(name: "Package.swift", file: streaming-02-dependency.swift)
+            }
+        }
+    }
+
+    @Section(title: "Create the ViewModel") {
+        @ContentAndMedia {
+            Build a view model to manage chat state and streaming.
+
+            The view model will handle message history, streaming text accumulation, and error states.
+        }
+
+        @Steps {
+            @Step {
+                Create a ChatMessage model.
+
+                @Code(name: "ChatMessage.swift", file: streaming-03-message.swift)
+            }
+
+            @Step {
+                Create the view model with published properties.
+
+                @Code(name: "ChatViewModel.swift", file: streaming-04-viewmodel.swift)
+            }
+
+            @Step {
+                Add the sendMessage function with streaming support.
+
+                @Code(name: "ChatViewModel.swift", file: streaming-05-send.swift)
+            }
+
+            @Step {
+                Add cancellation support.
+
+                @Code(name: "ChatViewModel.swift", file: streaming-06-cancel.swift)
+            }
+        }
+    }
+
+    @Section(title: "Build the Chat Interface") {
+        @ContentAndMedia {
+            Create SwiftUI views for the chat interface.
+
+            You'll build message rows, a streaming indicator, and an input field.
+        }
+
+        @Steps {
+            @Step {
+                Create a message row view.
+
+                @Code(name: "MessageRow.swift", file: streaming-07-messagerow.swift)
+            }
+
+            @Step {
+                Create a streaming message row with typing indicator.
+
+                @Code(name: "StreamingRow.swift", file: streaming-08-streaming.swift)
+            }
+
+            @Step {
+                Build the main chat view.
+
+                @Code(name: "ChatView.swift", file: streaming-09-chatview.swift)
+            }
+
+            @Step {
+                Add auto-scrolling to latest message.
+
+                @Code(name: "ChatView.swift", file: streaming-10-autoscroll.swift)
+            }
+        }
+    }
+
+    @Section(title: "Add Polish and Features") {
+        @ContentAndMedia {
+            Enhance the app with error handling, provider selection, and settings.
+
+            Make the app production-ready with proper error states and configuration.
+        }
+
+        @Steps {
+            @Step {
+                Add error handling UI.
+
+                @Code(name: "ChatView.swift", file: streaming-11-errors.swift)
+            }
+
+            @Step {
+                Add provider selection.
+
+                @Code(name: "ChatView.swift", file: streaming-12-providers.swift)
+            }
+
+            @Step {
+                Add settings for API key configuration.
+
+                @Code(name: "SettingsView.swift", file: streaming-13-settings.swift)
+            }
+
+            @Step {
+                Complete app with entry point.
+
+                @Code(name: "App.swift", file: streaming-14-complete.swift)
+            }
+        }
+    }
+
+    @Assessments {
+        @MultipleChoice {
+            Why use streaming instead of waiting for the complete response?
+
+            @Choice(isCorrect: false) {
+                Streaming is faster overall
+
+                @Justification(isCorrect: false) {
+                    Total time is similar, but streaming *feels* faster because users see progress immediately.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                Better user experience with immediate feedback
+
+                @Justification(isCorrect: true) {
+                    Correct! Streaming provides immediate feedback, allows early cancellation, and creates the familiar ChatGPT-style interface users expect.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                Streaming uses fewer tokens
+
+                @Justification(isCorrect: false) {
+                    Token usage is the same whether streaming or not. The benefit is user experience.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            How do you handle streaming text in SwiftUI?
+
+            @Choice(isCorrect: false) {
+                Update a @State variable on every chunk
+
+                @Justification(isCorrect: false) {
+                    This works but can cause performance issues. Better to batch updates or use @Published in a view model.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                Accumulate in a @Published variable in an @ObservableObject
+
+                @Justification(isCorrect: true) {
+                    Correct! Using @Published in a view model with @MainActor ensures thread-safe UI updates.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                Store each chunk separately
+
+                @Justification(isCorrect: false) {
+                    This would create many separate messages instead of one streaming message.
+                }
+            }
+        }
+    }
+}

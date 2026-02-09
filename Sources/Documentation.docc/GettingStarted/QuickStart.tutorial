@@ -1,0 +1,238 @@
+@Tutorial(time: 5) {
+    @Intro(title: "Quick Start: Your First AI Call") {
+        Get from installation to working AI response in 5 minutes.
+
+        Learn how to install SwiftlyAIKit, configure it with your API key, and make your first call to an AI provider.
+    }
+
+    @Section(title: "Install SwiftlyAIKit") {
+        @ContentAndMedia {
+            Add SwiftlyAIKit to your Swift project using Swift Package Manager.
+
+            Whether you're building an iOS app, macOS app, or server application, installation is the same.
+        }
+
+        @Steps {
+            @Step {
+                Open your project in Xcode and navigate to **File → Add Packages**.
+
+                @Image(source: "quickstart-add-package.png", alt: "Xcode Add Packages menu")
+            }
+
+            @Step {
+                Enter the SwiftlyAIKit repository URL and click **Add Package**.
+
+                ```swift
+                https://github.com/Swiftly-Developed/SwiftlyAIKit.git
+                ```
+
+                @Image(source: "quickstart-package-url.png", alt: "Enter package URL")
+            }
+
+            @Step {
+                Select your target and add SwiftlyAIKit as a dependency.
+
+                @Image(source: "quickstart-select-target.png", alt: "Select target for package")
+            }
+
+            @Step {
+                For command-line tools or server applications, add SwiftlyAIKit to your Package.swift:
+
+                @Code(name: "Package.swift", file: quickstart-01-package.swift)
+            }
+        }
+    }
+
+    @Section(title: "Get an API Key") {
+        @ContentAndMedia {
+            Sign up for an API key from any supported AI provider.
+
+            For this tutorial, we'll use Anthropic Claude, but the same steps work for all providers.
+        }
+
+        @Steps {
+            @Step {
+                Visit [console.anthropic.com](https://console.anthropic.com) and create an account.
+
+                Other providers:
+                - OpenAI: [platform.openai.com](https://platform.openai.com)
+                - Google: [aistudio.google.com](https://aistudio.google.com)
+                - See <doc:ChoosingAProvider> for all options
+
+                @Image(source: "anthropic-console.png", alt: "Anthropic Console")
+            }
+
+            @Step {
+                Navigate to **API Keys** and click **Create Key**.
+
+                @Image(source: "anthropic-create-key.png", alt: "Create API key")
+            }
+
+            @Step {
+                Copy your API key. It will look like `sk-ant-api03-...`
+
+                **Important:** Keep this key secret! Never commit it to source control.
+
+                @Image(source: "anthropic-copy-key.png", alt: "Copy API key")
+            }
+        }
+    }
+
+    @Section(title: "Make Your First Call") {
+        @ContentAndMedia {
+            Write just 10 lines of code to call an AI provider.
+
+            This example uses Anthropic Claude, but you can switch to any provider by changing one parameter.
+        }
+
+        @Steps {
+            @Step {
+                Import SwiftlyAIKit at the top of your Swift file.
+
+                @Code(name: "main.swift", file: quickstart-02-import.swift)
+            }
+
+            @Step {
+                Create a configuration with your API key.
+
+                The configuration determines how SwiftlyAIKit authenticates with providers.
+
+                @Code(name: "main.swift", file: quickstart-03-config.swift)
+            }
+
+            @Step {
+                Create an AI gateway using your configuration.
+
+                The gateway is the main interface for all AI operations.
+
+                @Code(name: "main.swift", file: quickstart-04-gateway.swift)
+            }
+
+            @Step {
+                Create a request with your prompt.
+
+                The request includes the model to use and the message to send.
+
+                @Code(name: "main.swift", file: quickstart-05-request.swift)
+            }
+
+            @Step {
+                Send the request and get the response.
+
+                This is an async operation that waits for the AI provider to respond.
+
+                @Code(name: "main.swift", file: quickstart-06-send.swift)
+            }
+
+            @Step {
+                Print the response content.
+
+                The AI's response is in the `message.content` property.
+
+                @Code(name: "main.swift", file: quickstart-07-complete.swift)
+            }
+
+            @Step {
+                Run your app and see the AI response!
+
+                In Xcode: Click the **Run** button (or press ⌘R)
+
+                For command-line tools:
+                ```bash
+                swift run
+                ```
+
+                Expected output:
+                ```
+                Hello! I'm Claude, an AI assistant. How can I help you today?
+                ```
+            }
+        }
+    }
+
+    @Section(title: "Try Different Providers") {
+        @ContentAndMedia {
+            Switch between AI providers without changing your code.
+
+            SwiftlyAIKit's unified API means the same code works for all providers.
+        }
+
+        @Steps {
+            @Step {
+                To use OpenAI GPT instead, just change the `to` parameter:
+
+                @Code(name: "main.swift", file: quickstart-08-openai.swift)
+            }
+
+            @Step {
+                To use Google Gemini:
+
+                @Code(name: "main.swift", file: quickstart-09-gemini.swift)
+            }
+
+            @Step {
+                To use different models from the same provider:
+
+                @Code(name: "main.swift", file: quickstart-10-models.swift)
+            }
+        }
+    }
+
+    @Assessments {
+        @MultipleChoice {
+            What do you need to call an AI provider with SwiftlyAIKit?
+
+            @Choice(isCorrect: false) {
+                Just the SwiftlyAIKit package
+
+                @Justification(isCorrect: false) {
+                    You also need an API key from the provider you want to use.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                Just an API key from the provider
+
+                @Justification(isCorrect: false) {
+                    You need both the SwiftlyAIKit package and an API key.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                SwiftlyAIKit package and an API key
+
+                @Justification(isCorrect: true) {
+                    Correct! You need to install SwiftlyAIKit and get an API key from your chosen provider.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            How do you switch between different AI providers?
+
+            @Choice(isCorrect: false) {
+                Rewrite all your code for each provider
+
+                @Justification(isCorrect: false) {
+                    SwiftlyAIKit uses a unified API, so no rewriting is needed.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                Change the `to` parameter in your sendMessage call
+
+                @Justification(isCorrect: true) {
+                    Correct! Just change `to: .anthropic` to `to: .openai` or any other provider.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                Install a different package for each provider
+
+                @Justification(isCorrect: false) {
+                    All providers are included in SwiftlyAIKit - no need for separate packages.
+                }
+            }
+        }
+    }
+}

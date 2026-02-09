@@ -1,0 +1,69 @@
+# GitHub Release Notes Configuration for SwiftlyAIKit
+# This file configures automatic release note generation
+# Documentation: https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+
+changelog:
+  exclude:
+    # Exclude pull requests with these labels from release notes
+    labels:
+      - ignore-for-release
+      - duplicate
+      - invalid
+      - wontfix
+    # Exclude automated contributors
+    authors:
+      - dependabot
+      - dependabot[bot]
+      - github-actions[bot]
+
+  # Categorize pull requests by label
+  categories:
+    - title: 💥 Breaking Changes
+      labels:
+        - breaking-change
+        - breaking
+        - major
+
+    - title: 🚀 New Features
+      labels:
+        - feature
+        - enhancement
+        - new-feature
+
+    - title: 🐛 Bug Fixes
+      labels:
+        - bug
+        - bugfix
+        - fix
+
+    - title: 🔒 Security
+      labels:
+        - security
+        - vulnerability
+
+    - title: ⚡ Performance
+      labels:
+        - performance
+        - optimization
+
+    - title: 📝 Documentation
+      labels:
+        - documentation
+        - docs
+
+    - title: 🧪 Testing
+      labels:
+        - test
+        - testing
+
+    - title: 🔧 Maintenance
+      labels:
+        - maintenance
+        - chore
+        - refactor
+        - dependencies
+
+    # Catch-all for uncategorized changes
+    - title: 📦 Other Changes
+      labels:
+        - "*"

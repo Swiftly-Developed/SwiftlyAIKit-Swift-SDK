@@ -1,0 +1,24 @@
+# CODEOWNERS for SwiftlyAIKit
+# These owners will be requested for review when someone opens a pull request.
+
+# Global owners - these users will be requested for review on all PRs
+* @VanAkenBen @doninciso-swiftly @pjhvelasquez
+
+# Core framework
+/Sources/SwiftlyAIKit/Core/ @VanAkenBen @doninciso-swiftly @pjhvelasquez
+
+# Provider implementations
+/Sources/SwiftlyAIKit/Providers/ @VanAkenBen @doninciso-swiftly @pjhvelasquez
+
+# Models
+/Sources/SwiftlyAIKit/Models/ @VanAkenBen @doninciso-swiftly @pjhvelasquez
+
+# Tests
+/Tests/ @VanAkenBen @doninciso-swiftly @pjhvelasquez
+
+# Documentation
+*.md @VanAkenBen @doninciso-swiftly @pjhvelasquez
+/Documentation/ @VanAkenBen @doninciso-swiftly @pjhvelasquez
+
+# Package manifest
+Package.swift @VanAkenBen @doninciso-swiftly @pjhvelasquez
