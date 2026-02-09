@@ -155,7 +155,7 @@ public actor MockProvider: ProviderProtocol {
         return response
     }
 
-    public nonisolated func streamMessage(_ request: AIRequest, apiKey: String) -> AsyncThrowingStream<AIResponse, Error> {
+    nonisolated public func streamMessage(_ request: AIRequest, apiKey: String) -> AsyncThrowingStream<AIResponse, Error> {
         AsyncThrowingStream { continuation in
             Task {
                 // Capture request
@@ -283,7 +283,7 @@ public actor MockProvider: ProviderProtocol {
         return batchStatuses
     }
 
-    public nonisolated func getBatchResults(_ batchId: String, apiKey: String) -> AsyncThrowingStream<BatchResult, Error> {
+    nonisolated public func getBatchResults(_ batchId: String, apiKey: String) -> AsyncThrowingStream<BatchResult, Error> {
         AsyncThrowingStream { continuation in
             Task {
                 // Capture request
