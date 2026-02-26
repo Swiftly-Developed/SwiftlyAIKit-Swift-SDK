@@ -408,12 +408,7 @@ public struct AnthropicUsage: Codable, Sendable, Equatable {
     public let cacheCreationInputTokens: Int?
     public let cacheReadInputTokens: Int?
 
-    enum CodingKeys: String, CodingKey {
-        case inputTokens = "input_tokens"
-        case outputTokens = "output_tokens"
-        case cacheCreationInputTokens = "cache_creation_input_tokens"
-        case cacheReadInputTokens = "cache_read_input_tokens"
-    }
+    // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
 
     public init(
         inputTokens: Int,
@@ -449,12 +444,7 @@ public struct AnthropicResponse: Codable, Sendable {
     public let stopSequence: String?
     public let usage: AnthropicUsage
 
-    enum CodingKeys: String, CodingKey {
-        case id, type, role, content, model
-        case stopReason = "stop_reason"
-        case stopSequence = "stop_sequence"
-        case usage
-    }
+    // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
 
     public init(
         id: String,
