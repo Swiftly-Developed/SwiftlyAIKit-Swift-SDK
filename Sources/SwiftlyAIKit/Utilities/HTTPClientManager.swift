@@ -239,7 +239,9 @@ public actor HTTPClientManager {
                     var chunkCount = 0
                     for try await buffer in response.body {
                         chunkCount += 1
-                        continuation.yield(Data(buffer: buffer))
+                        var buf = buffer
+                        let bytes = buf.readBytes(length: buf.readableBytes) ?? []
+                        continuation.yield(Data(bytes))
                     }
 
                     await aiLog(.info, "Stream completed", context: streamContext, metadata: [
