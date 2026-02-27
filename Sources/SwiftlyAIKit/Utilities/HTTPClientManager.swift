@@ -385,7 +385,7 @@ public actor HTTPClientManager {
                     "error": error.localizedDescription
                 ])
 
-                try await Task.sleep(for: .seconds(delay))
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 attempt += 1
             } catch {
                 // Non-AIError - log it and don't retry
