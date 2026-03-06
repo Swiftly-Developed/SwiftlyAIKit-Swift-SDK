@@ -632,36 +632,101 @@ public struct AnthropicProvider: ProviderProtocol {
 
     private func processStreamEvent(_ event: AnthropicStreamEvent) -> AIResponse? {
         switch event {
-        case .contentBlockDelta(let delta):
-            if let text = delta.delta.text {
-                let message = AIMessage(role: .assistant, text: text)
-                return AIResponse(
-                    id: "stream",
-                    model: "unknown",
-                    message: message,
-                    provider: .anthropic
-                )
-            }
-            return nil
         case .messageStart(let start):
             return AIResponse(
                 id: start.message.id,
                 model: start.message.model,
                 message: AIMessage(role: .assistant, text: ""),
-                provider: .anthropic
+                provider: .anthropic,
+                providerData: ["streamEvent": AnyCodable("message_start")]
             )
-        case .contentBlockStart:
+
+        case .contentBlockStart(let start):
+            // Surface tool use starts so callers can track tool execution
+            if case .toolUse(let id, let name, _) = start.contentBlock {
+                return AIResponse(
+                    id: "stream",
+                    model: "unknown",
+                    message: AIMessage(role: .assistant, content: [
+                        .toolCall(AIToolCall(id: id, name: name, arguments: ""))
+                    ]),
+                    provider: .anthropic,
+                    providerData: [
+                        "streamEvent": AnyCodable("content_block_start"),
+                        "index": AnyCodable(start.index)
+                    ]
+                )
+            }
             return nil
-        case .contentBlockStop:
+
+        case .contentBlockDelta(let delta):
+            // Text delta
+            if let text = delta.delta.text {
+                return AIResponse(
+                    id: "stream",
+                    model: "unknown",
+                    message: AIMessage(role: .assistant, text: text),
+                    provider: .anthropic,
+                    providerData: ["streamEvent": AnyCodable("text_delta")]
+                )
+            }
+            // Tool input JSON delta
+            if let partialJson = delta.delta.partialJson {
+                return AIResponse(
+                    id: "stream",
+                    model: "unknown",
+                    message: AIMessage(role: .assistant, text: partialJson),
+                    provider: .anthropic,
+                    providerData: [
+                        "streamEvent": AnyCodable("input_json_delta"),
+                        "index": AnyCodable(delta.index)
+                    ]
+                )
+            }
             return nil
-        case .messageDelta:
-            return nil
+
+        case .contentBlockStop(let stop):
+            return AIResponse(
+                id: "stream",
+                model: "unknown",
+                message: AIMessage(role: .assistant, text: ""),
+                provider: .anthropic,
+                providerData: [
+                    "streamEvent": AnyCodable("content_block_stop"),
+                    "index": AnyCodable(stop.index)
+                ]
+            )
+
+        case .messageDelta(let delta):
+            let stopReason: AIStopReason? = delta.delta.stopReason.flatMap {
+                AIStopReason(rawValue: $0.rawValue)
+            }
+            let usage: AIUsage? = delta.usage.map {
+                AIUsage(inputTokens: $0.inputTokens ?? 0, outputTokens: $0.outputTokens ?? 0)
+            }
+            return AIResponse(
+                id: "stream",
+                model: "unknown",
+                message: AIMessage(role: .assistant, text: ""),
+                stopReason: stopReason,
+                usage: usage,
+                provider: .anthropic,
+                providerData: ["streamEvent": AnyCodable("message_delta")]
+            )
+
         case .messageStop:
-            return nil
+            return AIResponse(
+                id: "stream",
+                model: "unknown",
+                message: AIMessage(role: .assistant, text: ""),
+                provider: .anthropic,
+                providerData: ["streamEvent": AnyCodable("message_stop")]
+            )
+
         case .ping:
             return nil
+
         case .error(let errorData):
-            // Log error but don't return a response
             Task {
                 await aiLog(.error, "Anthropic stream error", context: nil, metadata: [
                     "errorType": errorData.error.type,
