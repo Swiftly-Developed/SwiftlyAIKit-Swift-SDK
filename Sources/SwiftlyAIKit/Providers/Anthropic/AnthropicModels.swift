@@ -530,10 +530,12 @@ public enum AnthropicStreamEvent: Codable, Sendable {
         public struct Delta: Codable, Sendable {
             public let type: String
             public let text: String?
+            public let partialJson: String?
 
-            public init(type: String, text: String?) {
+            public init(type: String, text: String?, partialJson: String? = nil) {
                 self.type = type
                 self.text = text
+                self.partialJson = partialJson
             }
         }
     }
