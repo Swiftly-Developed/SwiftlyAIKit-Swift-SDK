@@ -179,8 +179,28 @@ public struct AnthropicProvider: ProviderProtocol {
 
                     let stream = try await streamMessage(anthropicRequest, apiKey: apiKey)
 
+                    var streamModel = anthropicRequest.model
+                    var streamId = "stream"
+
                     for try await event in stream {
-                        if let response = processStreamEvent(event) {
+                        if var response = processStreamEvent(event) {
+                            // Capture model and id from message_start
+                            if response.model != "unknown" {
+                                streamModel = response.model
+                            }
+                            if response.id != "stream" {
+                                streamId = response.id
+                            }
+                            // Inject tracked model and id into all events
+                            response = AIResponse(
+                                id: streamId,
+                                model: streamModel,
+                                message: response.message,
+                                stopReason: response.stopReason,
+                                usage: response.usage,
+                                provider: response.provider,
+                                providerData: response.providerData
+                            )
                             continuation.yield(response)
                         }
                     }
