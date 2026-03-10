@@ -610,6 +610,16 @@ public struct AnthropicProvider: ProviderProtocol {
 
         let system: AnthropicSystemPrompt? = request.systemPrompt.map { .text($0) }
 
+        // Decode raw tool definitions if provided (preserves full JSON schemas including nested objects)
+        let anthropicTools: [AnthropicToolDefinition]? = request.rawToolsJSON.flatMap { data in
+            try? JSONDecoder().decode([AnthropicToolDefinition].self, from: data)
+        }
+
+        // Decode raw tool choice if provided
+        let anthropicToolChoice: AnthropicToolChoice? = request.rawToolChoiceJSON.flatMap { data in
+            try? JSONDecoder().decode(AnthropicToolChoice.self, from: data)
+        }
+
         return AnthropicRequest(
             model: request.model,
             messages: messages,
@@ -621,8 +631,8 @@ public struct AnthropicProvider: ProviderProtocol {
             stopSequences: request.stopSequences,
             metadata: nil,
             stream: request.stream ? true : nil,
-            tools: nil,
-            toolChoice: nil,
+            tools: anthropicTools,
+            toolChoice: anthropicToolChoice,
             thinking: nil
         )
     }
