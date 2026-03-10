@@ -644,6 +644,16 @@ public struct AnthropicProvider: ProviderProtocol {
                 return .text(text)
             case .thinking(let text):
                 return .text("[Thinking] \(text)")
+            case .toolUse(let id, let name, let input):
+                // Serialize the tool input dict to a JSON string for AIToolCall.arguments
+                let argumentsString: String
+                if let data = try? JSONSerialization.data(withJSONObject: input.mapValues { $0.value }),
+                   let str = String(data: data, encoding: .utf8) {
+                    argumentsString = str
+                } else {
+                    argumentsString = "{}"
+                }
+                return .toolCall(AIToolCall(id: id, name: name, arguments: argumentsString))
             default:
                 return nil
             }
