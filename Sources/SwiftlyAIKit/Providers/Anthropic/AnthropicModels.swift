@@ -502,7 +502,12 @@ public enum AnthropicStreamEvent: Codable, Sendable {
             public let model: String
             public let stopReason: AnthropicStopReason?
             public let usage: StreamUsage
-            // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
+
+            enum CodingKeys: String, CodingKey {
+                case id, type, role, content, model
+                case stopReason = "stop_reason"
+                case usage
+            }
         }
 
         /// Usage info in streaming - fields are optional since they may not be present initially
@@ -511,7 +516,13 @@ public enum AnthropicStreamEvent: Codable, Sendable {
             public let outputTokens: Int?
             public let cacheCreationInputTokens: Int?
             public let cacheReadInputTokens: Int?
-            // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
+
+            enum CodingKeys: String, CodingKey {
+                case inputTokens = "input_tokens"
+                case outputTokens = "output_tokens"
+                case cacheCreationInputTokens = "cache_creation_input_tokens"
+                case cacheReadInputTokens = "cache_read_input_tokens"
+            }
         }
     }
 
@@ -519,7 +530,11 @@ public enum AnthropicStreamEvent: Codable, Sendable {
         public let type: String
         public let index: Int
         public let contentBlock: AnthropicContentBlock
-        // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
+
+        enum CodingKeys: String, CodingKey {
+            case type, index
+            case contentBlock = "content_block"
+        }
     }
 
     public struct AnthropicStreamContentBlockDelta: Codable, Sendable {
@@ -531,6 +546,11 @@ public enum AnthropicStreamEvent: Codable, Sendable {
             public let type: String
             public let text: String?
             public let partialJson: String?
+
+            enum CodingKeys: String, CodingKey {
+                case type, text
+                case partialJson = "partial_json"
+            }
 
             public init(type: String, text: String?, partialJson: String? = nil) {
                 self.type = type
@@ -553,7 +573,11 @@ public enum AnthropicStreamEvent: Codable, Sendable {
         public struct Delta: Codable, Sendable {
             public let stopReason: AnthropicStopReason?
             public let stopSequence: String?
-            // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
+
+            enum CodingKeys: String, CodingKey {
+                case stopReason = "stop_reason"
+                case stopSequence = "stop_sequence"
+            }
         }
 
         /// Usage info in message_delta - all fields optional for flexibility
@@ -562,7 +586,13 @@ public enum AnthropicStreamEvent: Codable, Sendable {
             public let outputTokens: Int?
             public let cacheCreationInputTokens: Int?
             public let cacheReadInputTokens: Int?
-            // Note: No CodingKeys needed - decoder uses convertFromSnakeCase
+
+            enum CodingKeys: String, CodingKey {
+                case inputTokens = "input_tokens"
+                case outputTokens = "output_tokens"
+                case cacheCreationInputTokens = "cache_creation_input_tokens"
+                case cacheReadInputTokens = "cache_read_input_tokens"
+            }
         }
     }
 

@@ -289,7 +289,8 @@ public struct AnthropicProvider: ProviderProtocol {
         let headers = buildHeaders(apiKey: apiKey, stream: false)
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // NOTE: Do NOT use .convertToSnakeCase here — all Anthropic model types use explicit
+        // CodingKeys with snake_case raw values for cross-platform compatibility (macOS & Linux).
         let body = try encoder.encode(request)
 
         await aiLog(.debug, "Sending request to Anthropic API", context: logContext, metadata: [
@@ -300,7 +301,9 @@ public struct AnthropicProvider: ProviderProtocol {
         let responseData = try await httpClient.post(url: url, headers: headers, body: body, context: logContext)
 
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
+        // CodingKeys that have snake_case raw values on Linux's Foundation implementation.
+        // All Anthropic model types use explicit CodingKeys for cross-platform compatibility.
 
         do {
             let response = try decoder.decode(AnthropicResponse.self, from: responseData)
@@ -347,7 +350,8 @@ public struct AnthropicProvider: ProviderProtocol {
         let headers = buildHeaders(apiKey: apiKey, stream: true)
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // NOTE: Do NOT use .convertToSnakeCase here — all Anthropic model types use explicit
+        // CodingKeys with snake_case raw values for cross-platform compatibility (macOS & Linux).
         let body = try encoder.encode(request)
 
         let dataStream = httpClient.streamPost(url: url, headers: headers, body: body, context: logContext)
@@ -403,13 +407,16 @@ public struct AnthropicProvider: ProviderProtocol {
         let headers = buildHeaders(apiKey: apiKey, stream: false)
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // NOTE: Do NOT use .convertToSnakeCase here — all Anthropic model types use explicit
+        // CodingKeys with snake_case raw values for cross-platform compatibility (macOS & Linux).
         let body = try encoder.encode(request)
 
         let responseData = try await httpClient.post(url: url, headers: headers, body: body)
 
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
+        // CodingKeys that have snake_case raw values on Linux's Foundation implementation.
+        // All Anthropic model types use explicit CodingKeys for cross-platform compatibility.
         return try decoder.decode(AnthropicTokenCountResponse.self, from: responseData)
     }
 
@@ -425,13 +432,16 @@ public struct AnthropicProvider: ProviderProtocol {
 
         let payload = ["requests": requests]
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // NOTE: Do NOT use .convertToSnakeCase here — all Anthropic model types use explicit
+        // CodingKeys with snake_case raw values for cross-platform compatibility (macOS & Linux).
         let body = try encoder.encode(payload)
 
         let responseData = try await httpClient.post(url: url, headers: headers, body: body)
 
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
+        // CodingKeys that have snake_case raw values on Linux's Foundation implementation.
+        // All Anthropic model types use explicit CodingKeys for cross-platform compatibility.
         return try decoder.decode(AnthropicBatch.self, from: responseData)
     }
 
@@ -446,7 +456,9 @@ public struct AnthropicProvider: ProviderProtocol {
         let responseData = try await httpClient.get(url: url, headers: headers)
 
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
+        // CodingKeys that have snake_case raw values on Linux's Foundation implementation.
+        // All Anthropic model types use explicit CodingKeys for cross-platform compatibility.
         return try decoder.decode(AnthropicBatch.self, from: responseData)
     }
 
@@ -461,7 +473,9 @@ public struct AnthropicProvider: ProviderProtocol {
         let responseData = try await httpClient.post(url: url, headers: headers, body: Data())
 
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
+        // CodingKeys that have snake_case raw values on Linux's Foundation implementation.
+        // All Anthropic model types use explicit CodingKeys for cross-platform compatibility.
         return try decoder.decode(AnthropicBatch.self, from: responseData)
     }
 
@@ -489,7 +503,9 @@ public struct AnthropicProvider: ProviderProtocol {
         let responseData = try await httpClient.get(url: urlComponents.url!.absoluteString, headers: headers)
 
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
+        // CodingKeys that have snake_case raw values on Linux's Foundation implementation.
+        // All Anthropic model types use explicit CodingKeys for cross-platform compatibility.
 
         struct BatchListResponse: Codable {
             let data: [AnthropicBatch]
@@ -513,7 +529,9 @@ public struct AnthropicProvider: ProviderProtocol {
             Task {
                 var buffer = Data()
                 let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
+        // CodingKeys that have snake_case raw values on Linux's Foundation implementation.
+        // All Anthropic model types use explicit CodingKeys for cross-platform compatibility.
 
                 do {
                     for try await chunk in dataStream {
@@ -810,7 +828,9 @@ public struct AnthropicProvider: ProviderProtocol {
         }
 
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
+        // CodingKeys that have snake_case raw values on Linux's Foundation implementation.
+        // All Anthropic model types use explicit CodingKeys for cross-platform compatibility.
 
         do {
             switch eventType {
