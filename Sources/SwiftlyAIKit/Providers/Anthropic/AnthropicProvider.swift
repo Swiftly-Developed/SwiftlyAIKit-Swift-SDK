@@ -608,7 +608,14 @@ public struct AnthropicProvider: ProviderProtocol {
             return AnthropicMessage(role: message.role.rawValue, content: content)
         }
 
-        let system: AnthropicSystemPrompt? = request.systemPrompt.map { .text($0) }
+        // Use raw system JSON (with cache_control) if available, otherwise fall back to plain text
+        let system: AnthropicSystemPrompt?
+        if let rawSystemData = request.rawSystemJSON,
+           let blocks = try? JSONDecoder().decode([AnthropicSystemPrompt.SystemBlock].self, from: rawSystemData) {
+            system = .blocks(blocks)
+        } else {
+            system = request.systemPrompt.map { .text($0) }
+        }
 
         // Decode raw tool definitions if provided (preserves full JSON schemas including nested objects)
         let anthropicTools: [AnthropicToolDefinition]? = request.rawToolsJSON.flatMap { data in
