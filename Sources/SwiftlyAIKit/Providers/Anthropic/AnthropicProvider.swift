@@ -691,10 +691,15 @@ public struct AnthropicProvider: ProviderProtocol {
     private func processStreamEvent(_ event: AnthropicStreamEvent) -> AIResponse? {
         switch event {
         case .messageStart(let start):
+            let startUsage = AIUsage(
+                inputTokens: start.message.usage.inputTokens ?? 0,
+                outputTokens: start.message.usage.outputTokens ?? 0
+            )
             return AIResponse(
                 id: start.message.id,
                 model: start.message.model,
                 message: AIMessage(role: .assistant, text: ""),
+                usage: startUsage,
                 provider: .anthropic,
                 providerData: ["streamEvent": AnyCodable("message_start")]
             )
