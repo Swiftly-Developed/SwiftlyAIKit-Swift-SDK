@@ -286,7 +286,8 @@ public struct AnthropicProvider: ProviderProtocol {
             "model": request.model
         ])
 
-        let headers = buildHeaders(apiKey: apiKey, stream: false)
+        let webSearchBeta = detectWebSearchBeta(tools: request.tools)
+        let headers = buildHeaders(apiKey: apiKey, stream: false, additionalBetaFeatures: webSearchBeta)
 
         let encoder = JSONEncoder()
         // NOTE: Do NOT use .convertToSnakeCase here — all Anthropic model types use explicit
@@ -347,7 +348,8 @@ public struct AnthropicProvider: ProviderProtocol {
             "model": request.model
         ])
 
-        let headers = buildHeaders(apiKey: apiKey, stream: true)
+        let webSearchBeta = detectWebSearchBeta(tools: request.tools)
+        let headers = buildHeaders(apiKey: apiKey, stream: true, additionalBetaFeatures: webSearchBeta)
 
         let encoder = JSONEncoder()
         // NOTE: Do NOT use .convertToSnakeCase here — all Anthropic model types use explicit
@@ -560,15 +562,18 @@ public struct AnthropicProvider: ProviderProtocol {
 
     // MARK: - Private Helper Methods
 
-    private func buildHeaders(apiKey: String, stream: Bool) -> [(String, String)] {
+    private func buildHeaders(apiKey: String, stream: Bool, additionalBetaFeatures: [String] = []) -> [(String, String)] {
         var headers = [
             ("x-api-key", apiKey),
             ("anthropic-version", apiVersion),
             ("content-type", "application/json")
         ]
 
-        if !enableBetaFeatures.isEmpty {
-            headers.append(("anthropic-beta", enableBetaFeatures.joined(separator: ",")))
+        var allBetaFeatures = enableBetaFeatures + additionalBetaFeatures
+        // De-duplicate
+        allBetaFeatures = Array(Set(allBetaFeatures))
+        if !allBetaFeatures.isEmpty {
+            headers.append(("anthropic-beta", allBetaFeatures.joined(separator: ",")))
         }
 
         if stream {
@@ -576,6 +581,13 @@ public struct AnthropicProvider: ProviderProtocol {
         }
 
         return headers
+    }
+
+    /// Detect if tools contain Anthropic's native web search, requiring the beta header
+    private func detectWebSearchBeta(tools: [AnthropicToolDefinition]?) -> [String] {
+        guard let tools else { return [] }
+        let hasWebSearch = tools.contains { $0.type?.hasPrefix("web_search") == true }
+        return hasWebSearch ? ["web-search-2025-03-05"] : []
     }
 
     private func mapToAnthropicRequest(_ request: AIRequest) throws -> AnthropicRequest {
@@ -712,8 +724,9 @@ public struct AnthropicProvider: ProviderProtocol {
             )
 
         case .contentBlockStart(let start):
-            // Surface tool use starts so callers can track tool execution
-            if case .toolUse(let id, let name, _) = start.contentBlock {
+            switch start.contentBlock {
+            case .toolUse(let id, let name, _):
+                // Surface tool use starts so callers can track tool execution
                 return AIResponse(
                     id: "stream",
                     model: "unknown",
@@ -726,8 +739,38 @@ public struct AnthropicProvider: ProviderProtocol {
                         "index": AnyCodable(start.index)
                     ]
                 )
+            case .serverToolUse(_, let name):
+                // Server-initiated tool use (e.g. web_search handled by Anthropic).
+                // Do NOT expose as toolCall — Anthropic executes it internally.
+                // Emit as text so callers can show a status indicator.
+                return AIResponse(
+                    id: "stream",
+                    model: "unknown",
+                    message: AIMessage(role: .assistant, text: ""),
+                    provider: .anthropic,
+                    providerData: [
+                        "streamEvent": AnyCodable("content_block_start"),
+                        "contentBlockType": AnyCodable("server_tool_use"),
+                        "serverToolName": AnyCodable(name),
+                        "index": AnyCodable(start.index)
+                    ]
+                )
+            case .webSearchToolResult:
+                // Web search results — pass through as informational content
+                return AIResponse(
+                    id: "stream",
+                    model: "unknown",
+                    message: AIMessage(role: .assistant, text: ""),
+                    provider: .anthropic,
+                    providerData: [
+                        "streamEvent": AnyCodable("content_block_start"),
+                        "contentBlockType": AnyCodable("web_search_tool_result"),
+                        "index": AnyCodable(start.index)
+                    ]
+                )
+            default:
+                return nil
             }
-            return nil
 
         case .contentBlockDelta(let delta):
             // Text delta

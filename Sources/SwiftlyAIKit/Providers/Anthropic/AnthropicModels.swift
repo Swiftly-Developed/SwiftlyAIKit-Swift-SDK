@@ -30,6 +30,15 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
     /// Thinking content (extended thinking)
     case thinking(String)
 
+    /// Server-initiated tool use (e.g. web_search handled by Anthropic)
+    case serverToolUse(id: String, name: String)
+
+    /// Web search tool result returned by Anthropic's native web search
+    case webSearchToolResult(rawJSON: AnyCodable)
+
+    /// Catch-all for unknown/future content block types — preserves raw JSON
+    case unknown(type: String, rawJSON: AnyCodable)
+
     public enum ImageSource: Codable, Sendable, Equatable {
         case base64(data: String, mediaType: String)
         case url(String)
@@ -122,12 +131,17 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
         case "thinking":
             let text = try container.decode(String.self, forKey: .text)
             self = .thinking(text)
+        case "server_tool_use":
+            let id = try container.decode(String.self, forKey: .id)
+            let name = try container.decode(String.self, forKey: .name)
+            self = .serverToolUse(id: id, name: name)
+        case "web_search_tool_result":
+            // Preserve search results — decode content if present, else empty
+            let content = try container.decodeIfPresent(AnyCodable.self, forKey: .content)
+            self = .webSearchToolResult(rawJSON: content ?? AnyCodable([:] as [String: Any]))
         default:
-            throw DecodingError.dataCorruptedError(
-                forKey: .type,
-                in: container,
-                debugDescription: "Unknown content block type: \(type)"
-            )
+            // Lenient fallback: preserve unknown types instead of crashing
+            self = .unknown(type: type, rawJSON: AnyCodable([:] as [String: Any]))
         }
     }
 
@@ -157,6 +171,15 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
         case .thinking(let text):
             try container.encode("thinking", forKey: .type)
             try container.encode(text, forKey: .text)
+        case .serverToolUse(let id, let name):
+            try container.encode("server_tool_use", forKey: .type)
+            try container.encode(id, forKey: .id)
+            try container.encode(name, forKey: .name)
+        case .webSearchToolResult(let rawJSON):
+            try container.encode("web_search_tool_result", forKey: .type)
+            try container.encode(rawJSON, forKey: .content)
+        case .unknown(let type, _):
+            try container.encode(type, forKey: .type)
         }
     }
 }
@@ -164,19 +187,51 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
 // MARK: - Tool Definitions
 
 /// Tool definition for function calling
-public struct AnthropicToolDefinition: Codable, Sendable, Equatable {
-    public let name: String
-    public let description: String
-    public let inputSchema: ToolInputSchema
-
-    enum CodingKeys: String, CodingKey {
-        case name, description, inputSchema = "input_schema"
-    }
+///
+/// Supports both regular custom tools (name + description + inputSchema)
+/// and Anthropic native tools like web_search (type + name, no description/schema).
+public struct AnthropicToolDefinition: Sendable, Equatable {
+    /// Tool type — e.g. "web_search_20250305" for native tools, nil for custom tools
+    public let type: String?
+    public let name: String?
+    public let description: String?
+    public let inputSchema: ToolInputSchema?
 
     public init(name: String, description: String, inputSchema: ToolInputSchema) {
+        self.type = nil
         self.name = name
         self.description = description
         self.inputSchema = inputSchema
+    }
+
+    /// Initializer for native Anthropic tools (e.g. web_search)
+    public init(type: String, name: String) {
+        self.type = type
+        self.name = name
+        self.description = nil
+        self.inputSchema = nil
+    }
+}
+
+extension AnthropicToolDefinition: Codable {
+    enum CodingKeys: String, CodingKey {
+        case type, name, description, inputSchema = "input_schema"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.type = try container.decodeIfPresent(String.self, forKey: .type)
+        self.name = try container.decodeIfPresent(String.self, forKey: .name)
+        self.description = try container.decodeIfPresent(String.self, forKey: .description)
+        self.inputSchema = try container.decodeIfPresent(ToolInputSchema.self, forKey: .inputSchema)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(type, forKey: .type)
+        try container.encodeIfPresent(name, forKey: .name)
+        try container.encodeIfPresent(description, forKey: .description)
+        try container.encodeIfPresent(inputSchema, forKey: .inputSchema)
     }
 }
 
