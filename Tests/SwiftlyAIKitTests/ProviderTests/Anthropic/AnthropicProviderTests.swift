@@ -265,7 +265,7 @@ struct AnthropicProviderTests {
 
         for raw in MockAnthropicAPI.streamEventsWithToolUse {
             guard let event = try provider.parseSSEEvent(raw) else { continue }
-            if let (_, call) = accumulator.handle(event) {
+            if case .client(_, let call)? = accumulator.handle(event) {
                 completed.append(call)
             }
         }
