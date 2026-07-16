@@ -174,7 +174,8 @@ public struct AnthropicProvider: ProviderProtocol {
                         stream: true,
                         tools: anthropicRequest.tools,
                         toolChoice: anthropicRequest.toolChoice,
-                        thinking: anthropicRequest.thinking
+                        thinking: anthropicRequest.thinking,
+                        rawMessages: anthropicRequest.rawMessages
                     )
 
                     let stream = try await streamMessage(anthropicRequest, apiKey: apiKey)
@@ -207,19 +208,38 @@ public struct AnthropicProvider: ProviderProtocol {
                             continuation.yield(response)
                         }
 
-                        // Tool-use argument accumulation (surfaces a complete tool call on block stop).
-                        if let (index, toolCall) = toolAccumulator.handle(event) {
-                            let complete = AIResponse(
-                                id: streamId,
-                                model: streamModel,
-                                message: AIMessage(role: .assistant, content: [.toolCall(toolCall)]),
-                                provider: .anthropic,
-                                providerData: [
-                                    "streamEvent": AnyCodable("tool_use_complete"),
-                                    "index": AnyCodable(index)
-                                ]
-                            )
-                            continuation.yield(complete)
+                        // Tool-use argument accumulation (surfaces a complete tool block on stop).
+                        if let streamed = toolAccumulator.handle(event) {
+                            switch streamed {
+                            case .client(let index, let toolCall):
+                                continuation.yield(AIResponse(
+                                    id: streamId,
+                                    model: streamModel,
+                                    message: AIMessage(role: .assistant, content: [.toolCall(toolCall)]),
+                                    provider: .anthropic,
+                                    providerData: [
+                                        "streamEvent": AnyCodable("tool_use_complete"),
+                                        "index": AnyCodable(index)
+                                    ]
+                                ))
+                            case .server(let index, let id, let name, let input):
+                                // Server tool (e.g. web_search) — not a client call; surface on providerData.
+                                continuation.yield(AIResponse(
+                                    id: streamId,
+                                    model: streamModel,
+                                    message: AIMessage(role: .assistant, text: ""),
+                                    provider: .anthropic,
+                                    providerData: [
+                                        "streamEvent": AnyCodable("server_tool_use_complete"),
+                                        "serverToolUse": AnyCodable([
+                                            "id": id,
+                                            "name": name,
+                                            "input": input
+                                        ]),
+                                        "index": AnyCodable(index)
+                                    ]
+                                ))
+                            }
                         }
                     }
 
@@ -612,17 +632,27 @@ public struct AnthropicProvider: ProviderProtocol {
     func mapToAnthropicRequest(_ request: AIRequest) throws -> AnthropicRequest {
         let cacheTargets = Self.cacheTargets(from: request.providerOptions)
 
-        var messages = request.messages.map { message in
-            let content = message.content.map { self.mapContentBlock($0) }
-            return AnthropicMessage(role: message.role.rawValue, content: content)
+        // Raw messages pass-through: when provided, relay the message objects verbatim so
+        // native server-tool blocks (server_tool_use, web_search_tool_result with
+        // encrypted_content, tool_search results) reach the wire byte-faithfully.
+        let rawMessages: [AnyCodable]? = request.rawMessagesJSON.flatMap {
+            try? JSONDecoder().decode([AnyCodable].self, from: $0)
         }
 
-        // Apply cache_control to the trailing content block of the final message when opted in.
-        if cacheTargets.contains(.messages), let last = messages.last, let lastBlock = last.content.last {
-            var newContent = last.content
-            if case .text(let text) = lastBlock {
-                newContent[newContent.count - 1] = .textWithCacheControl(text, AnthropicCacheControl())
-                messages[messages.count - 1] = AnthropicMessage(role: last.role, content: newContent)
+        var messages: [AnthropicMessage] = []
+        if rawMessages == nil {
+            messages = request.messages.map { message in
+                let content = message.content.map { self.mapContentBlock($0) }
+                return AnthropicMessage(role: message.role.rawValue, content: content)
+            }
+
+            // Apply cache_control to the trailing content block of the final message when opted in.
+            if cacheTargets.contains(.messages), let last = messages.last, let lastBlock = last.content.last {
+                var newContent = last.content
+                if case .text(let text) = lastBlock {
+                    newContent[newContent.count - 1] = .textWithCacheControl(text, AnthropicCacheControl())
+                    messages[messages.count - 1] = AnthropicMessage(role: last.role, content: newContent)
+                }
             }
         }
 
@@ -690,7 +720,8 @@ public struct AnthropicProvider: ProviderProtocol {
             stream: request.stream ? true : nil,
             tools: anthropicTools,
             toolChoice: anthropicToolChoice,
-            thinking: Self.thinkingConfig(from: request.providerOptions)
+            thinking: Self.thinkingConfig(from: request.providerOptions),
+            rawMessages: rawMessages
         )
     }
 
@@ -832,6 +863,7 @@ public struct AnthropicProvider: ProviderProtocol {
         var thinkingParts: [String] = []
         var webSearchResults: [AnyCodable] = []
         var serverToolUses: [AnyCodable] = []
+        var unknownBlocks: [AnyCodable] = []
 
         for block in response.content {
             switch block {
@@ -848,7 +880,10 @@ public struct AnthropicProvider: ProviderProtocol {
                 serverToolUses.append(AnyCodable(["id": id, "name": name]))
             case .webSearchToolResult(let rawJSON):
                 webSearchResults.append(rawJSON)
-            case .image, .document, .toolResult, .unknown:
+            case .unknown(let type, let rawJSON):
+                // Preserve unknown/future server-tool blocks (e.g. tool_search_tool_result).
+                unknownBlocks.append(AnyCodable(["type": type, "rawJSON": rawJSON.value]))
+            case .image, .document, .toolResult:
                 continue
             }
         }
@@ -882,6 +917,9 @@ public struct AnthropicProvider: ProviderProtocol {
         if !serverToolUses.isEmpty {
             providerData["serverToolUse"] = AnyCodable(serverToolUses.map { $0.value })
         }
+        if !unknownBlocks.isEmpty {
+            providerData["unknownBlocks"] = AnyCodable(unknownBlocks.map { $0.value })
+        }
         if let cacheCreation = response.usage.cacheCreationInputTokens {
             providerData["cacheCreationInputTokens"] = AnyCodable(cacheCreation)
         }
@@ -903,16 +941,36 @@ public struct AnthropicProvider: ProviderProtocol {
     /// a series of `input_json_delta` fragments, then `content_block_stop`.
     /// Feeding each event to ``handle(_:)`` returns the finished ``AIToolCall`` (and its
     /// content-block index) exactly once, when its block stops.
+    /// A completed streamed tool block emitted by ``ToolStreamAccumulator``.
+    enum StreamedTool {
+        /// A client-executed `tool_use` block with fully-assembled arguments.
+        case client(index: Int, call: AIToolCall)
+        /// A server-executed `server_tool_use` block (e.g. web_search) with its
+        /// fully-assembled input JSON. Not a client tool call — surfaced on providerData.
+        case server(index: Int, id: String, name: String, input: String)
+    }
+
     struct ToolStreamAccumulator {
-        private var blocks: [Int: (id: String, name: String, args: String)] = [:]
+        private struct Block {
+            var id: String
+            var name: String
+            var args: String
+            var isServer: Bool
+        }
+        private var blocks: [Int: Block] = [:]
 
         init() {}
 
-        mutating func handle(_ event: AnthropicStreamEvent) -> (index: Int, toolCall: AIToolCall)? {
+        mutating func handle(_ event: AnthropicStreamEvent) -> StreamedTool? {
             switch event {
             case .contentBlockStart(let start):
-                if case .toolUse(let id, let name, _) = start.contentBlock {
-                    blocks[start.index] = (id, name, "")
+                switch start.contentBlock {
+                case .toolUse(let id, let name, _):
+                    blocks[start.index] = Block(id: id, name: name, args: "", isServer: false)
+                case .serverToolUse(let id, let name):
+                    blocks[start.index] = Block(id: id, name: name, args: "", isServer: true)
+                default:
+                    break
                 }
             case .contentBlockDelta(let delta):
                 if let partial = delta.delta.partialJson, blocks[delta.index] != nil {
@@ -920,8 +978,11 @@ public struct AnthropicProvider: ProviderProtocol {
                 }
             case .contentBlockStop(let stop):
                 if let block = blocks.removeValue(forKey: stop.index) {
-                    let arguments = block.args.isEmpty ? "{}" : block.args
-                    return (stop.index, AIToolCall(id: block.id, name: block.name, arguments: arguments))
+                    let payload = block.args.isEmpty ? "{}" : block.args
+                    if block.isServer {
+                        return .server(index: stop.index, id: block.id, name: block.name, input: payload)
+                    }
+                    return .client(index: stop.index, call: AIToolCall(id: block.id, name: block.name, arguments: payload))
                 }
             default:
                 break
@@ -939,7 +1000,7 @@ public struct AnthropicProvider: ProviderProtocol {
         return "{}"
     }
 
-    private func processStreamEvent(_ event: AnthropicStreamEvent) -> AIResponse? {
+    func processStreamEvent(_ event: AnthropicStreamEvent) -> AIResponse? {
         switch event {
         case .messageStart(let start):
             let startUsage = AIUsage(
@@ -971,10 +1032,11 @@ public struct AnthropicProvider: ProviderProtocol {
                         "index": AnyCodable(start.index)
                     ]
                 )
-            case .serverToolUse(_, let name):
+            case .serverToolUse(let id, let name):
                 // Server-initiated tool use (e.g. web_search handled by Anthropic).
                 // Do NOT expose as toolCall — Anthropic executes it internally.
-                // Emit as text so callers can show a status indicator.
+                // Surface id + name so callers can correlate the streamed input
+                // (accumulated separately) and the following result block.
                 return AIResponse(
                     id: "stream",
                     model: "unknown",
@@ -983,12 +1045,14 @@ public struct AnthropicProvider: ProviderProtocol {
                     providerData: [
                         "streamEvent": AnyCodable("content_block_start"),
                         "contentBlockType": AnyCodable("server_tool_use"),
+                        "serverToolId": AnyCodable(id),
                         "serverToolName": AnyCodable(name),
                         "index": AnyCodable(start.index)
                     ]
                 )
-            case .webSearchToolResult:
-                // Web search results — pass through as informational content
+            case .webSearchToolResult(let rawJSON):
+                // Web search results — surface the full block (urls / text / encrypted_content)
+                // so callers can relay citations and re-send the block in history.
                 return AIResponse(
                     id: "stream",
                     model: "unknown",
@@ -997,6 +1061,23 @@ public struct AnthropicProvider: ProviderProtocol {
                     providerData: [
                         "streamEvent": AnyCodable("content_block_start"),
                         "contentBlockType": AnyCodable("web_search_tool_result"),
+                        "webSearchToolResult": rawJSON,
+                        "index": AnyCodable(start.index)
+                    ]
+                )
+            case .unknown(let type, let rawJSON):
+                // Unknown/future server-tool blocks (e.g. tool_search_tool_result) — pass the
+                // full raw block through so callers can render/relay it.
+                return AIResponse(
+                    id: "stream",
+                    model: "unknown",
+                    message: AIMessage(role: .assistant, text: ""),
+                    provider: .anthropic,
+                    providerData: [
+                        "streamEvent": AnyCodable("content_block_start"),
+                        "contentBlockType": AnyCodable("unknown"),
+                        "unknownBlockType": AnyCodable(type),
+                        "unknownBlock": rawJSON,
                         "index": AnyCodable(start.index)
                     ]
                 )

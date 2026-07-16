@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-07-16
+
+Additive, backward-compatible patch so the neutral `AIRequest`/`AIResponse` boundary can
+carry Anthropic server-tool signals (native web search, `server_tool_use`, tool-search) and
+the `defer_loading` request flag. `v0.9.0` consumers compile and behave identically; other
+providers are untouched.
+
+### Added
+- **`AIRequest.rawMessagesJSON`** — raw messages-array pass-through (mirrors `rawSystemJSON`/`rawToolsJSON`). When set, Anthropic relays the message objects verbatim, preserving native content blocks (`server_tool_use`, `web_search_tool_result` with `encrypted_content`, tool-search results) that the neutral `AIMessage` model cannot represent — fixes lost context / 400s on re-send (R2).
+- **`AnthropicToolDefinition.deferLoading`** (`defer_loading`) + an open **`extras: [String: AnyCodable]`** bag, so `rawToolsJSON` round-trips byte-faithfully and AI19's hot/cold tool set survives decode→encode (R1).
+- **`AnthropicRequest.rawMessages`** — internal raw passthrough used to emit `messages` verbatim.
+
+### Changed
+- **Streaming `processStreamEvent`** now surfaces server-tool signals on `AIResponse.providerData` (S1/S2/S3):
+  - `web_search_tool_result` → `providerData["webSearchToolResult"]` carries the full block (urls / text / `encrypted_content`) instead of only the index (S1).
+  - `server_tool_use` → block `id` surfaced at start (`providerData["serverToolId"]`); the streamed `input_json_delta` is accumulated and emitted on stop as `providerData["serverToolUse"] = {id, name, input}` with `streamEvent = "server_tool_use_complete"` (S2).
+  - Unknown/future blocks (e.g. `tool_search_tool_result`) → `providerData["unknownBlock"]` + `["unknownBlockType"]`, instead of being dropped (S3).
+- **`ToolStreamAccumulator`** now accumulates `server_tool_use` input in addition to `tool_use` (returns a `StreamedTool` enum: `.client` / `.server`).
+- **`AnthropicContentBlock` decoding** captures the full raw block for `web_search_tool_result` and unknown types (previously only `content` / discarded), and re-encodes them byte-faithfully.
+- **Non-streaming `mapToAIResponse`** surfaces unknown blocks on `providerData["unknownBlocks"]`.
+
 ## [Unreleased]
 
 ### Changed
