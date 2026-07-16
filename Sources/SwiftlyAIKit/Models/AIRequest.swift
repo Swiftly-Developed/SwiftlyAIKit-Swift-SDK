@@ -133,6 +133,14 @@ public struct AIRequest: Codable, Sendable {
     /// structured system content (e.g. Anthropic's cache_control blocks).
     public let rawSystemJSON: Data?
 
+    /// Raw messages array as JSON Data, for provider-specific pass-through.
+    /// When set, providers should use this instead of `messages` to preserve
+    /// native content blocks the neutral `AIMessage` model cannot represent —
+    /// e.g. Anthropic `server_tool_use`, `web_search_tool_result` (with the
+    /// `encrypted_content` Anthropic requires when re-sending a turn), and other
+    /// server-tool result blocks. The bytes are relayed to the wire faithfully.
+    public let rawMessagesJSON: Data?
+
     /// Initialize a new AI request
     ///
     /// - Parameters:
@@ -152,6 +160,7 @@ public struct AIRequest: Codable, Sendable {
     ///   - rawToolsJSON: Raw tool definitions as JSON Data for pass-through (optional)
     ///   - rawToolChoiceJSON: Raw tool choice as JSON Data for pass-through (optional)
     ///   - rawSystemJSON: Raw system prompt as JSON Data for pass-through (optional)
+    ///   - rawMessagesJSON: Raw messages array as JSON Data for pass-through (optional)
     public init(
         model: String,
         messages: [AIMessage],
@@ -168,7 +177,8 @@ public struct AIRequest: Codable, Sendable {
         toolChoice: AIToolChoice? = nil,
         rawToolsJSON: Data? = nil,
         rawToolChoiceJSON: Data? = nil,
-        rawSystemJSON: Data? = nil
+        rawSystemJSON: Data? = nil,
+        rawMessagesJSON: Data? = nil
     ) {
         self.model = model
         self.messages = messages
@@ -186,6 +196,7 @@ public struct AIRequest: Codable, Sendable {
         self.rawToolsJSON = rawToolsJSON
         self.rawToolChoiceJSON = rawToolChoiceJSON
         self.rawSystemJSON = rawSystemJSON
+        self.rawMessagesJSON = rawMessagesJSON
     }
 
     /// Convenience initializer for a simple text request
