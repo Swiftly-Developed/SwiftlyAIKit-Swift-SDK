@@ -957,3 +957,62 @@ public struct AnthropicErrorResponse: Codable, Sendable {
         public let message: String
     }
 }
+
+// MARK: - Models List Response
+
+/// Anthropic models list response
+public struct AnthropicModelsResponse: Codable, Sendable {
+    /// Array of available models
+    public let data: [AnthropicModelInfo]
+
+    /// Whether there are more results beyond this page
+    public let hasMore: Bool
+
+    /// ID of the first model in this page (for pagination)
+    public let firstId: String?
+
+    /// ID of the last model in this page (for pagination)
+    public let lastId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case data
+        case hasMore = "has_more"
+        case firstId = "first_id"
+        case lastId = "last_id"
+    }
+
+    public init(data: [AnthropicModelInfo], hasMore: Bool = false, firstId: String? = nil, lastId: String? = nil) {
+        self.data = data
+        self.hasMore = hasMore
+        self.firstId = firstId
+        self.lastId = lastId
+    }
+}
+
+/// Anthropic model information
+public struct AnthropicModelInfo: Codable, Sendable {
+    /// Object type (always "model")
+    public let type: String
+
+    /// Model ID
+    public let id: String
+
+    /// Human-readable display name
+    public let displayName: String
+
+    /// RFC 3339 timestamp of model release
+    public let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case type, id
+        case displayName = "display_name"
+        case createdAt = "created_at"
+    }
+
+    public init(type: String = "model", id: String, displayName: String, createdAt: String) {
+        self.type = type
+        self.id = id
+        self.displayName = displayName
+        self.createdAt = createdAt
+    }
+}
