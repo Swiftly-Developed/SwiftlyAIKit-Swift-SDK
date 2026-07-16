@@ -143,25 +143,34 @@ public struct GeminiProvider: ProviderProtocol {
 
                             let streamChunk = try JSONDecoder().decode(GeminiStreamChunk.self, from: jsonData)
 
-                            // Extract text from candidate
+                            // Extract text and function calls from candidate
                             if let candidate = streamChunk.candidates.first {
-                                let textParts = candidate.content.parts.compactMap { part -> String? in
-                                    if case .text(let text) = part {
-                                        return text
-                                    }
+                                let chunkText = candidate.content.parts.compactMap { part -> String? in
+                                    if case .text(let text) = part { return text }
                                     return nil
-                                }
-
-                                let chunkText = textParts.joined()
+                                }.joined()
                                 if !chunkText.isEmpty {
                                     accumulatedText += chunkText
                                 }
 
-                                // Create AIResponse for this chunk
-                                let message = AIMessage(
-                                    role: .assistant,
-                                    content: [.text(accumulatedText)]
-                                )
+                                // Function calls arrive complete in a single chunk for Gemini.
+                                var toolCalls: [AIMessageContent] = []
+                                for part in candidate.content.parts {
+                                    if case .functionCall(let name, let args) = part {
+                                        let argsData = try? JSONSerialization.data(withJSONObject: args.mapValues { $0.value })
+                                        let argsString = argsData.flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                                        toolCalls.append(.toolCall(AIToolCall(
+                                            id: name,
+                                            type: "function",
+                                            name: name,
+                                            arguments: argsString
+                                        )))
+                                    }
+                                }
+
+                                var content: [AIMessageContent] = accumulatedText.isEmpty ? [] : [.text(accumulatedText)]
+                                content.append(contentsOf: toolCalls)
+                                let message = AIMessage(role: .assistant, content: content)
 
                                 let usage: AIUsage?
                                 if let metadata = streamChunk.usageMetadata {
@@ -173,11 +182,15 @@ public struct GeminiProvider: ProviderProtocol {
                                     usage = nil
                                 }
 
+                                let stopReason: AIStopReason? = !toolCalls.isEmpty
+                                    ? .toolUse
+                                    : candidate.finishReason.map { mapFinishReason($0) }
+
                                 let response = AIResponse(
                                     id: UUID().uuidString,
                                     model: request.model,
                                     message: message,
-                                    stopReason: candidate.finishReason.map { mapFinishReason($0) },
+                                    stopReason: stopReason,
                                     usage: usage,
                                     provider: .google
                                 )
@@ -234,7 +247,7 @@ public struct GeminiProvider: ProviderProtocol {
         return headers
     }
 
-    private func mapToGeminiRequest(_ request: AIRequest) throws -> GeminiRequest {
+    func mapToGeminiRequest(_ request: AIRequest) throws -> GeminiRequest {
         let contents = try mapContents(request)
 
         // System instruction (if present)
@@ -321,7 +334,7 @@ public struct GeminiProvider: ProviderProtocol {
         }
     }
 
-    private func mapToAIResponse(_ response: GeminiResponse, model: String) -> AIResponse {
+    func mapToAIResponse(_ response: GeminiResponse, model: String) -> AIResponse {
         guard let candidate = response.candidates.first else {
             let emptyMessage = AIMessage(role: .assistant, content: [])
             return AIResponse(
@@ -335,16 +348,21 @@ public struct GeminiProvider: ProviderProtocol {
         }
 
         // Extract content from parts
+        var hasToolCall = false
         let content: [AIMessageContent] = candidate.content.parts.compactMap { part in
             switch part {
             case .text(let text):
                 return .text(text)
             case .functionCall(let name, let args):
+                hasToolCall = true
                 // Convert args back to JSON string
                 let argsData = try? JSONSerialization.data(withJSONObject: args.mapValues { $0.value })
                 let argsString = argsData.flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                // Gemini doesn't provide tool-call IDs. Use the function name as the id so a
+                // subsequent tool result (which only carries the id) round-trips to the correct
+                // functionResponse name.
                 return .toolCall(AIToolCall(
-                    id: UUID().uuidString, // Gemini doesn't provide IDs, generate one
+                    id: name,
                     type: "function",
                     name: name,
                     arguments: argsString
@@ -368,31 +386,26 @@ public struct GeminiProvider: ProviderProtocol {
             usage = nil
         }
 
+        // Gemini reports finishReason STOP even when it emits a function call; surface
+        // .toolUse so callers can drive their tool loop consistently across providers.
+        let stopReason: AIStopReason? = hasToolCall ? .toolUse : candidate.finishReason.map { mapFinishReason($0) }
+
         return AIResponse(
             id: UUID().uuidString,
             model: model,
             message: message,
-            stopReason: candidate.finishReason.map { mapFinishReason($0) },
+            stopReason: stopReason,
             usage: usage,
             provider: .google
         )
     }
 
     private func mapTool(_ tool: AITool) -> GeminiFunctionDeclaration {
-        // Convert AIToolParameters to Gemini Schema format
-        let properties = tool.parameters.properties.mapValues { property -> GeminiSchemaProperty in
-            let items = property.items.map { GeminiSchemaItems(type: $0.type.uppercased()) }
-            return GeminiSchemaProperty(
-                type: property.type.uppercased(),
-                description: property.description,
-                items: items,
-                enumValues: property.enum
-            )
-        }
-
+        // Convert AIToolParameters to Gemini Schema format (recurses into nested
+        // objects and arrays-of-objects).
         let schema = GeminiSchema(
             type: tool.parameters.type.uppercased(),
-            properties: properties,
+            properties: tool.parameters.properties.mapValues { mapSchemaProperty($0) },
             required: tool.parameters.required
         )
 
@@ -400,6 +413,27 @@ public struct GeminiProvider: ProviderProtocol {
             name: tool.name,
             description: tool.description,
             parameters: schema
+        )
+    }
+
+    /// Recursively map a neutral tool property to Gemini's typed schema property.
+    private func mapSchemaProperty(_ property: AIToolProperty) -> GeminiSchemaProperty {
+        GeminiSchemaProperty(
+            type: property.type.uppercased(),
+            description: property.description,
+            items: property.items.map { mapSchemaItems($0) },
+            enumValues: property.enum,
+            properties: property.properties.map { $0.mapValues { mapSchemaProperty($0) } },
+            required: property.required
+        )
+    }
+
+    /// Recursively map a neutral array-items schema to Gemini's typed items schema.
+    private func mapSchemaItems(_ items: AIToolPropertyItems) -> GeminiSchemaItems {
+        GeminiSchemaItems(
+            type: items.type.uppercased(),
+            properties: items.properties.map { $0.mapValues { mapSchemaProperty($0) } },
+            required: items.required
         )
     }
 
