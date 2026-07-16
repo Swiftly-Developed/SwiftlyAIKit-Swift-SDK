@@ -342,4 +342,19 @@ struct AnthropicProviderTests {
         #expect(json.contains("emails"))
         #expect(json.contains("address"))
     }
+
+    // MARK: - Models list
+
+    @Test("Decodes models list response")
+    func testDecodeModelsListResponse() throws {
+        let jsonData = MockAnthropicAPI.modelsListResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(AnthropicModelsResponse.self, from: jsonData)
+
+        #expect(response.hasMore == false)
+        #expect(response.data.count == 2)
+        #expect(response.data[0].id == "claude-opus-4-1-20250805")
+        #expect(response.data[0].displayName == "Claude Opus 4.1")
+        #expect(response.firstId == "claude-opus-4-1-20250805")
+        #expect(response.lastId == "claude-sonnet-4-5-20250929")
+    }
 }
