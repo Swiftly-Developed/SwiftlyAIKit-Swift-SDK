@@ -179,7 +179,7 @@ public actor MockHTTPClient {
     ///   - body: Request body
     ///   - chunks: Pre-configured data chunks to stream
     /// - Returns: AsyncThrowingStream of data chunks
-    public nonisolated func streamPost(
+    nonisolated public func streamPost(
         url: String,
         headers: [(String, String)],
         body: Data,
@@ -208,7 +208,7 @@ public actor MockHTTPClient {
     // MARK: - Helper Methods
 
     /// Map HTTP status code to AIError
-    private nonisolated func mapHTTPError(statusCode: Int, data: Data) -> AIError {
+    nonisolated private func mapHTTPError(statusCode: Int, data: Data) -> AIError {
         let message = String(data: data, encoding: .utf8) ?? ""
 
         switch statusCode {

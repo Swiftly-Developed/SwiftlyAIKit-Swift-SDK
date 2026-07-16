@@ -35,9 +35,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated SwiftlyAIKit.md Topics section with provider-first organization
 - All 41 existing guide files remain accessible and functional
 
-## [0.9.0] - 2025-11-25
+## [0.9.0] - 2026-07-16
 
 ### Added
+- **Anthropic provider parity — full tool calling, prompt caching, extended thinking, web search**
+  - Neutral `[AITool]` and `AIToolChoice` are now mapped into Anthropic requests (previously silently dropped); raw JSON pass-through still takes precedence when supplied
+  - Faithful `tool_use` argument round-trip in **both** directions — request-side serializes `AIToolCall.arguments` into `tool_use.input`, response-side decodes `tool_use.input` back into `AIToolCall.arguments`; a full `user → assistant(tool_use) → user(tool_result) → assistant(text)` turn survives encode/decode
+  - Non-streaming `tool_use` blocks parsed into `AIMessageContent.toolCall` with real arguments and `stopReason == .toolUse`
+  - Streaming `tool_use` accumulates `input_json_delta` fragments into complete tool-call arguments (surfaced via a reusable `ToolStreamAccumulator`)
+  - Prompt caching (ephemeral) via `providerOptions["anthropic_cache"]` — targets system prompt, tools, and/or trailing message content (`true`/`"system"`/`"tools"`/`"messages"`/`"all"`)
+  - Extended thinking via `providerOptions["anthropic_thinking"]` (bool or budget int, plus `anthropic_thinking_budget`); correct `{"type":"enabled","budget_tokens":N}` wire format; thinking blocks surfaced on `AIResponse.providerData["thinking"]`
+  - Native server-side web search via `providerOptions["anthropic_web_search"]` with the `web-search-2025-03-05` beta header; `server_tool_use` / `web_search_tool_result` surfaced on `AIResponse.providerData` for citation relay
+  - Fixed `thinking` content-block decoding (was reading the `text` key instead of `thinking`)
+- **Provider-neutral nested tool schemas**
+  - `AIToolProperty` and `AIToolPropertyItems` gained optional `properties`/`required` so nested objects and arrays-of-objects are representable (additive, existing call sites unaffected)
+  - Shared `jsonSchemaDictionary()` serializer used by Anthropic, OpenAI, and Grok; Gemini's typed schema recurses into nested properties
+- **OpenAI / Gemini / Grok agentic tool-calling readiness**
+  - OpenAI and Gemini streaming now surface tool/function calls (not just text); OpenAI accumulates partial tool-call arguments across deltas
+  - Gemini reports `stopReason == .toolUse` on function calls and round-trips tool results via the function name (Gemini has no tool-call IDs)
+  - Grok maps the neutral `toolChoice`, round-trips assistant tool calls and tool-result messages (previously dropped), and surfaces streamed tool calls in message content
 - **xAI Grok Provider** (~1,200 lines total)
   - GrokModels.swift with complete type definitions (~900 lines) for all Grok API features
   - GrokProvider implementation (~670 lines) with sendMessage, streamMessage, countTokens, image generation, deferred completions, and model listing
