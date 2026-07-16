@@ -8,6 +8,37 @@ import Foundation
 /// - ``AnthropicProvider``
 /// - <doc:AnthropicGuide>
 
+// MARK: - Dynamic Coding Key
+
+/// A coding key that accepts any string, used to capture arbitrary/unknown JSON keys
+/// for byte-faithful round-tripping of native Anthropic blocks and tool definitions.
+struct AnthropicDynamicKey: CodingKey {
+    var stringValue: String
+    var intValue: Int?
+    init?(stringValue: String) {
+        self.stringValue = stringValue
+        self.intValue = nil
+    }
+    init?(intValue: Int) {
+        self.stringValue = String(intValue)
+        self.intValue = intValue
+    }
+}
+
+/// Decode the entire current object as a raw `[String: AnyCodable]` dictionary.
+/// Used to preserve every field of server-tool / unknown blocks that the typed
+/// model does not otherwise capture (e.g. `encrypted_content`, `tool_use_id`).
+func anthropicDecodeRawObject(from decoder: Decoder) throws -> AnyCodable {
+    let container = try decoder.container(keyedBy: AnthropicDynamicKey.self)
+    var dict: [String: Any] = [:]
+    for key in container.allKeys {
+        // Store fully-unwrapped values so consumers see plain [String: Any] trees
+        // (not nested AnyCodable), consistent with the rest of providerData.
+        dict[key.stringValue] = try container.decode(AnyCodable.self, forKey: key).value
+    }
+    return AnyCodable(dict)
+}
+
 // MARK: - Content Blocks
 
 /// Represents different types of content blocks in Anthropic messages
@@ -143,16 +174,30 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
             let name = try container.decode(String.self, forKey: .name)
             self = .serverToolUse(id: id, name: name)
         case "web_search_tool_result":
-            // Preserve search results — decode content if present, else empty
-            let content = try container.decodeIfPresent(AnyCodable.self, forKey: .content)
-            self = .webSearchToolResult(rawJSON: content ?? AnyCodable([:] as [String: Any]))
+            // Capture the ENTIRE block (type, tool_use_id, content with urls/text/
+            // encrypted_content) so citations can be relayed and the block re-sent faithfully.
+            self = .webSearchToolResult(rawJSON: try anthropicDecodeRawObject(from: decoder))
         default:
-            // Lenient fallback: preserve unknown types instead of crashing
-            self = .unknown(type: type, rawJSON: AnyCodable([:] as [String: Any]))
+            // Lenient fallback: preserve the full raw block for unknown/future types
+            // (e.g. AI19's tool_search_tool_result) instead of discarding it.
+            self = .unknown(type: type, rawJSON: try anthropicDecodeRawObject(from: decoder))
         }
     }
 
     public func encode(to encoder: Encoder) throws {
+        // Native server-tool / unknown blocks round-trip byte-faithfully via their captured
+        // raw JSON (the whole object, including type + any fields the typed model omits).
+        switch self {
+        case .webSearchToolResult(let rawJSON):
+            try rawJSON.encode(to: encoder)
+            return
+        case .unknown(_, let rawJSON):
+            try rawJSON.encode(to: encoder)
+            return
+        default:
+            break
+        }
+
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         switch self {
@@ -186,11 +231,8 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
             try container.encode("server_tool_use", forKey: .type)
             try container.encode(id, forKey: .id)
             try container.encode(name, forKey: .name)
-        case .webSearchToolResult(let rawJSON):
-            try container.encode("web_search_tool_result", forKey: .type)
-            try container.encode(rawJSON, forKey: .content)
-        case .unknown(let type, _):
-            try container.encode(type, forKey: .type)
+        case .webSearchToolResult, .unknown:
+            break // handled above via raw-JSON passthrough
         }
     }
 }
@@ -209,6 +251,11 @@ public struct AnthropicToolDefinition: Sendable, Equatable {
     public let inputSchema: ToolInputSchema?
     /// Optional ephemeral cache_control marker (prompt caching)
     public let cacheControl: AnthropicCacheControl?
+    /// Deferred loading flag (Anthropic tool-search hot/cold set, `defer_loading`).
+    public let deferLoading: Bool?
+    /// Any additional tool fields not modelled explicitly, preserved for byte-faithful
+    /// round-tripping of `rawToolsJSON` (e.g. future / native tool parameters).
+    public let extras: [String: AnyCodable]?
 
     /// Full memberwise initializer
     public init(
@@ -216,13 +263,17 @@ public struct AnthropicToolDefinition: Sendable, Equatable {
         name: String?,
         description: String?,
         inputSchema: ToolInputSchema?,
-        cacheControl: AnthropicCacheControl? = nil
+        cacheControl: AnthropicCacheControl? = nil,
+        deferLoading: Bool? = nil,
+        extras: [String: AnyCodable]? = nil
     ) {
         self.type = type
         self.name = name
         self.description = description
         self.inputSchema = inputSchema
         self.cacheControl = cacheControl
+        self.deferLoading = deferLoading
+        self.extras = extras
     }
 
     public init(name: String, description: String, inputSchema: ToolInputSchema) {
@@ -241,7 +292,9 @@ public struct AnthropicToolDefinition: Sendable, Equatable {
             name: name,
             description: description,
             inputSchema: inputSchema,
-            cacheControl: cacheControl
+            cacheControl: cacheControl,
+            deferLoading: deferLoading,
+            extras: extras
         )
     }
 }
@@ -249,7 +302,13 @@ public struct AnthropicToolDefinition: Sendable, Equatable {
 extension AnthropicToolDefinition: Codable {
     enum CodingKeys: String, CodingKey {
         case type, name, description, inputSchema = "input_schema", cacheControl = "cache_control"
+        case deferLoading = "defer_loading"
     }
+
+    /// Keys handled explicitly; everything else is captured into `extras`.
+    private static let knownKeys: Set<String> = [
+        "type", "name", "description", "input_schema", "cache_control", "defer_loading"
+    ]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -258,6 +317,15 @@ extension AnthropicToolDefinition: Codable {
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.inputSchema = try container.decodeIfPresent(ToolInputSchema.self, forKey: .inputSchema)
         self.cacheControl = try container.decodeIfPresent(AnthropicCacheControl.self, forKey: .cacheControl)
+        self.deferLoading = try container.decodeIfPresent(Bool.self, forKey: .deferLoading)
+
+        // Capture any additional keys so rawToolsJSON round-trips byte-faithfully.
+        let dynamic = try decoder.container(keyedBy: AnthropicDynamicKey.self)
+        var extras: [String: AnyCodable] = [:]
+        for key in dynamic.allKeys where !Self.knownKeys.contains(key.stringValue) {
+            extras[key.stringValue] = try dynamic.decode(AnyCodable.self, forKey: key)
+        }
+        self.extras = extras.isEmpty ? nil : extras
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -267,6 +335,15 @@ extension AnthropicToolDefinition: Codable {
         try container.encodeIfPresent(description, forKey: .description)
         try container.encodeIfPresent(inputSchema, forKey: .inputSchema)
         try container.encodeIfPresent(cacheControl, forKey: .cacheControl)
+        try container.encodeIfPresent(deferLoading, forKey: .deferLoading)
+
+        if let extras {
+            var dynamic = encoder.container(keyedBy: AnthropicDynamicKey.self)
+            for (key, value) in extras {
+                guard let codingKey = AnthropicDynamicKey(stringValue: key) else { continue }
+                try dynamic.encode(value, forKey: codingKey)
+            }
+        }
     }
 }
 
@@ -471,6 +548,11 @@ public struct AnthropicRequest: Codable, Sendable {
     public let tools: [AnthropicToolDefinition]?
     public let toolChoice: AnthropicToolChoice?
     public let thinking: AnthropicThinkingConfig?
+    /// When set, these raw message objects are emitted verbatim for the `messages`
+    /// wire field instead of the typed `messages`. Preserves native content blocks
+    /// (server_tool_use, web_search_tool_result with encrypted_content, etc.) that the
+    /// typed model cannot represent losslessly. Not part of the decoded wire form.
+    public let rawMessages: [AnyCodable]?
 
     enum CodingKeys: String, CodingKey {
         case model, messages, maxTokens = "max_tokens", system, temperature
@@ -491,7 +573,8 @@ public struct AnthropicRequest: Codable, Sendable {
         stream: Bool? = nil,
         tools: [AnthropicToolDefinition]? = nil,
         toolChoice: AnthropicToolChoice? = nil,
-        thinking: AnthropicThinkingConfig? = nil
+        thinking: AnthropicThinkingConfig? = nil,
+        rawMessages: [AnyCodable]? = nil
     ) {
         self.model = model
         self.messages = messages
@@ -506,6 +589,47 @@ public struct AnthropicRequest: Codable, Sendable {
         self.tools = tools
         self.toolChoice = toolChoice
         self.thinking = thinking
+        self.rawMessages = rawMessages
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.model = try container.decode(String.self, forKey: .model)
+        self.messages = try container.decode([AnthropicMessage].self, forKey: .messages)
+        self.maxTokens = try container.decode(Int.self, forKey: .maxTokens)
+        self.system = try container.decodeIfPresent(AnthropicSystemPrompt.self, forKey: .system)
+        self.temperature = try container.decodeIfPresent(Double.self, forKey: .temperature)
+        self.topP = try container.decodeIfPresent(Double.self, forKey: .topP)
+        self.topK = try container.decodeIfPresent(Int.self, forKey: .topK)
+        self.stopSequences = try container.decodeIfPresent([String].self, forKey: .stopSequences)
+        self.metadata = try container.decodeIfPresent(AnthropicMetadata.self, forKey: .metadata)
+        self.stream = try container.decodeIfPresent(Bool.self, forKey: .stream)
+        self.tools = try container.decodeIfPresent([AnthropicToolDefinition].self, forKey: .tools)
+        self.toolChoice = try container.decodeIfPresent(AnthropicToolChoice.self, forKey: .toolChoice)
+        self.thinking = try container.decodeIfPresent(AnthropicThinkingConfig.self, forKey: .thinking)
+        self.rawMessages = nil
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(model, forKey: .model)
+        // Emit raw message objects verbatim when provided; otherwise the typed messages.
+        if let rawMessages {
+            try container.encode(rawMessages, forKey: .messages)
+        } else {
+            try container.encode(messages, forKey: .messages)
+        }
+        try container.encode(maxTokens, forKey: .maxTokens)
+        try container.encodeIfPresent(system, forKey: .system)
+        try container.encodeIfPresent(temperature, forKey: .temperature)
+        try container.encodeIfPresent(topP, forKey: .topP)
+        try container.encodeIfPresent(topK, forKey: .topK)
+        try container.encodeIfPresent(stopSequences, forKey: .stopSequences)
+        try container.encodeIfPresent(metadata, forKey: .metadata)
+        try container.encodeIfPresent(stream, forKey: .stream)
+        try container.encodeIfPresent(tools, forKey: .tools)
+        try container.encodeIfPresent(toolChoice, forKey: .toolChoice)
+        try container.encodeIfPresent(thinking, forKey: .thinking)
     }
 }
 
