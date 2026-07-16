@@ -165,6 +165,16 @@ public struct AIToolProperty: Codable, Sendable, Hashable {
     /// Maximum value for number/integer properties
     public let maximum: Double?
 
+    /// Nested property definitions for object-typed properties
+    ///
+    /// Present when `type == "object"`. Enables faithful representation of nested
+    /// object schemas across providers. Dictionaries provide the indirection needed
+    /// for this otherwise-recursive type.
+    public let properties: [String: AIToolProperty]?
+
+    /// Required nested property names (for object-typed properties)
+    public let required: [String]?
+
     /// Initialize a tool property
     ///
     /// - Parameters:
@@ -174,13 +184,17 @@ public struct AIToolProperty: Codable, Sendable, Hashable {
     ///   - items: Array item schema
     ///   - minimum: Minimum numeric value
     ///   - maximum: Maximum numeric value
+    ///   - properties: Nested property definitions (for object types)
+    ///   - required: Required nested property names (for object types)
     public init(
         type: String,
         description: String? = nil,
         enumValues: [String]? = nil,
         items: AIToolPropertyItems? = nil,
         minimum: Double? = nil,
-        maximum: Double? = nil
+        maximum: Double? = nil,
+        properties: [String: AIToolProperty]? = nil,
+        required: [String]? = nil
     ) {
         self.type = type
         self.description = description
@@ -188,6 +202,8 @@ public struct AIToolProperty: Codable, Sendable, Hashable {
         self.items = items
         self.minimum = minimum
         self.maximum = maximum
+        self.properties = properties
+        self.required = required
     }
 
     /// Custom coding keys to handle enum keyword
@@ -198,10 +214,15 @@ public struct AIToolProperty: Codable, Sendable, Hashable {
         case items
         case minimum
         case maximum
+        case properties
+        case required
     }
 }
 
 /// Schema for array item properties
+///
+/// Supports arrays of primitives (type only) and arrays of objects (nested
+/// `properties`/`required`).
 public struct AIToolPropertyItems: Codable, Sendable, Hashable {
     /// Item type
     public let type: String
@@ -209,14 +230,29 @@ public struct AIToolPropertyItems: Codable, Sendable, Hashable {
     /// Item description
     public let description: String?
 
+    /// Nested property definitions (for arrays of objects, i.e. `type == "object"`)
+    public let properties: [String: AIToolProperty]?
+
+    /// Required nested property names (for arrays of objects)
+    public let required: [String]?
+
     /// Initialize array items schema
     ///
     /// - Parameters:
     ///   - type: Item type
     ///   - description: Item description
-    public init(type: String, description: String? = nil) {
+    ///   - properties: Nested property definitions (for arrays of objects)
+    ///   - required: Required nested property names (for arrays of objects)
+    public init(
+        type: String,
+        description: String? = nil,
+        properties: [String: AIToolProperty]? = nil,
+        required: [String]? = nil
+    ) {
         self.type = type
         self.description = description
+        self.properties = properties
+        self.required = required
     }
 }
 
@@ -310,5 +346,55 @@ public struct AIToolCall: Codable, Sendable, Hashable {
         self.type = type
         self.name = name
         self.arguments = arguments
+    }
+}
+
+// MARK: - JSON Schema Serialization
+
+extension AIToolProperty {
+    /// Convert this property into a JSON Schema dictionary, recursing into nested
+    /// object properties and array item schemas.
+    ///
+    /// Shared by providers that build raw JSON Schema (OpenAI, Grok, Anthropic's
+    /// neutral tool path). Gemini uses its own typed schema converter.
+    public func jsonSchemaDictionary() -> [String: Any] {
+        var dict: [String: Any] = ["type": type]
+        if let description { dict["description"] = description }
+        if let enumValues = `enum` { dict["enum"] = enumValues }
+        if let minimum { dict["minimum"] = minimum }
+        if let maximum { dict["maximum"] = maximum }
+        if let properties {
+            dict["properties"] = properties.mapValues { $0.jsonSchemaDictionary() }
+        }
+        if let required { dict["required"] = required }
+        if let items { dict["items"] = items.jsonSchemaDictionary() }
+        return dict
+    }
+}
+
+extension AIToolPropertyItems {
+    /// Convert this array-items schema into a JSON Schema dictionary, recursing into
+    /// nested object properties (arrays of objects).
+    public func jsonSchemaDictionary() -> [String: Any] {
+        var dict: [String: Any] = ["type": type]
+        if let description { dict["description"] = description }
+        if let properties {
+            dict["properties"] = properties.mapValues { $0.jsonSchemaDictionary() }
+        }
+        if let required { dict["required"] = required }
+        return dict
+    }
+}
+
+extension AIToolParameters {
+    /// Convert the full parameter schema into a JSON Schema dictionary.
+    public func jsonSchemaDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "type": type,
+            "properties": properties.mapValues { $0.jsonSchemaDictionary() }
+        ]
+        if let required { dict["required"] = required }
+        if let additionalProperties { dict["additionalProperties"] = additionalProperties }
+        return dict
     }
 }
