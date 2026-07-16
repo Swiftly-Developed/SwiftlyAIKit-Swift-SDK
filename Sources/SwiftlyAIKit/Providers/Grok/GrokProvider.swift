@@ -166,11 +166,17 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
                                     accumulateToolCalls(toolCallDeltas, into: &accumulatedToolCalls)
                                 }
 
-                                // Create AIResponse with accumulated content
-                                let message = AIMessage(
-                                    role: .assistant,
-                                    content: accumulatedContent.isEmpty ? [] : [.text(accumulatedContent)]
-                                )
+                                // Create AIResponse with accumulated content + tool calls
+                                var streamContent: [AIMessageContent] = accumulatedContent.isEmpty ? [] : [.text(accumulatedContent)]
+                                for call in accumulatedToolCalls where !(call.id.isEmpty && call.function.name.isEmpty) {
+                                    streamContent.append(.toolCall(AIToolCall(
+                                        id: call.id,
+                                        type: call.type,
+                                        name: call.function.name,
+                                        arguments: call.function.arguments
+                                    )))
+                                }
+                                let message = AIMessage(role: .assistant, content: streamContent)
 
                                 let aiResponse = AIResponse(
                                     id: streamChunk.id,
@@ -375,7 +381,7 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
     // MARK: - Private Helpers
 
     /// Build Grok request from AIRequest
-    private func buildGrokRequest(from request: AIRequest, streaming: Bool = false) throws -> GrokRequest {
+    func buildGrokRequest(from request: AIRequest, streaming: Bool = false) throws -> GrokRequest {
         // Convert messages
         var grokMessages: [GrokMessage] = []
 
@@ -387,6 +393,42 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
         // Add conversation messages
         for message in request.messages {
             let roleString = message.role.rawValue
+
+            // Tool results map to individual tool-role messages (OpenAI-compatible).
+            let toolResults = message.content.compactMap { content -> GrokMessage? in
+                if case .toolResult(let id, let result) = content {
+                    return GrokMessage(role: "tool", content: .text(result), tool_call_id: id)
+                }
+                return nil
+            }
+            if !toolResults.isEmpty {
+                grokMessages.append(contentsOf: toolResults)
+                continue
+            }
+
+            // Assistant tool calls map to a message carrying tool_calls (content may be nil).
+            let toolCalls = message.content.compactMap { content -> GrokToolCall? in
+                if case .toolCall(let call) = content {
+                    return GrokToolCall(
+                        id: call.id,
+                        type: call.type,
+                        function: GrokFunctionCall(name: call.name, arguments: call.arguments)
+                    )
+                }
+                return nil
+            }
+            if !toolCalls.isEmpty {
+                let text = message.content.compactMap { content -> String? in
+                    if case .text(let value) = content { return value }
+                    return nil
+                }.joined()
+                grokMessages.append(GrokMessage(
+                    role: roleString,
+                    content: text.isEmpty ? nil : .text(text),
+                    tool_calls: toolCalls
+                ))
+                continue
+            }
 
             // Check for multimodal content (vision)
             let hasImages = message.content.contains { content in
@@ -435,8 +477,9 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
             )
         }
 
-        // Convert tool choice if present
-        let toolChoice: GrokToolChoice? = request.providerOptions?["tool_choice"] as? GrokToolChoice
+        // Convert tool choice from the neutral request (providerOptions can't carry a typed
+        // GrokToolChoice, so map the neutral AIToolChoice directly).
+        let toolChoice: GrokToolChoice? = request.toolChoice.map { Self.mapToolChoice($0) }
 
         // Convert response format if present
         let responseFormat: GrokResponseFormat? = request.providerOptions?["response_format"] as? GrokResponseFormat
@@ -473,7 +516,7 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
     }
 
     /// Transform Grok response to AIResponse
-    private func transformToAIResponse(_ response: GrokResponse, originalRequest: AIRequest) -> AIResponse {
+    func transformToAIResponse(_ response: GrokResponse, originalRequest: AIRequest) -> AIResponse {
         // Extract first choice
         guard let firstChoice = response.choices.first else {
             let emptyMessage = AIMessage(role: .assistant, content: [])
@@ -542,6 +585,16 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
         )
     }
 
+    /// Map the neutral tool choice to Grok's (OpenAI-compatible) tool_choice.
+    static func mapToolChoice(_ choice: AIToolChoice) -> GrokToolChoice {
+        switch choice {
+        case .auto: return .auto
+        case .required: return .required
+        case .none: return .none
+        case .specific(let name): return .function(name)
+        }
+    }
+
     /// Map Grok finish reason to AIStopReason
     private func mapFinishReason(_ reason: String) -> AIStopReason {
         switch reason {
@@ -554,36 +607,11 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
     }
 
     /// Convert AIToolParameters to [String: AnyCodable] for Grok API
+    ///
+    /// Uses the shared JSON Schema serializer so nested objects and arrays-of-objects
+    /// (including enums and validation bounds) survive to the wire.
     private func convertToolParameters(_ parameters: AIToolParameters) -> [String: AnyCodable] {
-        var result: [String: AnyCodable] = [
-            "type": AnyCodable(parameters.type)
-        ]
-
-        // Convert properties
-        var properties: [String: [String: Any]] = [:]
-        for (name, property) in parameters.properties {
-            var propDict: [String: Any] = ["type": property.type]
-            if let description = property.description {
-                propDict["description"] = description
-            }
-            if let enumValues = property.enum {
-                propDict["enum"] = enumValues
-            }
-            properties[name] = propDict
-        }
-        result["properties"] = AnyCodable(properties)
-
-        // Add required fields
-        if let required = parameters.required {
-            result["required"] = AnyCodable(required)
-        }
-
-        // Add additionalProperties
-        if let additionalProperties = parameters.additionalProperties {
-            result["additionalProperties"] = AnyCodable(additionalProperties)
-        }
-
-        return result
+        parameters.jsonSchemaDictionary().mapValues { AnyCodable($0) }
     }
 
     /// Accumulate tool calls from streaming deltas

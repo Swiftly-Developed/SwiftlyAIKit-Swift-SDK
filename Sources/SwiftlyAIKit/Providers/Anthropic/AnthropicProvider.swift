@@ -181,6 +181,9 @@ public struct AnthropicProvider: ProviderProtocol {
 
                     var streamModel = anthropicRequest.model
                     var streamId = "stream"
+                    // Accumulate tool_use blocks so we can emit a complete tool call
+                    // (with fully-assembled arguments) once each block stops.
+                    var toolAccumulator = ToolStreamAccumulator()
 
                     for try await event in stream {
                         if var response = processStreamEvent(event) {
@@ -202,6 +205,21 @@ public struct AnthropicProvider: ProviderProtocol {
                                 providerData: response.providerData
                             )
                             continuation.yield(response)
+                        }
+
+                        // Tool-use argument accumulation (surfaces a complete tool call on block stop).
+                        if let (index, toolCall) = toolAccumulator.handle(event) {
+                            let complete = AIResponse(
+                                id: streamId,
+                                model: streamModel,
+                                message: AIMessage(role: .assistant, content: [.toolCall(toolCall)]),
+                                provider: .anthropic,
+                                providerData: [
+                                    "streamEvent": AnyCodable("tool_use_complete"),
+                                    "index": AnyCodable(index)
+                                ]
+                            )
+                            continuation.yield(complete)
                         }
                     }
 
@@ -590,53 +608,73 @@ public struct AnthropicProvider: ProviderProtocol {
         return hasWebSearch ? ["web-search-2025-03-05"] : []
     }
 
-    private func mapToAnthropicRequest(_ request: AIRequest) throws -> AnthropicRequest {
-        let messages = request.messages.map { message in
-            let content = message.content.map { content -> AnthropicContentBlock in
-                switch content {
-                case .text(let text):
-                    return .text(text)
-                case .image(let source, let mediaType):
-                    switch source {
-                    case .base64(let data):
-                        return .image(source: .base64(data: data, mediaType: mediaType ?? "image/jpeg"))
-                    case .url(let url):
-                        return .image(source: .url(url))
-                    }
-                case .document(let data, let mediaType, _):
-                    let base64Data = data.base64EncodedString()
-                    return .document(source: .init(mediaType: mediaType, data: base64Data))
-                case .toolCall(let toolCall):
-                    // Map AIToolCall to Anthropic's tool_use format
-                    return .toolUse(id: toolCall.id, name: toolCall.name, input: [:]) // Parse arguments as needed
-                case .toolResult(let id, let result):
-                    // Map tool result to Anthropic's tool_result format
-                    return .toolResult(toolUseId: id, content: result, isError: false)
-                case .custom:
-                    return .text("") // Fallback for custom content
-                }
-            }
+    // swiftlint:disable:next function_body_length
+    func mapToAnthropicRequest(_ request: AIRequest) throws -> AnthropicRequest {
+        let cacheTargets = Self.cacheTargets(from: request.providerOptions)
 
+        var messages = request.messages.map { message in
+            let content = message.content.map { self.mapContentBlock($0) }
             return AnthropicMessage(role: message.role.rawValue, content: content)
         }
 
-        // Use raw system JSON (with cache_control) if available, otherwise fall back to plain text
+        // Apply cache_control to the trailing content block of the final message when opted in.
+        if cacheTargets.contains(.messages), let last = messages.last, let lastBlock = last.content.last {
+            var newContent = last.content
+            if case .text(let text) = lastBlock {
+                newContent[newContent.count - 1] = .textWithCacheControl(text, AnthropicCacheControl())
+                messages[messages.count - 1] = AnthropicMessage(role: last.role, content: newContent)
+            }
+        }
+
+        // System prompt: prefer raw JSON pass-through (already carries any cache_control),
+        // otherwise build from the neutral systemPrompt, applying cache_control when opted in.
         let system: AnthropicSystemPrompt?
         if let rawSystemData = request.rawSystemJSON,
            let blocks = try? JSONDecoder().decode([AnthropicSystemPrompt.SystemBlock].self, from: rawSystemData) {
             system = .blocks(blocks)
+        } else if let prompt = request.systemPrompt, !prompt.isEmpty {
+            if cacheTargets.contains(.system) {
+                system = .blocks([.init(text: prompt, cacheControl: AnthropicCacheControl())])
+            } else {
+                system = .text(prompt)
+            }
         } else {
-            system = request.systemPrompt.map { .text($0) }
+            system = nil
         }
 
-        // Decode raw tool definitions if provided (preserves full JSON schemas including nested objects)
-        let anthropicTools: [AnthropicToolDefinition]? = request.rawToolsJSON.flatMap { data in
-            try? JSONDecoder().decode([AnthropicToolDefinition].self, from: data)
+        // Tools: prefer raw JSON pass-through (preserves full schemas incl. nested objects),
+        // otherwise map the neutral [AITool]. Optionally append Anthropic's native web_search.
+        var anthropicTools: [AnthropicToolDefinition]?
+        if let rawToolsData = request.rawToolsJSON,
+           let decoded = try? JSONDecoder().decode([AnthropicToolDefinition].self, from: rawToolsData) {
+            anthropicTools = decoded
+        } else if let tools = request.tools {
+            anthropicTools = tools.map { Self.mapNeutralTool($0) }
         }
 
-        // Decode raw tool choice if provided
-        let anthropicToolChoice: AnthropicToolChoice? = request.rawToolChoiceJSON.flatMap { data in
-            try? JSONDecoder().decode(AnthropicToolChoice.self, from: data)
+        if Self.isWebSearchEnabled(request.providerOptions) {
+            var tools = anthropicTools ?? []
+            if !tools.contains(where: { $0.type?.hasPrefix("web_search") == true }) {
+                tools.append(AnthropicToolDefinition(type: "web_search_20250305", name: "web_search"))
+            }
+            anthropicTools = tools
+        }
+
+        // Cache the tool set (marks the last tool, per Anthropic's prefix-caching model).
+        if cacheTargets.contains(.tools), var tools = anthropicTools, !tools.isEmpty {
+            tools[tools.count - 1] = tools[tools.count - 1].withCacheControl(AnthropicCacheControl())
+            anthropicTools = tools
+        }
+
+        // Tool choice: prefer raw JSON pass-through, otherwise map the neutral choice.
+        let anthropicToolChoice: AnthropicToolChoice?
+        if let rawChoiceData = request.rawToolChoiceJSON,
+           let decoded = try? JSONDecoder().decode(AnthropicToolChoice.self, from: rawChoiceData) {
+            anthropicToolChoice = decoded
+        } else if let choice = request.toolChoice {
+            anthropicToolChoice = Self.mapNeutralToolChoice(choice)
+        } else {
+            anthropicToolChoice = nil
         }
 
         return AnthropicRequest(
@@ -652,29 +690,166 @@ public struct AnthropicProvider: ProviderProtocol {
             stream: request.stream ? true : nil,
             tools: anthropicTools,
             toolChoice: anthropicToolChoice,
-            thinking: nil
+            thinking: Self.thinkingConfig(from: request.providerOptions)
         )
     }
 
-    private func mapToAIResponse(_ response: AnthropicResponse) -> AIResponse {
-        let content = response.content.compactMap { block -> AIMessageContent? in
+    /// Map a single neutral content part to an Anthropic content block, preserving
+    /// tool_use arguments and tool_result payloads for faithful multi-turn round-trips.
+    private func mapContentBlock(_ content: AIMessageContent) -> AnthropicContentBlock {
+        switch content {
+        case .text(let text):
+            return .text(text)
+        case .image(let source, let mediaType):
+            switch source {
+            case .base64(let data):
+                return .image(source: .base64(data: data, mediaType: mediaType ?? "image/jpeg"))
+            case .url(let url):
+                return .image(source: .url(url))
+            }
+        case .document(let data, let mediaType, _):
+            return .document(source: .init(mediaType: mediaType, data: data.base64EncodedString()))
+        case .toolCall(let toolCall):
+            // Deserialize the JSON arguments string into a structured tool_use input.
+            return .toolUse(id: toolCall.id, name: toolCall.name, input: Self.decodeToolInput(toolCall.arguments))
+        case .toolResult(let id, let result):
+            return .toolResult(toolUseId: id, content: result, isError: false)
+        case .custom:
+            return .text("")
+        }
+    }
+
+    // MARK: - Anthropic-specific option mapping
+
+    /// Which parts of the request should carry an ephemeral `cache_control` marker.
+    enum CacheTarget: Hashable {
+        case system
+        case tools
+        case messages
+    }
+
+    /// Parse the `anthropic_cache` provider option into a set of cache targets.
+    ///
+    /// Accepted values:
+    /// - `true` (Bool): cache the stable prefix — system prompt and tools
+    /// - `"system"` / `"tools"` / `"messages"`: cache just that target
+    /// - `"all"`: cache system, tools, and trailing message content
+    static func cacheTargets(from providerOptions: [String: AnyCodable]?) -> Set<CacheTarget> {
+        guard let raw = providerOptions?["anthropic_cache"]?.value else { return [] }
+
+        if let flag = raw as? Bool {
+            return flag ? [.system, .tools] : []
+        }
+        if let str = (raw as? String)?.lowercased() {
+            switch str {
+            case "system": return [.system]
+            case "tools": return [.tools]
+            case "messages", "content": return [.messages]
+            case "all", "true": return [.system, .tools, .messages]
+            case "none", "false", "": return []
+            default: return [.system, .tools]
+            }
+        }
+        return []
+    }
+
+    /// Build an extended-thinking config from the `anthropic_thinking` provider option.
+    ///
+    /// Accepted values:
+    /// - `true` (Bool): enable with the minimum budget (1024)
+    /// - an integer: enable with that budget_tokens
+    /// A separate `anthropic_thinking_budget` integer may override the budget.
+    static func thinkingConfig(from providerOptions: [String: AnyCodable]?) -> AnthropicThinkingConfig? {
+        guard let providerOptions else { return nil }
+
+        let explicitBudget = intValue(providerOptions["anthropic_thinking_budget"]?.value)
+
+        guard let raw = providerOptions["anthropic_thinking"]?.value else { return nil }
+
+        if let flag = raw as? Bool {
+            guard flag else { return nil }
+            return AnthropicThinkingConfig(enabled: true, budgetTokens: explicitBudget ?? 1024)
+        }
+        if let budget = intValue(raw) {
+            return AnthropicThinkingConfig(enabled: true, budgetTokens: explicitBudget ?? budget)
+        }
+        return nil
+    }
+
+    /// Whether Anthropic's native server-side web search should be enabled.
+    static func isWebSearchEnabled(_ providerOptions: [String: AnyCodable]?) -> Bool {
+        guard let raw = providerOptions?["anthropic_web_search"]?.value else { return false }
+        if let flag = raw as? Bool { return flag }
+        if let str = (raw as? String)?.lowercased() { return str == "true" || str == "on" || str == "enabled" }
+        return false
+    }
+
+    /// Map a neutral tool to an Anthropic custom tool definition, preserving nested schemas.
+    static func mapNeutralTool(_ tool: AITool) -> AnthropicToolDefinition {
+        let properties = tool.parameters.properties.mapValues { AnyCodable($0.jsonSchemaDictionary()) }
+        let schema = ToolInputSchema(
+            type: tool.parameters.type,
+            properties: properties.isEmpty ? nil : properties,
+            required: tool.parameters.required
+        )
+        return AnthropicToolDefinition(name: tool.name, description: tool.description, inputSchema: schema)
+    }
+
+    /// Map the neutral tool choice to Anthropic's tool_choice representation.
+    static func mapNeutralToolChoice(_ choice: AIToolChoice) -> AnthropicToolChoice? {
+        switch choice {
+        case .auto: return .auto
+        case .required: return .any
+        case .specific(let name): return .tool(name)
+        case .none:
+            // Anthropic has no explicit "none"; omitting tool_choice lets the model decide,
+            // but callers asking for none expect no tool use — represent as auto with no forcing.
+            return nil
+        }
+    }
+
+    /// Deserialize a JSON arguments string into a structured tool_use input dictionary.
+    static func decodeToolInput(_ arguments: String) -> [String: AnyCodable] {
+        guard let data = arguments.data(using: .utf8), !data.isEmpty,
+              let dict = try? JSONDecoder().decode([String: AnyCodable].self, from: data) else {
+            return [:]
+        }
+        return dict
+    }
+
+    /// Best-effort extraction of an integer from a decoded JSON value.
+    private static func intValue(_ value: Any?) -> Int? {
+        switch value {
+        case let intValue as Int: return intValue
+        case let doubleValue as Double: return Int(doubleValue)
+        case let stringValue as String: return Int(stringValue)
+        default: return nil
+        }
+    }
+
+    func mapToAIResponse(_ response: AnthropicResponse) -> AIResponse {
+        var content: [AIMessageContent] = []
+        var thinkingParts: [String] = []
+        var webSearchResults: [AnyCodable] = []
+        var serverToolUses: [AnyCodable] = []
+
+        for block in response.content {
             switch block {
             case .text(let text):
-                return .text(text)
+                content.append(.text(text))
+            case .textWithCacheControl(let text, _):
+                content.append(.text(text))
             case .thinking(let text):
-                return .text("[Thinking] \(text)")
+                // Surface reasoning via providerData rather than polluting the neutral text.
+                thinkingParts.append(text)
             case .toolUse(let id, let name, let input):
-                // Serialize the tool input dict to a JSON string for AIToolCall.arguments
-                let argumentsString: String
-                if let data = try? JSONSerialization.data(withJSONObject: input.mapValues { $0.value }),
-                   let str = String(data: data, encoding: .utf8) {
-                    argumentsString = str
-                } else {
-                    argumentsString = "{}"
-                }
-                return .toolCall(AIToolCall(id: id, name: name, arguments: argumentsString))
-            default:
-                return nil
+                content.append(.toolCall(AIToolCall(id: id, name: name, arguments: Self.encodeToolInput(input))))
+            case .serverToolUse(let id, let name):
+                serverToolUses.append(AnyCodable(["id": id, "name": name]))
+            case .webSearchToolResult(let rawJSON):
+                webSearchResults.append(rawJSON)
+            case .image, .document, .toolResult, .unknown:
+                continue
             }
         }
 
@@ -697,14 +872,71 @@ public struct AnthropicProvider: ProviderProtocol {
             }
         }()
 
+        var providerData: [String: AnyCodable] = [:]
+        if !thinkingParts.isEmpty {
+            providerData["thinking"] = AnyCodable(thinkingParts.joined(separator: "\n"))
+        }
+        if !webSearchResults.isEmpty {
+            providerData["webSearchToolResults"] = AnyCodable(webSearchResults.map { $0.value })
+        }
+        if !serverToolUses.isEmpty {
+            providerData["serverToolUse"] = AnyCodable(serverToolUses.map { $0.value })
+        }
+        if let cacheCreation = response.usage.cacheCreationInputTokens {
+            providerData["cacheCreationInputTokens"] = AnyCodable(cacheCreation)
+        }
+
         return AIResponse(
             id: response.id,
             model: response.model,
             message: message,
             stopReason: stopReason,
             usage: usage,
-            provider: .anthropic
+            provider: .anthropic,
+            providerData: providerData.isEmpty ? nil : providerData
         )
+    }
+
+    /// Accumulates streamed `tool_use` content blocks into complete tool calls.
+    ///
+    /// Anthropic streams a tool call as `content_block_start` (id + name),
+    /// a series of `input_json_delta` fragments, then `content_block_stop`.
+    /// Feeding each event to ``handle(_:)`` returns the finished ``AIToolCall`` (and its
+    /// content-block index) exactly once, when its block stops.
+    struct ToolStreamAccumulator {
+        private var blocks: [Int: (id: String, name: String, args: String)] = [:]
+
+        init() {}
+
+        mutating func handle(_ event: AnthropicStreamEvent) -> (index: Int, toolCall: AIToolCall)? {
+            switch event {
+            case .contentBlockStart(let start):
+                if case .toolUse(let id, let name, _) = start.contentBlock {
+                    blocks[start.index] = (id, name, "")
+                }
+            case .contentBlockDelta(let delta):
+                if let partial = delta.delta.partialJson, blocks[delta.index] != nil {
+                    blocks[delta.index]?.args += partial
+                }
+            case .contentBlockStop(let stop):
+                if let block = blocks.removeValue(forKey: stop.index) {
+                    let arguments = block.args.isEmpty ? "{}" : block.args
+                    return (stop.index, AIToolCall(id: block.id, name: block.name, arguments: arguments))
+                }
+            default:
+                break
+            }
+            return nil
+        }
+    }
+
+    /// Serialize a structured tool_use input dictionary into a JSON arguments string.
+    static func encodeToolInput(_ input: [String: AnyCodable]) -> String {
+        if let data = try? JSONSerialization.data(withJSONObject: input.mapValues { $0.value }),
+           let str = String(data: data, encoding: .utf8) {
+            return str
+        }
+        return "{}"
     }
 
     private func processStreamEvent(_ event: AnthropicStreamEvent) -> AIResponse? {
@@ -865,7 +1097,7 @@ public struct AnthropicProvider: ProviderProtocol {
     }
 
     // swiftlint:disable:next cyclomatic_complexity
-    private func parseSSEEvent(_ event: String) throws -> AnthropicStreamEvent? {
+    func parseSSEEvent(_ event: String) throws -> AnthropicStreamEvent? {
         let lines = event.components(separatedBy: "\n")
 
         var eventType: String?

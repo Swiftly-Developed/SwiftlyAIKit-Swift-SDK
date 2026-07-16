@@ -138,6 +138,8 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
                     )
 
                     var accumulatedContent = ""
+                    // Accumulate streamed tool calls by index (id/name arrive first, arguments stream in fragments).
+                    var toolCalls: [Int: (id: String, name: String, args: String)] = [:]
 
                     for try await chunk in stream {
                         let chunkString = String(data: chunk, encoding: .utf8) ?? ""
@@ -159,13 +161,17 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
                             guard let jsonData = jsonString.data(using: .utf8) else { continue }
 
                             let streamChunk = try JSONDecoder().decode(OpenAIStreamChunk.self, from: jsonData)
+                            let delta = streamChunk.choices.first?.delta
+
+                            // Accumulate tool-call deltas
+                            if let toolCallDeltas = delta?.toolCalls {
+                                Self.accumulate(toolCallDeltas, into: &toolCalls)
+                            }
 
                             // Extract delta content
-                            if let delta = streamChunk.choices.first?.delta,
-                               let content = delta.content {
+                            if let content = delta?.content {
                                 accumulatedContent += content
 
-                                // Create AIResponse for this chunk
                                 let message = AIMessage(
                                     role: .assistant,
                                     content: [.text(accumulatedContent)]
@@ -184,10 +190,20 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
 
                             // Check for finish
                             if let finishReason = streamChunk.choices.first?.finishReason {
-                                let finalMessage = AIMessage(
-                                    role: .assistant,
-                                    content: [.text(accumulatedContent)]
-                                )
+                                var finalContent: [AIMessageContent] = []
+                                if !accumulatedContent.isEmpty {
+                                    finalContent.append(.text(accumulatedContent))
+                                }
+                                // Emit fully-assembled tool calls in order
+                                for index in toolCalls.keys.sorted() {
+                                    let call = toolCalls[index]!
+                                    finalContent.append(.toolCall(AIToolCall(
+                                        id: call.id,
+                                        name: call.name,
+                                        arguments: call.args.isEmpty ? "{}" : call.args
+                                    )))
+                                }
+                                let finalMessage = AIMessage(role: .assistant, content: finalContent)
                                 let finalResponse = AIResponse(
                                     id: streamChunk.id,
                                     model: streamChunk.model,
@@ -347,7 +363,7 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
         return headers
     }
 
-    private func mapToOpenAIRequest(_ request: AIRequest) throws -> OpenAIRequest {
+    func mapToOpenAIRequest(_ request: AIRequest) throws -> OpenAIRequest {
         var messages: [OpenAIMessage] = []
 
         // Add system message if present (OpenAI uses messages array, not separate parameter)
@@ -482,7 +498,7 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
         }
     }
 
-    private func mapToAIResponse(_ response: OpenAIResponse) -> AIResponse {
+    func mapToAIResponse(_ response: OpenAIResponse) -> AIResponse {
         guard let choice = response.choices.first else {
             let emptyMessage = AIMessage(role: .assistant, content: [])
             return AIResponse(
@@ -544,41 +560,9 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
     }
 
     private func mapTool(_ tool: AITool) -> OpenAIToolDefinition {
-        // Convert AIToolParameters properties to OpenAI format
-        var parameters: [String: AnyCodable] = [
-            "type": AnyCodable(tool.parameters.type),
-            "properties": AnyCodable(tool.parameters.properties.mapValues { property in
-                var propDict: [String: Any] = ["type": property.type]
-                if let desc = property.description {
-                    propDict["description"] = desc
-                }
-                if let enumValues = property.enum {
-                    propDict["enum"] = enumValues
-                }
-                if let items = property.items {
-                    var itemsDict: [String: Any] = ["type": items.type]
-                    if let desc = items.description {
-                        itemsDict["description"] = desc
-                    }
-                    propDict["items"] = itemsDict
-                }
-                if let min = property.minimum {
-                    propDict["minimum"] = min
-                }
-                if let max = property.maximum {
-                    propDict["maximum"] = max
-                }
-                return propDict
-            })
-        ]
-
-        if let required = tool.parameters.required {
-            parameters["required"] = AnyCodable(required)
-        }
-
-        if let additionalProperties = tool.parameters.additionalProperties {
-            parameters["additionalProperties"] = AnyCodable(additionalProperties)
-        }
+        // Convert AIToolParameters to a JSON Schema dictionary (recurses into nested
+        // objects and arrays-of-objects) and wrap each top-level entry as AnyCodable.
+        let parameters = tool.parameters.jsonSchemaDictionary().mapValues { AnyCodable($0) }
 
         return OpenAIToolDefinition(
             function: OpenAIToolDefinition.FunctionDefinition(
@@ -599,6 +583,25 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
             return .none
         case .specific(let toolName):
             return .function(toolName)
+        }
+    }
+
+    /// Merge streamed tool-call deltas into an index-keyed accumulator.
+    ///
+    /// OpenAI streams a tool call's `id`/`name` in the first delta and its `arguments`
+    /// as subsequent fragments, all keyed by `index`.
+    static func accumulate(
+        _ deltas: [OpenAIStreamChunk.StreamChoice.Delta.DeltaToolCall],
+        into accumulator: inout [Int: (id: String, name: String, args: String)]
+    ) {
+        for delta in deltas {
+            var current = accumulator[delta.index] ?? (id: "", name: "", args: "")
+            if let id = delta.id { current.id = id }
+            if let function = delta.function {
+                if let name = function.name { current.name = name }
+                if let arguments = function.arguments { current.args += arguments }
+            }
+            accumulator[delta.index] = current
         }
     }
 

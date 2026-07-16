@@ -15,6 +15,10 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
     /// Plain text content
     case text(String)
 
+    /// Plain text content carrying an ephemeral cache_control marker (prompt caching).
+    /// Only produced on the request side; decodes back to `.text`.
+    case textWithCacheControl(String, AnthropicCacheControl)
+
     /// Image content
     case image(source: ImageSource)
 
@@ -102,6 +106,8 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
     // Codable implementation
     enum CodingKeys: String, CodingKey {
         case type, text, source, id, name, input, toolUseId = "tool_use_id", content, isError = "is_error"
+        case cacheControl = "cache_control"
+        case thinking
     }
 
     public init(from decoder: Decoder) throws {
@@ -129,7 +135,8 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
             let isError = try container.decodeIfPresent(Bool.self, forKey: .isError) ?? false
             self = .toolResult(toolUseId: toolUseId, content: content, isError: isError)
         case "thinking":
-            let text = try container.decode(String.self, forKey: .text)
+            // Anthropic sends reasoning under the "thinking" key (not "text").
+            let text = try container.decode(String.self, forKey: .thinking)
             self = .thinking(text)
         case "server_tool_use":
             let id = try container.decode(String.self, forKey: .id)
@@ -152,6 +159,10 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
         case .text(let text):
             try container.encode("text", forKey: .type)
             try container.encode(text, forKey: .text)
+        case .textWithCacheControl(let text, let cacheControl):
+            try container.encode("text", forKey: .type)
+            try container.encode(text, forKey: .text)
+            try container.encode(cacheControl, forKey: .cacheControl)
         case .image(let source):
             try container.encode("image", forKey: .type)
             try container.encode(source, forKey: .source)
@@ -170,7 +181,7 @@ public enum AnthropicContentBlock: Codable, Sendable, Equatable {
             try container.encode(isError, forKey: .isError)
         case .thinking(let text):
             try container.encode("thinking", forKey: .type)
-            try container.encode(text, forKey: .text)
+            try container.encode(text, forKey: .thinking)
         case .serverToolUse(let id, let name):
             try container.encode("server_tool_use", forKey: .type)
             try container.encode(id, forKey: .id)
@@ -196,26 +207,48 @@ public struct AnthropicToolDefinition: Sendable, Equatable {
     public let name: String?
     public let description: String?
     public let inputSchema: ToolInputSchema?
+    /// Optional ephemeral cache_control marker (prompt caching)
+    public let cacheControl: AnthropicCacheControl?
 
-    public init(name: String, description: String, inputSchema: ToolInputSchema) {
-        self.type = nil
+    /// Full memberwise initializer
+    public init(
+        type: String?,
+        name: String?,
+        description: String?,
+        inputSchema: ToolInputSchema?,
+        cacheControl: AnthropicCacheControl? = nil
+    ) {
+        self.type = type
         self.name = name
         self.description = description
         self.inputSchema = inputSchema
+        self.cacheControl = cacheControl
+    }
+
+    public init(name: String, description: String, inputSchema: ToolInputSchema) {
+        self.init(type: nil, name: name, description: description, inputSchema: inputSchema)
     }
 
     /// Initializer for native Anthropic tools (e.g. web_search)
     public init(type: String, name: String) {
-        self.type = type
-        self.name = name
-        self.description = nil
-        self.inputSchema = nil
+        self.init(type: type, name: name, description: nil, inputSchema: nil)
+    }
+
+    /// Return a copy of this tool definition with the given cache_control applied.
+    public func withCacheControl(_ cacheControl: AnthropicCacheControl?) -> AnthropicToolDefinition {
+        AnthropicToolDefinition(
+            type: type,
+            name: name,
+            description: description,
+            inputSchema: inputSchema,
+            cacheControl: cacheControl
+        )
     }
 }
 
 extension AnthropicToolDefinition: Codable {
     enum CodingKeys: String, CodingKey {
-        case type, name, description, inputSchema = "input_schema"
+        case type, name, description, inputSchema = "input_schema", cacheControl = "cache_control"
     }
 
     public init(from decoder: Decoder) throws {
@@ -224,6 +257,7 @@ extension AnthropicToolDefinition: Codable {
         self.name = try container.decodeIfPresent(String.self, forKey: .name)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.inputSchema = try container.decodeIfPresent(ToolInputSchema.self, forKey: .inputSchema)
+        self.cacheControl = try container.decodeIfPresent(AnthropicCacheControl.self, forKey: .cacheControl)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -232,6 +266,7 @@ extension AnthropicToolDefinition: Codable {
         try container.encodeIfPresent(name, forKey: .name)
         try container.encodeIfPresent(description, forKey: .description)
         try container.encodeIfPresent(inputSchema, forKey: .inputSchema)
+        try container.encodeIfPresent(cacheControl, forKey: .cacheControl)
     }
 }
 
@@ -306,17 +341,37 @@ public struct AnthropicCacheControl: Codable, Sendable, Equatable {
 // MARK: - Extended Thinking
 
 /// Extended thinking configuration
+///
+/// Encodes to Anthropic's wire format `{"type": "enabled", "budget_tokens": N}` while
+/// exposing a friendly `enabled` Bool in Swift. When disabled, only `{"type": "disabled"}`
+/// is emitted.
 public struct AnthropicThinkingConfig: Codable, Sendable, Equatable {
     public let enabled: Bool
     public let budgetTokens: Int?
 
     enum CodingKeys: String, CodingKey {
-        case enabled, budgetTokens = "budget_tokens"
+        case type, budgetTokens = "budget_tokens"
     }
 
     public init(enabled: Bool, budgetTokens: Int? = nil) {
         self.enabled = enabled
         self.budgetTokens = budgetTokens
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decodeIfPresent(String.self, forKey: .type) ?? "disabled"
+        self.enabled = (type == "enabled")
+        self.budgetTokens = try container.decodeIfPresent(Int.self, forKey: .budgetTokens)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(enabled ? "enabled" : "disabled", forKey: .type)
+        // Anthropic requires budget_tokens only when thinking is enabled.
+        if enabled, let budgetTokens {
+            try container.encode(budgetTokens, forKey: .budgetTokens)
+        }
     }
 }
 
