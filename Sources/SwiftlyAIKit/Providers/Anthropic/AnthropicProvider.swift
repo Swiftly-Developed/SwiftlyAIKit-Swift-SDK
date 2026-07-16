@@ -48,6 +48,7 @@ import Foundation
 /// - ``cancelBatch(_:apiKey:)``
 /// - ``listBatches(limit:afterId:apiKey:)``
 /// - ``getBatchResults(_:apiKey:)``
+/// - ``listModels(apiKey:)``
 ///
 /// ### Related Types
 /// - ``ProviderProtocol``
@@ -596,6 +597,22 @@ public struct AnthropicProvider: ProviderProtocol {
                 }
             }
         }
+    }
+
+    /// List available models
+    /// - Parameter apiKey: API key for authentication
+    /// - Returns: List of available Anthropic models
+    public func listModels(apiKey: String) async throws -> AnthropicModelsResponse {
+        let url = "\(baseURL)/models"
+        let headers = buildHeaders(apiKey: apiKey, stream: false)
+
+        let responseData = try await httpClient.get(url: url, headers: headers)
+
+        let decoder = JSONDecoder()
+        // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
+        // CodingKeys that have snake_case raw values on Linux's Foundation implementation.
+        // All Anthropic model types use explicit CodingKeys for cross-platform compatibility.
+        return try decoder.decode(AnthropicModelsResponse.self, from: responseData)
     }
 
     // MARK: - Private Helper Methods

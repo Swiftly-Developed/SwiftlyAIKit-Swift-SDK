@@ -434,6 +434,31 @@ public enum MockAnthropicAPI {
     }
     """
 
+    // MARK: - Models List API
+
+    /// Sample models list response
+    public static let modelsListResponse = """
+    {
+      "data": [
+        {
+          "type": "model",
+          "id": "claude-opus-4-1-20250805",
+          "display_name": "Claude Opus 4.1",
+          "created_at": "2025-08-05T00:00:00Z"
+        },
+        {
+          "type": "model",
+          "id": "claude-sonnet-4-5-20250929",
+          "display_name": "Claude Sonnet 4.5",
+          "created_at": "2025-09-29T00:00:00Z"
+        }
+      ],
+      "has_more": false,
+      "first_id": "claude-opus-4-1-20250805",
+      "last_id": "claude-sonnet-4-5-20250929"
+    }
+    """
+
     // MARK: - Helper Methods
 
     /// Get SSE event data chunks
