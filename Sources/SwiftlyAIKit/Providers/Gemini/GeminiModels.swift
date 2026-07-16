@@ -154,22 +154,49 @@ public struct GeminiSchemaProperty: Codable, Sendable, Equatable {
     public let format: String?
     public let items: GeminiSchemaItems?
     public let `enum`: [String]?
+    /// Nested property definitions (for object-typed properties)
+    public let properties: [String: GeminiSchemaProperty]?
+    /// Required nested property names (for object-typed properties)
+    public let required: [String]?
 
-    public init(type: String, description: String? = nil, format: String? = nil, items: GeminiSchemaItems? = nil, enumValues: [String]? = nil) {
+    public init(
+        type: String,
+        description: String? = nil,
+        format: String? = nil,
+        items: GeminiSchemaItems? = nil,
+        enumValues: [String]? = nil,
+        properties: [String: GeminiSchemaProperty]? = nil,
+        required: [String]? = nil
+    ) {
         self.type = type
         self.description = description
         self.format = format
         self.items = items
         self.enum = enumValues
+        self.properties = properties
+        self.required = required
     }
 }
 
 /// Schema items for array types
+///
+/// Supports arrays of primitives (type only) and arrays of objects (nested
+/// `properties`/`required`).
 public struct GeminiSchemaItems: Codable, Sendable, Equatable {
     public let type: String
+    /// Nested property definitions (for arrays of objects)
+    public let properties: [String: GeminiSchemaProperty]?
+    /// Required nested property names (for arrays of objects)
+    public let required: [String]?
 
-    public init(type: String) {
+    public init(
+        type: String,
+        properties: [String: GeminiSchemaProperty]? = nil,
+        required: [String]? = nil
+    ) {
         self.type = type
+        self.properties = properties
+        self.required = required
     }
 }
 

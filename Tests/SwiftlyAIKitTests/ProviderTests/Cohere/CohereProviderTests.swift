@@ -228,7 +228,7 @@ struct CohereProviderTests {
         let jsonData = MockCohereAPI.emptyResponse.data(using: .utf8)!
         let response = try JSONDecoder().decode(CohereResponse.self, from: jsonData)
 
-        #expect(response.message.content?.isEmpty)
+        #expect(response.message.content?.isEmpty == true)
         #expect(response.usage?.billedUnits?.outputTokens == 0)
     }
 
@@ -463,7 +463,7 @@ struct CohereProviderTests {
         let jsonData = MockCohereAPI.emptyContentResponse.data(using: .utf8)!
         let response = try JSONDecoder().decode(CohereResponse.self, from: jsonData)
 
-        #expect(response.message.content?.isEmpty)
+        #expect(response.message.content?.isEmpty == true)
         #expect(response.finishReason == "COMPLETE")
     }
 
