@@ -126,4 +126,40 @@ struct OpenAIProviderTests {
         #expect(json.contains("record"))
         #expect(json.contains("tags"))
     }
+
+    // MARK: - Models list
+
+    @Test("Decodes models list response")
+    func testDecodeModelsListResponse() throws {
+        let jsonString = """
+        {
+          "object": "list",
+          "data": [
+            {
+              "id": "gpt-4o",
+              "object": "model",
+              "created": 1686935002,
+              "owned_by": "system"
+            },
+            {
+              "id": "text-embedding-3-small",
+              "object": "model",
+              "created": 1705948997,
+              "owned_by": "openai"
+            }
+          ]
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let response = try JSONDecoder().decode(OpenAIModelsResponse.self, from: jsonData)
+
+        #expect(response.object == "list")
+        #expect(response.data.count == 2)
+        #expect(response.data[0].id == "gpt-4o")
+        #expect(response.data[0].created == 1686935002)
+        // Verify the owned_by -> ownedBy snake_case key maps correctly.
+        #expect(response.data[0].ownedBy == "system")
+        #expect(response.data[1].id == "text-embedding-3-small")
+        #expect(response.data[1].ownedBy == "openai")
+    }
 }
