@@ -647,6 +647,52 @@ public struct OpenAIErrorResponse: Codable, Sendable {
     }
 }
 
+// MARK: - Models List Response
+
+/// Response from OpenAI's GET /v1/models endpoint
+public struct OpenAIModelsResponse: Codable, Sendable {
+    /// Object type (always "list")
+    public let object: String
+    /// Array of available models
+    public let data: [OpenAIModelInfo]
+
+    enum CodingKeys: String, CodingKey {
+        case object
+        case data
+    }
+
+    public init(object: String = "list", data: [OpenAIModelInfo]) {
+        self.object = object
+        self.data = data
+    }
+}
+
+/// OpenAI model information (one entry from GET /v1/models)
+public struct OpenAIModelInfo: Codable, Sendable {
+    /// Model ID, e.g. "gpt-4o"
+    public let id: String
+    /// Object type (always "model")
+    public let object: String
+    /// Unix timestamp (seconds) of model creation
+    public let created: Int
+    /// Organization that owns the model, e.g. "openai" / "system"
+    public let ownedBy: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case object
+        case created
+        case ownedBy = "owned_by"
+    }
+
+    public init(id: String, object: String = "model", created: Int = 0, ownedBy: String = "openai") {
+        self.id = id
+        self.object = object
+        self.created = created
+        self.ownedBy = ownedBy
+    }
+}
+
 // MARK: - Image Generation Models
 
 /// OpenAI image generation request for DALL-E
