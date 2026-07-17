@@ -38,6 +38,9 @@ import Foundation
 /// - ``sendMessage(_:apiKey:)``
 /// - ``streamMessage(_:apiKey:)``
 ///
+/// ### OpenAI-Specific Methods
+/// - ``listModels(apiKey:)``
+///
 /// ### ImageGenerationProvider Implementation
 /// - ``supportsImageGeneration``
 /// - ``imageGenerationModels``
@@ -232,6 +235,24 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
         // OpenAI doesn't have a separate token counting endpoint
         // Tokens are returned in the response usage field
         nil
+    }
+
+    // MARK: - OpenAI-Specific Methods
+
+    /// List available models from OpenAI's GET /v1/models endpoint.
+    ///
+    /// Returns the RAW model list — the caller is responsible for filtering to
+    /// chat-capable models (OpenAI's list includes embeddings, TTS, moderation, etc.).
+    /// - Parameter apiKey: API key for authentication
+    /// - Returns: List of available OpenAI models
+    public func listModels(apiKey: String) async throws -> OpenAIModelsResponse {
+        let url = "\(baseURL)/models"
+        let headers = buildHeaders(apiKey: apiKey, stream: false)
+        let responseData = try await httpClient.get(url: url, headers: headers)
+        let decoder = JSONDecoder()
+        // NOTE: Do NOT use .convertFromSnakeCase — mirrors AnthropicProvider.listModels;
+        // explicit CodingKeys with snake_case raw values conflict with it on Linux Foundation.
+        return try decoder.decode(OpenAIModelsResponse.self, from: responseData)
     }
 
     // MARK: - ImageGenerationProvider Implementation
