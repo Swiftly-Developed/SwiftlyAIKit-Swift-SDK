@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.10] - 2026-07-18
+
+Additive, backward-compatible capability-detection surface. Callers can now ask, per provider,
+whether tool / function calling is supported — and `PerplexityProvider` (whose Sonar API is a pure
+search/answer API with no function calling) degrades gracefully when a request carries tools. No
+neutral types, `AIGateway`, or other providers change behaviour; `v0.9.9` consumers compile and
+behave identically.
+
+### Added
+- **`ProviderProtocol.supportsTools`** — a `Bool` capability flag with an extension default of
+  `true`, so existing tool-capable providers keep working unchanged. Providers without tool support
+  override it to `false`.
+- **`ToolCapabilities`** — a static, `ProviderType`-keyed helper mirroring `ImageGenerationCapabilities`;
+  `ToolCapabilities.isSupported(by:)` returns `false` for `.perplexity` and `.appleIntelligence` and
+  `true` for the rest. The switch is exhaustive (no `default`) so a new `ProviderType` case forces a
+  compile error until its tool support is declared.
+- **`ToolCapabilitiesTests` / `PerplexityToolDegradationTests`** — assert the per-provider support
+  matrix, the `supportsTools` default, `PerplexityProvider().supportsTools == false`, and that a
+  request carrying `tools`/`toolChoice` maps to a Sonar wire body that omits any tools field without
+  throwing.
+
+### Changed
+- **`PerplexityProvider` overrides `supportsTools` to `false`** and documents graceful degradation:
+  `request.tools` / `request.toolChoice` are ignored (a documented no-op) and the normal Sonar
+  request proceeds, rather than throwing. `PerplexityProvider.mapToPerplexityRequest(_:)` is now
+  `internal` (was `private`) so tests can assert the wire body omits tools.
+
 ## [0.9.9] - 2026-07-18
 
 Capability-parity fix: `DeepSeekProvider` now honours the SDK's unified tool API. Previously it

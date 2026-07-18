@@ -19,6 +19,21 @@ import FoundationNetworking
 public struct PerplexityProvider: ProviderProtocol {
     public let providerType: ProviderType = .perplexity
 
+    /// Perplexity's Sonar API is a pure search/answer API with no function/tool calling.
+    ///
+    /// Tool calling is therefore unsupported. When a caller passes ``AIRequest/tools`` /
+    /// ``AIRequest/toolChoice`` this provider **degrades gracefully**: the tools are ignored
+    /// (a documented no-op) and the normal Sonar request proceeds. See ``mapToPerplexityRequest(_:)``
+    /// — the neutral request's tool fields are intentionally not mapped onto ``PerplexityRequest``,
+    /// which has no tools field, so nothing tool-related ever reaches the wire body.
+    ///
+    /// Ignore-and-proceed is chosen over throwing because tool support is a *field* on the normal
+    /// message path (not a separate operation like batching or image generation, which throw
+    /// ``AIError/unsupportedFeature(feature:provider:)``); throwing would break existing callers
+    /// that happen to attach tools to an otherwise-valid Sonar request. Callers that need to detect
+    /// support up front can read this flag or ``ToolCapabilities/isSupported(by:)``.
+    public var supportsTools: Bool { false }
+
     private let baseURL: String
     private let httpClient: HTTPClientManager
 
@@ -137,7 +152,13 @@ public struct PerplexityProvider: ProviderProtocol {
 
     // MARK: - Request Mapping
 
-    private func mapToPerplexityRequest(_ request: AIRequest) throws -> PerplexityRequest {
+    /// Map a neutral ``AIRequest`` to Perplexity's Sonar request shape.
+    ///
+    /// `request.tools` / `request.toolChoice` are intentionally **not** mapped: the Sonar API has no
+    /// function-calling support, so `PerplexityRequest` has no tools field and any tools attached to
+    /// the request are silently dropped (see ``supportsTools``). Exposed as `internal` (rather than
+    /// `private`) so tests can assert the wire body omits tools.
+    func mapToPerplexityRequest(_ request: AIRequest) throws -> PerplexityRequest {
         let messages = request.messages.map { message in
             let role = mapRole(message.role)
             let content = message.textContent
