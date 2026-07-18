@@ -5,45 +5,62 @@ import Foundation
 /// Tests for the ``VoiceCapabilities`` metadata registry
 ///
 /// The registry is seeded empty in the foundation; each vendor integration fills its own arm.
-/// These tests pin the seeded state and — by iterating every case — guarantee the switches
-/// remain exhaustive and total across all ``VoiceProviderType`` values.
+/// The OpenAI integration fills the ``VoiceProviderType/openai`` arm — these tests pin that
+/// filled state while confirming the three unseeded arms stay empty/false, and — by iterating
+/// every case — guarantee the switches remain exhaustive and total across all
+/// ``VoiceProviderType`` values.
 @Suite("VoiceCapabilities Tests")
 struct VoiceCapabilitiesTests {
-    // MARK: - Seeded State
+    /// Voice providers whose arms are still seeded empty/false (everything except `.openai`).
+    private static let unseededProviders: [VoiceProviderType] =
+        VoiceProviderType.allCases.filter { $0 != .openai }
 
-    @Test("ttsSupported is seeded false for every provider")
+    // MARK: - Seeded State (unseeded arms stay empty/false)
+
+    @Test("ttsSupported is false for every unseeded provider")
     func testTTSSupportedSeed() {
-        for provider in VoiceProviderType.allCases {
+        for provider in Self.unseededProviders {
             #expect(VoiceCapabilities.ttsSupported(by: provider) == false)
         }
     }
 
-    @Test("sttSupported is seeded false for every provider")
+    @Test("sttSupported is false for every unseeded provider")
     func testSTTSupportedSeed() {
-        for provider in VoiceProviderType.allCases {
+        for provider in Self.unseededProviders {
             #expect(VoiceCapabilities.sttSupported(by: provider) == false)
         }
     }
 
-    @Test("ttsModels is seeded empty for every provider")
+    @Test("ttsModels is empty for every unseeded provider")
     func testTTSModelsSeed() {
-        for provider in VoiceProviderType.allCases {
+        for provider in Self.unseededProviders {
             #expect(VoiceCapabilities.ttsModels(for: provider).isEmpty)
         }
     }
 
-    @Test("sttModels is seeded empty for every provider")
+    @Test("sttModels is empty for every unseeded provider")
     func testSTTModelsSeed() {
-        for provider in VoiceProviderType.allCases {
+        for provider in Self.unseededProviders {
             #expect(VoiceCapabilities.sttModels(for: provider).isEmpty)
         }
     }
 
-    @Test("voices is seeded empty for every provider")
+    @Test("voices is empty for every unseeded provider")
     func testVoicesSeed() {
-        for provider in VoiceProviderType.allCases {
+        for provider in Self.unseededProviders {
             #expect(VoiceCapabilities.voices(for: provider).isEmpty)
         }
+    }
+
+    // MARK: - OpenAI Arm (filled)
+
+    @Test("OpenAI arm reports TTS and STT support with non-empty registries")
+    func testOpenAIArmFilled() {
+        #expect(VoiceCapabilities.ttsSupported(by: .openai))
+        #expect(VoiceCapabilities.sttSupported(by: .openai))
+        #expect(VoiceCapabilities.ttsModels(for: .openai) == OpenAIVoiceProvider.ttsModels)
+        #expect(VoiceCapabilities.sttModels(for: .openai) == OpenAIVoiceProvider.sttModels)
+        #expect(VoiceCapabilities.voices(for: .openai) == OpenAIVoiceProvider.voices)
     }
 
     // MARK: - Totality
