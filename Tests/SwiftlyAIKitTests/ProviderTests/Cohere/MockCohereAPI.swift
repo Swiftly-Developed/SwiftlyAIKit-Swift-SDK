@@ -468,6 +468,58 @@ public enum MockCohereAPI {
     }
     """
 
+    // MARK: - Models List API
+
+    /// Sample response from the GET /models endpoint (paginated)
+    public static let modelsListResponse = """
+    {
+      "models": [
+        {
+          "name": "command-a-03-2025",
+          "endpoints": ["chat"],
+          "context_length": 256000,
+          "is_deprecated": false,
+          "finetuned": false,
+          "tokenizer_url": "https://storage.googleapis.com/cohere-tokenizers/command-a.json",
+          "default_endpoints": ["chat"],
+          "features": ["json_mode", "json_schema", "tools", "strict_tools"]
+        },
+        {
+          "name": "command-r-plus-08-2024",
+          "endpoints": ["chat"],
+          "context_length": 256000,
+          "is_deprecated": false,
+          "finetuned": false,
+          "default_endpoints": ["chat"]
+        },
+        {
+          "name": "command-r-08-2024",
+          "endpoints": ["chat"],
+          "context_length": 256000,
+          "is_deprecated": false,
+          "finetuned": false,
+          "default_endpoints": ["chat"]
+        },
+        {
+          "name": "command-r7b-12-2024",
+          "endpoints": ["chat"],
+          "context_length": 256000,
+          "is_deprecated": false,
+          "finetuned": false,
+          "default_endpoints": ["chat"]
+        },
+        {
+          "name": "embed-english-v3.0",
+          "endpoints": ["embed"],
+          "context_length": 512,
+          "is_deprecated": false,
+          "finetuned": false
+        }
+      ],
+      "next_page_token": "abc123nextpage"
+    }
+    """
+
     // MARK: - Helper Methods
 
     /// Convert streaming response array to Data

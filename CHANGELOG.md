@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.6] - 2026-07-18
+
+Additive, backward-compatible extension bringing `CohereProvider` to parity with the other
+providers' model-discovery surface. No neutral types, `AIGateway`, `ProviderProtocol`, or
+other providers change; `v0.9.5` consumers compile and behave identically.
+
+### Added
+- **`CohereProvider.listModels(apiKey:)`** — lists available models via Cohere's `GET /models` endpoint, mirroring `OpenAIProvider`/`GrokProvider`/`GeminiProvider`/`AnthropicProvider`. Returns the RAW `CohereModelsResponse` (paginated via `nextPageToken`); callers filter by each model's `endpoints` (e.g. `chat`).
+- **`CohereModelsResponse` / `CohereModelInfo`** — `Codable`, `Sendable`, public response types for the models endpoint, with explicit snake_case `CodingKeys` (`context_length`, `is_deprecated`, `tokenizer_url`, `default_endpoints`, `next_page_token`) to avoid the `.convertFromSnakeCase` conflict on Linux Foundation.
+- **`MockCohereAPI.modelsListResponse`** fixture + `CohereProviderTests` cases decoding the models list, asserting model names, snake_case key mapping, pagination cursor, and chat-endpoint filtering.
+
 ## [0.9.5] - 2026-07-18
 
 Additive, backward-compatible robustness fixes for `GrokProvider` streaming. No neutral
