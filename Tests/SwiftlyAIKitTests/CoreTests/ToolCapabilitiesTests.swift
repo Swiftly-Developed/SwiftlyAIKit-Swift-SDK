@@ -31,6 +31,7 @@ struct ToolCapabilitiesTests {
         #expect(ToolCapabilities.isSupported(by: .mistral) == true)
         #expect(ToolCapabilities.isSupported(by: .deepseek) == true)
         #expect(ToolCapabilities.isSupported(by: .grok) == true)
+        #expect(ToolCapabilities.isSupported(by: .ollama) == true)
     }
 
     @Test("Every provider type has an explicit tool-support verdict")
