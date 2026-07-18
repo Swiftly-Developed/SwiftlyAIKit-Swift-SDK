@@ -10,7 +10,8 @@ struct ProviderTypeTests {
     @Test("ProviderType is CaseIterable")
     func testCaseIterable() {
         let allCases = ProviderType.allCases
-        #expect(allCases.count == 9) // anthropic, openai, google, perplexity, mistral, cohere, deepseek, grok, appleIntelligence
+        // anthropic, openai, google, perplexity, mistral, cohere, deepseek, grok, groq, appleIntelligence
+        #expect(allCases.count == 10)
         #expect(allCases.contains(.openai))
         #expect(allCases.contains(.anthropic))
         #expect(allCases.contains(.google))
@@ -19,6 +20,7 @@ struct ProviderTypeTests {
         #expect(allCases.contains(.cohere))
         #expect(allCases.contains(.deepseek))
         #expect(allCases.contains(.grok))
+        #expect(allCases.contains(.groq))
         #expect(allCases.contains(.appleIntelligence))
     }
 
@@ -56,6 +58,7 @@ struct ProviderTypeTests {
         #expect(ProviderType.google.displayName == "Google AI")
         #expect(ProviderType.cohere.displayName == "Cohere")
         #expect(ProviderType.mistral.displayName == "Mistral AI")
+        #expect(ProviderType.groq.displayName == "Groq")
     }
 
     @Test("Display names are properly capitalized")
@@ -86,6 +89,7 @@ struct ProviderTypeTests {
         #expect(ProviderType.google.baseURL == "https://generativelanguage.googleapis.com/v1")
         #expect(ProviderType.cohere.baseURL == "https://api.cohere.ai/v1")
         #expect(ProviderType.mistral.baseURL == "https://api.mistral.ai/v1")
+        #expect(ProviderType.groq.baseURL == "https://api.groq.com/openai/v1")
     }
 
     @Test("Base URLs use HTTPS")
@@ -314,7 +318,7 @@ struct ProviderTypeTests {
             displayNames.append(provider.displayName)
         }
 
-        #expect(displayNames.count == 9)
+        #expect(displayNames.count == 10)
         #expect(displayNames.contains("Anthropic"))
         #expect(displayNames.contains("OpenAI"))
         #expect(displayNames.contains("Apple Intelligence"))
@@ -365,7 +369,7 @@ struct ProviderTypeTests {
             uniqueKeysWithValues: ProviderType.allCases.map { ($0, $0.baseURL) }
         )
 
-        #expect(urlMapping.count == 9)
+        #expect(urlMapping.count == 10)
         #expect(urlMapping[.anthropic] == "https://api.anthropic.com/v1")
         #expect(urlMapping[.openai] == "https://api.openai.com/v1")
         #expect(urlMapping[.appleIntelligence]?.isEmpty == true) // On-device, no external API
@@ -408,6 +412,8 @@ struct ProviderTypeTests {
             result = "deepseek"
         case .grok:
             result = "grok"
+        case .groq:
+            result = "groq"
         case .appleIntelligence:
             result = "appleIntelligence"
         }
@@ -418,7 +424,7 @@ struct ProviderTypeTests {
     @Test("Can create Set of all providers")
     func testSetOfAllProviders() {
         let allProviders = Set(ProviderType.allCases)
-        #expect(allProviders.count == 9)
+        #expect(allProviders.count == 10)
     }
 
     @Test("Dictionary with provider keys maintains insertion")
