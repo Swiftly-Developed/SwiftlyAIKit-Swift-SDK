@@ -57,3 +57,19 @@ public struct GoogleProvider: ProviderProtocol {
         try await gemini.listModels(apiKey: apiKey)
     }
 }
+
+// MARK: - ImageGenerationProvider
+
+extension GoogleProvider: ImageGenerationProvider {
+    public var supportsImageGeneration: Bool { gemini.supportsImageGeneration }
+
+    public var imageGenerationModels: [String] { gemini.imageGenerationModels }
+
+    /// Generate images. Forwards to ``GeminiProvider/generateImage(_:apiKey:)``.
+    public func generateImage(
+        _ request: ImageGenerationRequest,
+        apiKey: String
+    ) async throws -> ImageGenerationResponse {
+        try await gemini.generateImage(request, apiKey: apiKey)
+    }
+}

@@ -166,6 +166,53 @@ public enum MockGeminiAPI {
     }
     """
 
+    // MARK: - Image Generation API
+
+    /// 1x1 transparent PNG, base64-encoded — a minimal valid image payload for fixtures.
+    public static let sampleImageBase64 =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+    /// Sample Gemini-native image response (`:generateContent` with `responseModalities:["IMAGE"]`).
+    /// The generated image arrives as an `inlineData` part.
+    public static let imageGenerateContentResponse = """
+    {
+      "candidates": [
+        {
+          "content": {
+            "parts": [
+              {
+                "inlineData": {
+                  "mimeType": "image/png",
+                  "data": "\(sampleImageBase64)"
+                }
+              }
+            ],
+            "role": "model"
+          },
+          "finishReason": "STOP"
+        }
+      ],
+      "usageMetadata": {
+        "promptTokenCount": 8,
+        "candidatesTokenCount": 1290,
+        "totalTokenCount": 1298
+      },
+      "modelVersion": "gemini-3.1-flash-image"
+    }
+    """
+
+    /// Sample Imagen `:predict` response (`predictions[].bytesBase64Encoded`).
+    public static let imagenPredictResponse = """
+    {
+      "predictions": [
+        {
+          "mimeType": "image/png",
+          "bytesBase64Encoded": "\(sampleImageBase64)"
+        }
+      ]
+    }
+    """
+
     // MARK: - Streaming API
 
     /// SSE streaming events for a complete response
