@@ -269,7 +269,7 @@ public struct VoiceCapabilities: Sendable {
         case .elevenLabs: return false
         case .deepgram: return false
         case .cartesia: return false
-        case .openai: return false
+        case .openai: return true
         }
     }
 
@@ -282,7 +282,7 @@ public struct VoiceCapabilities: Sendable {
         case .elevenLabs: return false
         case .deepgram: return false
         case .cartesia: return false
-        case .openai: return false
+        case .openai: return true
         }
     }
 
@@ -295,7 +295,7 @@ public struct VoiceCapabilities: Sendable {
         case .elevenLabs: return []
         case .deepgram: return []
         case .cartesia: return []
-        case .openai: return []
+        case .openai: return OpenAIVoiceProvider.ttsModels
         }
     }
 
@@ -308,7 +308,7 @@ public struct VoiceCapabilities: Sendable {
         case .elevenLabs: return []
         case .deepgram: return []
         case .cartesia: return []
-        case .openai: return []
+        case .openai: return OpenAIVoiceProvider.sttModels
         }
     }
 
@@ -321,7 +321,7 @@ public struct VoiceCapabilities: Sendable {
         case .elevenLabs: return []
         case .deepgram: return []
         case .cartesia: return []
-        case .openai: return []
+        case .openai: return OpenAIVoiceProvider.voices
         }
     }
 }
