@@ -121,26 +121,76 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
                     // Encode request to JSON
                     let requestData = try JSONEncoder().encode(streamRequest)
 
-                    // Accumulated content for delta accumulation
-                    var accumulatedContent = ""
-                    var accumulatedToolCalls: [GrokToolCall] = []
-
-                    let stream = httpClient.streamPost(
+                    let dataStream = httpClient.streamPost(
                         url: endpoint,
                         headers: headers,
                         body: requestData
                     )
 
-                    for try await chunk in stream {
-                        // Convert Data to String
-                        let chunkString = String(data: chunk, encoding: .utf8) ?? ""
+                    // Delegate SSE parsing / reassembly to the testable helper so the
+                    // exact same logic drives production and unit tests.
+                    for try await response in makeResponseStream(from: dataStream) {
+                        continuation.yield(response)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// Transform a raw SSE byte stream from the Grok/xAI chat-completions endpoint into
+    /// neutral ``AIResponse`` values.
+    ///
+    /// Content is accumulated and yielded cumulatively as it streams (matching the
+    /// accumulate-and-yield behavior used across the SDK's providers). Crucially,
+    /// `finish_reason` and `usage` are read off **every** chunk unconditionally — not
+    /// gated on a non-nil `delta` — so the terminal OpenAI-compatible
+    /// `{"choices":[],"usage":{…}}` chunk (which carries streamed token usage but no
+    /// delta) is surfaced on the final yielded response instead of being dropped.
+    ///
+    /// - Parameter dataStream: Raw SSE data chunks (as produced by ``HTTPClientManager/streamPost(url:headers:body:context:)``).
+    /// - Returns: A stream of neutral responses; the final response carries the fully
+    ///   assembled content, tool calls, stop reason, and usage.
+    func makeResponseStream(
+        from dataStream: AsyncThrowingStream<Data, Error>
+    ) -> AsyncThrowingStream<AIResponse, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    var accumulatedContent = ""
+                    var accumulatedToolCalls: [GrokToolCall] = []
+                    var stopReason: AIStopReason?
+                    var usage: AIUsage?
+                    var lastChunk: GrokStreamChunk?
+                    var didYieldFinal = false
+
+                    // Emit the fully-assembled final response exactly once (content +
+                    // tool calls + stop reason + terminal usage).
+                    func yieldFinal() {
+                        guard !didYieldFinal, let chunk = lastChunk else { return }
+                        didYieldFinal = true
+                        continuation.yield(makeStreamResponse(
+                            chunk: chunk,
+                            content: accumulatedContent,
+                            toolCalls: accumulatedToolCalls,
+                            stopReason: stopReason,
+                            usage: usage
+                        ))
+                    }
+
+                    for try await data in dataStream {
+                        let chunkString = String(data: data, encoding: .utf8) ?? ""
                         let lines = chunkString.split(separator: "\n")
 
                         for line in lines {
                             let trimmed = line.trimmingCharacters(in: .whitespaces)
 
-                            // Check for [DONE] signal
+                            // Check for [DONE] signal — surface the assembled final
+                            // response (with usage) before finishing.
                             if trimmed == "data: [DONE]" {
+                                yieldFinal()
                                 continuation.finish()
                                 return
                             }
@@ -153,62 +203,88 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
 
                             // Decode chunk
                             let streamChunk = try JSONDecoder().decode(GrokStreamChunk.self, from: jsonData)
+                            lastChunk = streamChunk
 
-                            // Process delta
+                            // finish_reason and usage ride their own chunks under
+                            // OpenAI-compatible SSE (the finish chunk has an empty delta,
+                            // the usage chunk has `choices: []`). Read them off every
+                            // chunk, independent of whether a delta is present.
+                            if let reason = streamChunk.choices.first?.finish_reason.flatMap({ mapFinishReason($0) }) {
+                                stopReason = reason
+                            }
+                            if let chunkUsage = streamChunk.usage {
+                                usage = AIUsage(
+                                    inputTokens: chunkUsage.prompt_tokens,
+                                    outputTokens: chunkUsage.completion_tokens,
+                                    cachedTokens: chunkUsage.prompt_tokens_details?.cached_tokens,
+                                    reasoningTokens: chunkUsage.completion_tokens_details?.reasoning_tokens
+                                )
+                            }
+
+                            // Accumulate incremental content / tool-call deltas and yield
+                            // the running content so consumers see it stream.
                             if let delta = streamChunk.choices.first?.delta {
-                                // Accumulate content
                                 if let content = delta.content {
                                     accumulatedContent += content
                                 }
-
-                                // Accumulate tool calls
                                 if let toolCallDeltas = delta.tool_calls {
-                                    accumulateToolCalls(toolCallDeltas, into: &accumulatedToolCalls)
+                                    Self.accumulateToolCalls(toolCallDeltas, into: &accumulatedToolCalls)
                                 }
-
-                                // Create AIResponse with accumulated content + tool calls
-                                var streamContent: [AIMessageContent] = accumulatedContent.isEmpty ? [] : [.text(accumulatedContent)]
-                                for call in accumulatedToolCalls where !(call.id.isEmpty && call.function.name.isEmpty) {
-                                    streamContent.append(.toolCall(AIToolCall(
-                                        id: call.id,
-                                        type: call.type,
-                                        name: call.function.name,
-                                        arguments: call.function.arguments
-                                    )))
-                                }
-                                let message = AIMessage(role: .assistant, content: streamContent)
-
-                                let aiResponse = AIResponse(
-                                    id: streamChunk.id,
-                                    model: streamChunk.model,
-                                    message: message,
-                                    stopReason: streamChunk.choices.first?.finish_reason.flatMap { mapFinishReason($0) },
-                                    usage: streamChunk.usage.map { usage in
-                                        AIUsage(
-                                            inputTokens: usage.prompt_tokens,
-                                            outputTokens: usage.completion_tokens,
-                                            cachedTokens: usage.prompt_tokens_details?.cached_tokens,
-                                            reasoningTokens: usage.completion_tokens_details?.reasoning_tokens
-                                        )
-                                    },
-                                    provider: .grok,
-                                    providerData: buildProviderData(
+                                if delta.content != nil {
+                                    continuation.yield(makeStreamResponse(
                                         chunk: streamChunk,
-                                        accumulatedToolCalls: accumulatedToolCalls
-                                    )
-                                )
-
-                                continuation.yield(aiResponse)
+                                        content: accumulatedContent,
+                                        toolCalls: accumulatedToolCalls,
+                                        stopReason: nil,
+                                        usage: nil
+                                    ))
+                                }
                             }
                         }
                     }
 
+                    // Stream ended without an explicit [DONE] — still surface the
+                    // assembled final response.
+                    yieldFinal()
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
                 }
             }
         }
+    }
+
+    /// Build a streaming ``AIResponse`` from accumulated stream state.
+    private func makeStreamResponse(
+        chunk: GrokStreamChunk,
+        content: String,
+        toolCalls: [GrokToolCall],
+        stopReason: AIStopReason?,
+        usage: AIUsage?
+    ) -> AIResponse {
+        var streamContent: [AIMessageContent] = content.isEmpty ? [] : [.text(content)]
+        for call in toolCalls where !(call.id.isEmpty && call.function.name.isEmpty) {
+            streamContent.append(.toolCall(AIToolCall(
+                id: call.id,
+                type: call.type,
+                name: call.function.name,
+                arguments: call.function.arguments
+            )))
+        }
+        let message = AIMessage(role: .assistant, content: streamContent)
+
+        return AIResponse(
+            id: chunk.id,
+            model: chunk.model,
+            message: message,
+            stopReason: stopReason,
+            usage: usage,
+            provider: .grok,
+            providerData: buildProviderData(
+                chunk: chunk,
+                accumulatedToolCalls: toolCalls
+            )
+        )
     }
 
     public func countTokens(_ request: AIRequest, apiKey: String) async throws -> Int {
@@ -615,7 +691,10 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
     }
 
     /// Accumulate tool calls from streaming deltas
-    private func accumulateToolCalls(_ deltas: [GrokDeltaToolCall], into accumulated: inout [GrokToolCall]) {
+    ///
+    /// Exposed as a `static` helper (mirroring ``OpenAIProvider/accumulate(_:into:)``) so
+    /// the index-keyed reassembly of streamed tool-call fragments is unit-testable.
+    static func accumulateToolCalls(_ deltas: [GrokDeltaToolCall], into accumulated: inout [GrokToolCall]) {
         for delta in deltas {
             // Ensure we have enough slots
             while accumulated.count <= delta.index {
