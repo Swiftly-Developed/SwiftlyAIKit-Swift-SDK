@@ -39,7 +39,7 @@ public struct ToolCapabilities: Sendable {
         // Exhaustive switch (no `default`) so that adding a `ProviderType` case forces a
         // compile error here — new providers must declare their tool support explicitly.
         switch provider {
-        case .openai, .anthropic, .google, .grok, .groq, .openRouter, .cohere, .mistral, .deepseek:
+        case .openai, .anthropic, .google, .grok, .groq, .openRouter, .ollama, .cohere, .mistral, .deepseek:
             return true
         case .appleIntelligence:
             // Tool calling is wired through Foundation Models, which only exists on the

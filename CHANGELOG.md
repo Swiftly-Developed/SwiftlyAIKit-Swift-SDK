@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.15] - 2026-07-18
+
+Additive, backward-compatible feature: a new **Ollama** provider for Ollama's native local/
+self-hosted LLM server. No neutral types change and every existing provider behaves identically;
+`v0.9.14` consumers compile unchanged. Adds one `ProviderType` case, so any exhaustive `switch`
+over `ProviderType` in consuming code will surface a new `.ollama` arm.
+
+### Added
+- **`OllamaProvider`** — `ProviderProtocol` conformer targeting a local/self-hosted Ollama server.
+  Distinctives vs. the OpenAI-compatible providers: **no API key** — authentication is base-URL
+  reachability, so **no `Authorization` header is sent** (the `apiKey` parameters are ignored);
+  Ollama's **native `/api/chat`** endpoint with **newline-delimited JSON streaming (not SSE)** — each
+  line is a full response object carrying a partial `message.content`, no `data:` prefix and no
+  `[DONE]` sentinel (the parser buffers partial lines across network chunks); generation parameters
+  nest under `options` (`num_predict`, `temperature`, `top_p`, `top_k`, `stop`); tool-call
+  `arguments` arrive as a JSON **object** and are re-encoded to a JSON string for the neutral
+  `AIToolCall`. Full chat support: `sendMessage`, `streamMessage` (cumulative content + terminal
+  usage/stop-reason), unified tool calling, and `listModels(apiKey:)` → `GET /api/tags`. The default
+  base URL is `http://localhost:11434` (http, no `/v1`), overridable per instance. Text/chat only —
+  no image generation.
+- **`ProviderType.ollama`** — new case (`displayName` "Ollama", `baseURL` `http://localhost:11434`),
+  registered by `AIGateway.createDefaultProviders` as `OllamaProvider()`; `resolveAPIKey` treats it
+  (like `.appleIntelligence`) as key-free. Marked tool-capable in `ToolCapabilities` and
+  image-generation-unsupported in `ImageGenerationCapabilities`.
+- **`OllamaModelsResponse` / `OllamaModelInfo` / `OllamaModelDetails`** plus the full `Ollama*`
+  request/response/streaming/tool Codable set (`OllamaChatRequest`, `OllamaMessage`,
+  `OllamaToolDefinition`, `OllamaOptions`, `OllamaChatResponse`, `OllamaResponseMessage`,
+  `OllamaToolCall`) — `Codable`, `Sendable`, explicit snake_case `CodingKeys` (no
+  `.convertFromSnakeCase`).
+- **`MockOllamaAPI` fixtures + `OllamaProviderTests`/`OllamaStreamingTests`/`OllamaToolRoundTripTests`**
+  (request/tool mapping, no-Authorization header assertion, custom-base-URL endpoints, tool-call
+  argument re-encoding, newline-JSON streaming with a split-across-chunks buffering test, and an
+  `/api/tags` decode) and an `AIGatewayOllamaDispatchTests` case asserting `.ollama` routes to a real
+  `OllamaProvider`.
+
 ## [0.9.14] - 2026-07-18
 
 Additive, backward-compatible feature: a net-new **voice capability foundation** — a separate
