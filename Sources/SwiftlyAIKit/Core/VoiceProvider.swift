@@ -268,7 +268,7 @@ public struct VoiceCapabilities: Sendable {
         switch provider {
         case .elevenLabs: return true
         case .deepgram: return false
-        case .cartesia: return false
+        case .cartesia: return true
         case .openai: return false
         }
     }
@@ -281,7 +281,7 @@ public struct VoiceCapabilities: Sendable {
         switch provider {
         case .elevenLabs: return true
         case .deepgram: return false
-        case .cartesia: return false
+        case .cartesia: return true
         case .openai: return false
         }
     }
@@ -294,7 +294,7 @@ public struct VoiceCapabilities: Sendable {
         switch provider {
         case .elevenLabs: return ["eleven_multilingual_v2", "eleven_turbo_v2_5", "eleven_flash_v2_5"]
         case .deepgram: return []
-        case .cartesia: return []
+        case .cartesia: return CartesiaVoiceProvider.ttsModelIDs
         case .openai: return []
         }
     }
@@ -307,7 +307,7 @@ public struct VoiceCapabilities: Sendable {
         switch provider {
         case .elevenLabs: return ["scribe_v2", "scribe_v1"]
         case .deepgram: return []
-        case .cartesia: return []
+        case .cartesia: return CartesiaVoiceProvider.sttModelIDs
         case .openai: return []
         }
     }
@@ -329,6 +329,8 @@ public struct VoiceCapabilities: Sendable {
                 "pNInz6obpgDQGcFmaJgB"
             ]
         case .deepgram: return []
+        // Cartesia voice ids churn and are fetched at runtime via
+        // `CartesiaVoiceProvider.listVoices(apiKey:)` rather than hardcoded here.
         case .cartesia: return []
         case .openai: return []
         }

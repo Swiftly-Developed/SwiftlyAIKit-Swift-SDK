@@ -528,6 +528,8 @@ public actor AIGateway {
             return .openai
         } else if lowercased.contains("grok") {
             return .grok
+        } else if lowercased.contains("imagen") || lowercased.contains("gemini") {
+            return .google
         } else if lowercased.contains("apple") || lowercased.contains("image-playground") {
             return .appleIntelligence
         }

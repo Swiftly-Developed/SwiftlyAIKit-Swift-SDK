@@ -5,13 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.16] - 2026-07-18
+## [0.9.18] - 2026-07-18
 
-Additive, backward-compatible feature: the first **voice vendor integration** — an **ElevenLabs**
+Additive, backward-compatible feature: another **voice vendor integration** — an **ElevenLabs**
 voice provider on top of the `v0.9.14` voice foundation. It conforms to both `TextToSpeech` and
 `SpeechToText` and fills the `VoiceCapabilities.elevenLabs` arms. Voice remains a separate axis from
 chat: this adds **no** `ProviderType` case, changes **no** neutral type, and is not wired into
-`AIGateway.createDefaultProviders`, so `v0.9.15` consumers compile unchanged.
+`AIGateway.createDefaultProviders`, so `v0.9.17` consumers compile unchanged.
 
 ### Added
 - **`ElevenLabsVoiceProvider`** — a value-type provider (mirroring `OpenAIProvider`/`OllamaProvider`'s
@@ -42,6 +42,75 @@ chat: this adds **no** `ProviderType` case, changes **no** neutral type, and is 
   `?output_format=`), Scribe transcription mapping (word timing with spacing/audio-event tokens
   dropped), and multipart body construction. The `VoiceCapabilitiesTests` were updated to pin the
   populated ElevenLabs arm while keeping every other provider seeded.
+
+## [0.9.17] - 2026-07-18
+
+Additive, backward-compatible feature: a new **Cartesia** voice provider on the voice capability
+axis (`v0.9.14`). No neutral types change, no chat `ProviderType` case is added, and every existing
+provider behaves identically; `v0.9.16` consumers compile unchanged. The `VoiceProviderType.cartesia`
+arm of `VoiceCapabilities` flips from empty to supported.
+
+### Added
+- **`CartesiaVoiceProvider`** — conforms to `TextToSpeech` and `SpeechToText` (voice axis; not a chat
+  `ProviderProtocol`). Sends **both** required Cartesia headers on every call — `X-API-Key` (key prefix
+  `sk_car_`) and `Cartesia-Version` (the global date-stamped API version, default `2026-03-01`,
+  overridable via `init(baseURL:apiVersion:)`). Two inits mirror the chat providers: a default one and
+  an injectable `init(httpClient:…)`.
+  - `synthesize(_:apiKey:)` → `POST /tts/bytes`, returning the one-shot audio bytes as
+    `SpeechSynthesisResponse`.
+  - `streamSynthesize(_:apiKey:)` → low-latency `POST /tts/sse`; a buffered, byte-level SSE parser
+    reassembles `data:` frames split across network chunks and base64-decodes each `"chunk"` event into
+    a `SpeechAudioChunk`, finishing on `"done"` and throwing on `"error"`.
+  - `transcribe(_:apiKey:)` → Ink-Whisper `POST /stt` via a hand-assembled `multipart/form-data` body
+    (`model=ink-whisper`, optional `language`, word timestamps, and the audio `file` part) — the SDK's
+    first multipart upload. Streaming STT is WebSocket-only and left to the protocol default.
+  - `listVoices(apiKey:)` → `GET /voices`, so voice ids are fetched at runtime rather than hardcoded.
+  - `AudioFormat` maps to Cartesia's `raw`/`wav`/`mp3` containers; `.opus`/`.flac`/`.aac` are rejected
+    with `AIError.invalidRequest`.
+- **`CartesiaModels`** — the provider-specific Codable DTOs (`CartesiaTTSRequest` with nested
+  `CartesiaVoiceSpecifier`/`CartesiaOutputFormat`, `CartesiaSSEEvent`, `CartesiaTranscriptionResponse`,
+  `CartesiaVoicesResponse` + public `CartesiaVoice`) — explicit snake_case `CodingKeys`.
+- **`VoiceCapabilities.cartesia` arm filled** — `ttsSupported`/`sttSupported` return `true`;
+  `ttsModels` = `["sonic-3", "sonic-3.5", "sonic-2", "sonic-turbo"]`, `sttModels` = `["ink-whisper"]`;
+  `voices` stays empty (fetched at runtime).
+- **`MockCartesiaAPI` fixtures + `CartesiaVoiceProviderTests`** — TTS body mapping, both-headers-present
+  assertions, SSE assembly incl. a split-across-network-chunks reassembly test and an error-event test,
+  Ink-Whisper decode, multipart body shape, and `listVoices` decode; the foundation
+  `VoiceCapabilitiesTests` are updated for the now-filled Cartesia arm.
+
+## [0.9.16] - 2026-07-18
+
+Additive, backward-compatible feature: **Gemini image generation**. `GeminiProvider` now conforms
+to `ImageGenerationProvider`, so `gateway.generateImage(_:using: .google)` works. No neutral types
+change in a breaking way (only additive fields/factories) and every existing provider behaves
+identically; `v0.9.15` consumers compile unchanged.
+
+### Added
+- **`GeminiProvider: ImageGenerationProvider`** — `supportsImageGeneration = true`,
+  `imageGenerationModels`, and `generateImage(_:apiKey:)` that dispatches on the model id:
+  `gemini-*-image` ids use Google's live, recommended `:generateContent` image path
+  (`responseModalities: ["IMAGE"]`, decoding `inlineData` parts), and `imagen-*` ids use the Imagen
+  `:predict` API (`predictions[].bytesBase64Encoded`). Both return base64 image bytes. API key is
+  passed as the `key` query parameter, matching send/stream. `GoogleProvider` forwards the same
+  conformance. **Note:** Google has deprecated the Imagen `:predict` API and `imagen-*` models for
+  shutdown on 2026-08-17 — prefer the `gemini-*-image` models.
+- **`ImageGenerationCapabilities` now reports `.google` as supported** across `isSupported`,
+  `models`, `defaultModel` (`gemini-3.1-flash-image`), and `supportedSizes` (all `ImageSize` cases,
+  mapped by aspect ratio). Seeded models: `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`,
+  `gemini-3-pro-image`, `gemini-2.5-flash-image`, `imagen-4.0-generate-001`,
+  `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`.
+- **`ImagenPredictRequest` / `ImagenInstance` / `ImagenParameters` / `ImagenPredictResponse` /
+  `ImagenPrediction`** Imagen `:predict` Codables, plus `responseModalities` / `imageConfig`
+  (`GeminiImageConfig`) fields on `GeminiGenerationConfig` for the Gemini-native image path — all
+  `Codable`, `Sendable`, camelCase (no `.convertFromSnakeCase`).
+- **`ImageSize.aspectRatio`** helper (square → `"1:1"`, landscape → `"16:9"`, portrait → `"9:16"`),
+  `ImageSize.supportedBy(.google)`, and `ImageGenerationRequest.gemini(prompt:model:size:)` /
+  `.imagen(prompt:model:numberOfImages:size:)` convenience factories.
+- **`AIGateway.determineImageProvider`** routes `imagen`/`gemini` model ids to `.google` when no
+  provider is passed explicitly.
+- **`MockGeminiAPI` image fixtures + `GeminiProviderTests` image cases** — capabilities/provider
+  advertisement, fixture-decode of both the Gemini-native and Imagen responses mapped to
+  `GeneratedImage`, request encoding, aspect-ratio mapping, and the convenience factories.
 
 ## [0.9.15] - 2026-07-18
 

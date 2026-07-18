@@ -4,50 +4,52 @@ import Foundation
 
 /// Tests for the ``VoiceCapabilities`` metadata registry
 ///
-/// The registry is seeded empty in the foundation; each vendor integration fills its own arm.
-/// ElevenLabs is now populated, so these tests pin the ElevenLabs arm to its populated values and
-/// pin every *other* provider to the still-seeded (false/empty) state. Iterating every case also
-/// guarantees the switches remain exhaustive and total across all ``VoiceProviderType`` values.
+/// Each vendor integration fills its own arm. ElevenLabs and Cartesia are now populated; Deepgram
+/// and OpenAI remain seeded empty pending their own integrations. These tests pin the seeded arms,
+/// assert the populated ElevenLabs and Cartesia arms, and — by iterating every case — guarantee the
+/// switches remain exhaustive and total across all ``VoiceProviderType`` values.
 @Suite("VoiceCapabilities Tests")
 struct VoiceCapabilitiesTests {
-    /// Providers whose arms remain seeded (empty/false) — i.e. everything except ElevenLabs.
-    private var seededProviders: [VoiceProviderType] {
-        VoiceProviderType.allCases.filter { $0 != .elevenLabs }
-    }
+    /// Providers whose arms are still seeded empty (no TTS/STT support) pending their own integration.
+    private static let unseededProviders: [VoiceProviderType] = [.deepgram, .openai]
 
-    // MARK: - Seeded State (non-ElevenLabs providers)
+    /// Providers that expose no static voice catalog (either unintegrated, or fetching voices at
+    /// runtime like Cartesia). ElevenLabs is the only provider that seeds a static voice list.
+    private static let providersWithoutStaticVoices: [VoiceProviderType] = [.deepgram, .openai, .cartesia]
 
-    @Test("ttsSupported is seeded false for every non-ElevenLabs provider")
+    // MARK: - Seeded (empty) State
+
+    @Test("ttsSupported is seeded false for providers pending integration")
     func testTTSSupportedSeed() {
-        for provider in seededProviders {
+        for provider in Self.unseededProviders {
             #expect(VoiceCapabilities.ttsSupported(by: provider) == false)
         }
     }
 
-    @Test("sttSupported is seeded false for every non-ElevenLabs provider")
+    @Test("sttSupported is seeded false for providers pending integration")
     func testSTTSupportedSeed() {
-        for provider in seededProviders {
+        for provider in Self.unseededProviders {
             #expect(VoiceCapabilities.sttSupported(by: provider) == false)
         }
     }
 
-    @Test("ttsModels is seeded empty for every non-ElevenLabs provider")
+    @Test("ttsModels is seeded empty for providers pending integration")
     func testTTSModelsSeed() {
-        for provider in seededProviders {
+        for provider in Self.unseededProviders {
             #expect(VoiceCapabilities.ttsModels(for: provider).isEmpty)
         }
     }
 
-    @Test("sttModels is seeded empty for every non-ElevenLabs provider")
+    @Test("sttModels is seeded empty for providers pending integration")
     func testSTTModelsSeed() {
-        for provider in seededProviders {
+        for provider in Self.unseededProviders {
             #expect(VoiceCapabilities.sttModels(for: provider).isEmpty)
         }
     }
 
-    @Test("voices is seeded empty for every non-ElevenLabs provider")
+    @Test("voices is empty for every provider except ElevenLabs (others fetch at runtime)")
     func testVoicesSeed() {
-        for provider in seededProviders {
+        for provider in Self.providersWithoutStaticVoices {
             #expect(VoiceCapabilities.voices(for: provider).isEmpty)
         }
     }
@@ -82,6 +84,16 @@ struct VoiceCapabilitiesTests {
         // Rachel (default) and Adam premade IDs.
         #expect(voices.contains("21m00Tcm4TlvDq8ikWAM"))
         #expect(voices.contains("pNInz6obpgDQGcFmaJgB"))
+    }
+
+    // MARK: - Cartesia Arm (populated)
+
+    @Test("Cartesia arm advertises TTS + STT support with its model lists")
+    func testCartesiaArmFilled() {
+        #expect(VoiceCapabilities.ttsSupported(by: .cartesia))
+        #expect(VoiceCapabilities.sttSupported(by: .cartesia))
+        #expect(VoiceCapabilities.ttsModels(for: .cartesia).contains("sonic-3"))
+        #expect(VoiceCapabilities.sttModels(for: .cartesia) == ["ink-whisper"])
     }
 
     // MARK: - Totality
