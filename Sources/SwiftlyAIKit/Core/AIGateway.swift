@@ -554,7 +554,10 @@ public actor AIGateway {
     }
 
     /// Create default provider implementations
-    private static func createDefaultProviders(configuration: Configuration) -> [ProviderType: ProviderProtocol] {
+    ///
+    /// Exposed as `internal` (rather than `private`) so the default provider wiring
+    /// — e.g. that `.google` routes to a real ``GeminiProvider`` — can be verified in tests.
+    static func createDefaultProviders(configuration: Configuration) -> [ProviderType: ProviderProtocol] {
         var providers: [ProviderType: ProviderProtocol] = [:]
 
         // Register Anthropic provider
@@ -569,7 +572,13 @@ public actor AIGateway {
 
         // Register other providers
         providers[.openai] = OpenAIProvider()
-        providers[.google] = GoogleProvider()
+        // Route .google to the real Gemini implementation (config-aware, mirroring Anthropic).
+        // GoogleProvider was an unimplemented stub that threw `unsupportedFeature`.
+        providers[.google] = GeminiProvider(
+            timeout: configuration.timeout,
+            maxRetries: configuration.maxRetries,
+            enableLogging: configuration.enableLogging
+        )
         providers[.cohere] = CohereProvider()
         providers[.mistral] = MistralProvider()
         providers[.deepseek] = DeepSeekProvider()
