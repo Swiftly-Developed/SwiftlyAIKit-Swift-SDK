@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.15] - 2026-07-18
+
+Additive, backward-compatible feature: a new **Ollama** provider for Ollama's native local/
+self-hosted LLM server. No neutral types change and every existing provider behaves identically;
+`v0.9.14` consumers compile unchanged. Adds one `ProviderType` case, so any exhaustive `switch`
+over `ProviderType` in consuming code will surface a new `.ollama` arm.
+
+### Added
+- **`OllamaProvider`** — `ProviderProtocol` conformer targeting a local/self-hosted Ollama server.
+  Distinctives vs. the OpenAI-compatible providers: **no API key** — authentication is base-URL
+  reachability, so **no `Authorization` header is sent** (the `apiKey` parameters are ignored);
+  Ollama's **native `/api/chat`** endpoint with **newline-delimited JSON streaming (not SSE)** — each
+  line is a full response object carrying a partial `message.content`, no `data:` prefix and no
+  `[DONE]` sentinel (the parser buffers partial lines across network chunks); generation parameters
+  nest under `options` (`num_predict`, `temperature`, `top_p`, `top_k`, `stop`); tool-call
+  `arguments` arrive as a JSON **object** and are re-encoded to a JSON string for the neutral
+  `AIToolCall`. Full chat support: `sendMessage`, `streamMessage` (cumulative content + terminal
+  usage/stop-reason), unified tool calling, and `listModels(apiKey:)` → `GET /api/tags`. The default
+  base URL is `http://localhost:11434` (http, no `/v1`), overridable per instance. Text/chat only —
+  no image generation.
+- **`ProviderType.ollama`** — new case (`displayName` "Ollama", `baseURL` `http://localhost:11434`),
+  registered by `AIGateway.createDefaultProviders` as `OllamaProvider()`; `resolveAPIKey` treats it
+  (like `.appleIntelligence`) as key-free. Marked tool-capable in `ToolCapabilities` and
+  image-generation-unsupported in `ImageGenerationCapabilities`.
+- **`OllamaModelsResponse` / `OllamaModelInfo` / `OllamaModelDetails`** plus the full `Ollama*`
+  request/response/streaming/tool Codable set (`OllamaChatRequest`, `OllamaMessage`,
+  `OllamaToolDefinition`, `OllamaOptions`, `OllamaChatResponse`, `OllamaResponseMessage`,
+  `OllamaToolCall`) — `Codable`, `Sendable`, explicit snake_case `CodingKeys` (no
+  `.convertFromSnakeCase`).
+- **`MockOllamaAPI` fixtures + `OllamaProviderTests`/`OllamaStreamingTests`/`OllamaToolRoundTripTests`**
+  (request/tool mapping, no-Authorization header assertion, custom-base-URL endpoints, tool-call
+  argument re-encoding, newline-JSON streaming with a split-across-chunks buffering test, and an
+  `/api/tags` decode) and an `AIGatewayOllamaDispatchTests` case asserting `.ollama` routes to a real
+  `OllamaProvider`.
+
+## [0.9.14] - 2026-07-18
+
+Additive, backward-compatible feature: a net-new **voice capability foundation** — a separate
+capability axis from chat, mirroring the structure of `ImageGenerationProvider`. Voice is *not*
+routed through `ProviderProtocol.sendMessage` and voice vendors are *not* wired into the chat
+`AIGateway.createDefaultProviders`. Crucially, this adds **no** `ProviderType` case and changes
+**no** existing neutral type, so every exhaustive `switch` over `ProviderType` in consuming code is
+untouched and `v0.9.13` consumers compile unchanged. This foundation lands ahead of the per-vendor
+voice integrations (ElevenLabs, Deepgram, Cartesia, OpenAI audio).
+
+### Added
+- **`TextToSpeech` protocol** (`Core/VoiceProvider.swift`) — `supportsTextToSpeech` (default
+  `false`) + `textToSpeechModels` (default `[]`), a one-shot `synthesize(_:apiKey:)` and a streaming
+  `streamSynthesize(_:apiKey:) -> AsyncThrowingStream<SpeechAudioChunk, Error>`. Extension defaults
+  throw / finish with `AIError.unsupportedFeature(feature: "text-to-speech", provider:)`, resolving
+  the provider identity the same way `ImageGenerationProvider` does (chat `ProviderProtocol`'s
+  `providerType` if the conformer is one, else `.openai`).
+- **`SpeechToText` protocol** (`Core/VoiceProvider.swift`) — `supportsSpeechToText` (default
+  `false`) + `speechToTextModels` (default `[]`), a one-shot `transcribe(_:apiKey:)` and a streaming
+  `streamTranscribe(_:apiKey:) -> AsyncThrowingStream<TranscriptionChunk, Error>`, with the same
+  unsupported-by-default pattern (`feature: "speech-to-text"`).
+- **Neutral voice value types** (`Models/Voice/`) — `SpeechSynthesisRequest`
+  (`text`/`model`/`voice?`/`format`/`speed?`/`sampleRate?`), `SpeechSynthesisResponse`
+  (`audio`/`format`/`model`), `SpeechAudioChunk`; `TranscriptionRequest`
+  (`audio`/`model`/`language?`/`mimeType?`), `TranscriptionResponse`
+  (`text`/`segments?`/`words?`/`language?`/`durationSeconds?`) with `TranscriptionSegment` /
+  `TranscriptionWord`, `TranscriptionChunk` (`text` + `isFinal`); and `AudioFormat`
+  (`mp3`/`wav`/`pcm`/`opus`/`flac`/`aac`, `Codable`/`Sendable`/`CaseIterable`, with a `mimeType`).
+- **`VoiceProviderType`** (`Models/Voice/VoiceProviderType.swift`) — `elevenLabs`
+  (raw value `"elevenlabs"`), `deepgram`, `cartesia`, `openai`, each with `displayName` + `baseURL`,
+  mirroring `ProviderType`. Kept deliberately **separate** from the chat `ProviderType` so the chat
+  enum's exhaustive switches stay intact. `.openai` here reuses the OpenAI key/base but is its own
+  voice token.
+- **`VoiceCapabilities`** (`Core/VoiceProvider.swift`) — a lightweight metadata registry with
+  `ttsSupported(by:)` / `sttSupported(by:)` / `ttsModels(for:)` / `sttModels(for:)` / `voices(for:)`
+  exhaustive switches over `VoiceProviderType`. Seeded empty; each vendor integration fills its arm.
+- **`VoiceTests` suite** — `VoiceProviderTests` (protocol defaults are unsupported and throw / finish
+  with `AIError.unsupportedFeature`), `VoiceProviderTypeTests` (raw values / `displayName` / `baseURL`
+  / Codable / exhaustiveness), `VoiceCapabilitiesTests` (seeded state + totality over every case), and
+  `VoiceModelsTests` (value-type initializers and `AudioFormat`). No network.
+
 ## [0.9.13] - 2026-07-18
 
 Additive, backward-compatible feature: a new **OpenRouter** provider for OpenRouter's

@@ -546,8 +546,9 @@ public actor AIGateway {
     /// - Returns: Resolved API key
     /// - Throws: AIError.missingAPIKey if key cannot be resolved
     private func resolveAPIKey(for provider: ProviderType, clientKey: String?) throws -> String {
-        // Apple Intelligence runs on-device and doesn't need an API key
-        if provider == .appleIntelligence {
+        // Apple Intelligence runs on-device and Ollama authenticates by base-URL reachability;
+        // neither needs an API key.
+        if provider == .appleIntelligence || provider == .ollama {
             return ""
         }
         return try configuration.keyStrategy.resolveKey(for: provider, clientKey: clientKey)
@@ -586,6 +587,7 @@ public actor AIGateway {
         providers[.grok] = GrokProvider()
         providers[.groq] = GroqProvider()
         providers[.openRouter] = OpenRouterProvider()
+        providers[.ollama] = OllamaProvider()
 
         // Register Apple Intelligence provider (on-device, no API key required)
         providers[.appleIntelligence] = AppleIntelligenceProvider()
