@@ -135,9 +135,9 @@ public struct ImageGenerationCapabilities: Sendable {
     /// - Returns: True if the provider supports image generation
     public static func isSupported(by provider: ProviderType) -> Bool {
         switch provider {
-        case .openai, .grok, .appleIntelligence:
+        case .openai, .grok, .google, .appleIntelligence:
             return true
-        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter, .ollama:
+        case .anthropic, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter, .ollama:
             return false
         }
     }
@@ -152,13 +152,23 @@ public struct ImageGenerationCapabilities: Sendable {
             return ["dall-e-3", "dall-e-2"]
         case .grok:
             return ["grok-2-image"]
+        case .google:
+            return [
+                "gemini-3.1-flash-image",
+                "gemini-3.1-flash-lite-image",
+                "gemini-3-pro-image",
+                "gemini-2.5-flash-image",
+                "imagen-4.0-generate-001",
+                "imagen-4.0-fast-generate-001",
+                "imagen-4.0-ultra-generate-001"
+            ]
         case .appleIntelligence:
             return [
                 "apple-image-animation",
                 "apple-image-illustration",
                 "apple-image-sketch"
             ]
-        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter, .ollama:
+        case .anthropic, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter, .ollama:
             return []
         }
     }
@@ -173,9 +183,11 @@ public struct ImageGenerationCapabilities: Sendable {
             return "dall-e-3"
         case .grok:
             return "grok-2-image"
+        case .google:
+            return "gemini-3.1-flash-image"
         case .appleIntelligence:
             return "apple-image-animation"
-        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter, .ollama:
+        case .anthropic, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter, .ollama:
             return nil
         }
     }
@@ -190,9 +202,12 @@ public struct ImageGenerationCapabilities: Sendable {
             return ImageSize.allCases
         case .grok:
             return [.square1024]
+        case .google:
+            // Imagen/Gemini size by aspect ratio; every ImageSize maps to a supported ratio
+            return ImageSize.allCases
         case .appleIntelligence:
             return [.square1024] // Image Playground handles sizing automatically
-        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter, .ollama:
+        case .anthropic, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter, .ollama:
             return []
         }
     }

@@ -273,6 +273,11 @@ public struct GeminiGenerationConfig: Codable, Sendable, Equatable {
     public let stopSequences: [String]?
     public let responseMimeType: String?
     public let responseSchema: GeminiSchema?
+    /// Output modalities the model should return, e.g. `["IMAGE"]` or `["TEXT", "IMAGE"]`.
+    /// Required to make a Gemini-native image model (`gemini-*-image`) emit image parts.
+    public let responseModalities: [String]?
+    /// Image-output configuration (aspect ratio, etc.) for Gemini-native image generation.
+    public let imageConfig: GeminiImageConfig?
 
     public init(
         temperature: Double? = nil,
@@ -281,7 +286,9 @@ public struct GeminiGenerationConfig: Codable, Sendable, Equatable {
         maxOutputTokens: Int? = nil,
         stopSequences: [String]? = nil,
         responseMimeType: String? = nil,
-        responseSchema: GeminiSchema? = nil
+        responseSchema: GeminiSchema? = nil,
+        responseModalities: [String]? = nil,
+        imageConfig: GeminiImageConfig? = nil
     ) {
         self.temperature = temperature
         self.topP = topP
@@ -290,6 +297,19 @@ public struct GeminiGenerationConfig: Codable, Sendable, Equatable {
         self.stopSequences = stopSequences
         self.responseMimeType = responseMimeType
         self.responseSchema = responseSchema
+        self.responseModalities = responseModalities
+        self.imageConfig = imageConfig
+    }
+}
+
+/// Image-output configuration nested in ``GeminiGenerationConfig`` for Gemini-native
+/// image models (`gemini-*-image`). Sent on the `:generateContent` request.
+public struct GeminiImageConfig: Codable, Sendable, Equatable {
+    /// Requested aspect ratio, e.g. `"1:1"`, `"16:9"`, `"9:16"`.
+    public let aspectRatio: String?
+
+    public init(aspectRatio: String? = nil) {
+        self.aspectRatio = aspectRatio
     }
 }
 
@@ -543,5 +563,68 @@ public struct GeminiModelInfo: Codable, Sendable {
         self.inputTokenLimit = inputTokenLimit
         self.outputTokenLimit = outputTokenLimit
         self.supportedGenerationMethods = supportedGenerationMethods
+    }
+}
+
+// MARK: - Imagen Image Generation (`:predict`)
+
+/// Request body for Google's Imagen `:predict` endpoint
+/// (`POST /v1beta/models/{model}:predict`).
+///
+/// Note: the Imagen `:predict` API and its `imagen-*` models are deprecated by Google and
+/// scheduled for shutdown on 2026-08-17 — new work should prefer the Gemini-native image models
+/// (`gemini-*-image`) via `:generateContent`. Kept here so ``GeminiProvider`` can serve
+/// `imagen-*` model ids until then.
+public struct ImagenPredictRequest: Codable, Sendable, Equatable {
+    public let instances: [ImagenInstance]
+    public let parameters: ImagenParameters?
+
+    public init(instances: [ImagenInstance], parameters: ImagenParameters? = nil) {
+        self.instances = instances
+        self.parameters = parameters
+    }
+}
+
+/// A single Imagen prediction instance (one prompt).
+public struct ImagenInstance: Codable, Sendable, Equatable {
+    public let prompt: String
+
+    public init(prompt: String) {
+        self.prompt = prompt
+    }
+}
+
+/// Generation parameters for an Imagen `:predict` request.
+public struct ImagenParameters: Codable, Sendable, Equatable {
+    /// Number of images to generate (1–4).
+    public let sampleCount: Int?
+    /// Aspect ratio, e.g. `"1:1"`, `"16:9"`, `"9:16"`.
+    public let aspectRatio: String?
+
+    public init(sampleCount: Int? = nil, aspectRatio: String? = nil) {
+        self.sampleCount = sampleCount
+        self.aspectRatio = aspectRatio
+    }
+}
+
+/// Response body from Google's Imagen `:predict` endpoint.
+public struct ImagenPredictResponse: Codable, Sendable, Equatable {
+    public let predictions: [ImagenPrediction]
+
+    public init(predictions: [ImagenPrediction]) {
+        self.predictions = predictions
+    }
+}
+
+/// A single generated image returned by Imagen `:predict`.
+public struct ImagenPrediction: Codable, Sendable, Equatable {
+    /// Base64-encoded image bytes.
+    public let bytesBase64Encoded: String?
+    /// MIME type of the image, e.g. `"image/png"`.
+    public let mimeType: String?
+
+    public init(bytesBase64Encoded: String? = nil, mimeType: String? = nil) {
+        self.bytesBase64Encoded = bytesBase64Encoded
+        self.mimeType = mimeType
     }
 }
