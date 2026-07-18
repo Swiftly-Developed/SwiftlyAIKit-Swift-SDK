@@ -371,6 +371,41 @@ struct GeminiProviderTests {
         #expect(accumulated == "Hello! How can I help you?")
     }
 
+    // MARK: - Models List Tests
+
+    @Test("Decodes models.list response")
+    func testDecodeModelsListResponse() throws {
+        let jsonData = MockGeminiAPI.modelsListResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(GeminiModelsResponse.self, from: jsonData)
+
+        #expect(response.models.count == 3)
+        #expect(response.nextPageToken == "abc123")
+
+        // A known chat model decodes with all surfaced fields.
+        let pro = response.models[0]
+        #expect(pro.name == "models/gemini-2.5-pro")
+        #expect(pro.displayName == "Gemini 2.5 Pro")
+        #expect(pro.inputTokenLimit == 2_097_152)
+        #expect(pro.outputTokenLimit == 65_536)
+        // supportedGenerationMethods round-trips (this is what callers filter on).
+        #expect(pro.supportedGenerationMethods?.contains("generateContent") == true)
+    }
+
+    @Test("Caller can filter models.list to generateContent-capable models")
+    func testFilterModelsListToChatCapable() throws {
+        let jsonData = MockGeminiAPI.modelsListResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(GeminiModelsResponse.self, from: jsonData)
+
+        // The raw list includes an embedding model; the caller filters it out.
+        let chatModels = response.models.filter {
+            $0.supportedGenerationMethods?.contains("generateContent") == true
+        }
+
+        #expect(chatModels.count == 2)
+        #expect(chatModels.allSatisfy { $0.name.hasPrefix("models/gemini") })
+        #expect(!chatModels.contains { $0.name.contains("embedding") })
+    }
+
     // MARK: - Model Support Tests
 
     @Test("Gemini 2.5 Pro is supported")

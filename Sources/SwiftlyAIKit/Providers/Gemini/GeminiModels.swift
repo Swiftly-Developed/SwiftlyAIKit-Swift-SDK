@@ -484,3 +484,64 @@ public struct GeminiErrorDetail: Codable, Sendable {
         self.metadata = metadata
     }
 }
+
+// MARK: - Models List Response
+
+/// Response from Google's `GET /v1beta/models` (`models.list`) endpoint.
+///
+/// The response lists every model the API key can access. Callers filter the list
+/// (e.g. to entries whose ``GeminiModelInfo/supportedGenerationMethods`` contain
+/// `"generateContent"`) — this SDK returns it raw.
+///
+/// Google's `models.list` payload is already camelCase on the wire (`models`,
+/// `nextPageToken`), so synthesized `CodingKeys` match verbatim. Decode with a plain
+/// `JSONDecoder` — do NOT enable `.convertFromSnakeCase` (mirrors
+/// `OpenAIProvider`/`AnthropicProvider` listModels; the strategy misbehaves on Linux
+/// Foundation, and this SDK ships to a Linux Vapor server).
+public struct GeminiModelsResponse: Codable, Sendable {
+    /// Available models.
+    public let models: [GeminiModelInfo]
+    /// Pagination cursor for the next page, if the list was truncated.
+    public let nextPageToken: String?
+
+    public init(models: [GeminiModelInfo], nextPageToken: String? = nil) {
+        self.models = models
+        self.nextPageToken = nextPageToken
+    }
+}
+
+/// One model entry from Google's `models.list` response.
+///
+/// Fields are camelCase on the wire, matching these property names, so synthesized
+/// `CodingKeys` are correct — see ``GeminiModelsResponse`` for the decoding caveat.
+public struct GeminiModelInfo: Codable, Sendable {
+    /// Resource name, e.g. `"models/gemini-2.5-pro"`.
+    public let name: String
+    /// Human-readable name, e.g. `"Gemini 2.5 Pro"`.
+    public let displayName: String?
+    /// Description of the model.
+    public let description: String?
+    /// Maximum number of input tokens the model accepts.
+    public let inputTokenLimit: Int?
+    /// Maximum number of output tokens the model produces.
+    public let outputTokenLimit: Int?
+    /// Generation methods the model supports, e.g. `["generateContent", "countTokens"]`.
+    /// Callers typically filter to entries containing `"generateContent"`.
+    public let supportedGenerationMethods: [String]?
+
+    public init(
+        name: String,
+        displayName: String? = nil,
+        description: String? = nil,
+        inputTokenLimit: Int? = nil,
+        outputTokenLimit: Int? = nil,
+        supportedGenerationMethods: [String]? = nil
+    ) {
+        self.name = name
+        self.displayName = displayName
+        self.description = description
+        self.inputTokenLimit = inputTokenLimit
+        self.outputTokenLimit = outputTokenLimit
+        self.supportedGenerationMethods = supportedGenerationMethods
+    }
+}
