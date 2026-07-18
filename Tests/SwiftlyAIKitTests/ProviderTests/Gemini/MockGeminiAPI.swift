@@ -190,6 +190,44 @@ public enum MockGeminiAPI {
         "data: [DONE]"
     ]
 
+    // MARK: - Models List API
+
+    /// Sample `models.list` response (`GET /v1beta/models`).
+    ///
+    /// Includes an embedding model with no `generateContent` support so tests can verify
+    /// that `supportedGenerationMethods` round-trips (callers filter on it).
+    public static let modelsListResponse = """
+    {
+      "models": [
+        {
+          "name": "models/gemini-2.5-pro",
+          "displayName": "Gemini 2.5 Pro",
+          "description": "Mid-size multimodal model that supports up to 2 million tokens.",
+          "inputTokenLimit": 2097152,
+          "outputTokenLimit": 65536,
+          "supportedGenerationMethods": ["generateContent", "countTokens"]
+        },
+        {
+          "name": "models/gemini-2.5-flash",
+          "displayName": "Gemini 2.5 Flash",
+          "description": "Fast and versatile multimodal model.",
+          "inputTokenLimit": 1048576,
+          "outputTokenLimit": 8192,
+          "supportedGenerationMethods": ["generateContent", "countTokens"]
+        },
+        {
+          "name": "models/text-embedding-004",
+          "displayName": "Text Embedding 004",
+          "description": "Obtain a distributed representation of a text.",
+          "inputTokenLimit": 2048,
+          "outputTokenLimit": 1,
+          "supportedGenerationMethods": ["embedContent"]
+        }
+      ],
+      "nextPageToken": "abc123"
+    }
+    """
+
     // MARK: - Token Counting API
 
     /// Sample token count response
