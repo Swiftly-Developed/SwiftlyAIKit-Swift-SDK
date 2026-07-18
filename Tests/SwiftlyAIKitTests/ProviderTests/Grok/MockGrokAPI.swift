@@ -348,6 +348,42 @@ public enum MockGrokAPI {
     ]
     // swiftlint:enable line_length
 
+    /// Streaming response using **real xAI framing** (OpenAI-compatible `include_usage`).
+    ///
+    /// Unlike ``streamingResponse``, `finish_reason` and `usage` do NOT co-locate on a
+    /// single `delta:{}` chunk. Instead: content-delta chunks, then a `finish_reason`
+    /// chunk (empty delta, no usage), then a **separate trailing `{"choices":[],"usage":{…}}`
+    /// chunk** carrying the terminal token usage, then `data: [DONE]`. This mirrors how
+    /// xAI actually frames a streamed completion and exercises the delta-less usage path.
+    // swiftlint:disable line_length
+    public static let streamingResponseRealFraming = [
+        "data: {\"id\":\"chatcmpl-real123\",\"object\":\"chat.completion.chunk\",\"created\":1700000030,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\"},\"finish_reason\":null}]}",
+        "data: {\"id\":\"chatcmpl-real123\",\"object\":\"chat.completion.chunk\",\"created\":1700000030,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}",
+        "data: {\"id\":\"chatcmpl-real123\",\"object\":\"chat.completion.chunk\",\"created\":1700000030,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\", world\"},\"finish_reason\":null}]}",
+        "data: {\"id\":\"chatcmpl-real123\",\"object\":\"chat.completion.chunk\",\"created\":1700000030,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"!\"},\"finish_reason\":null}]}",
+        "data: {\"id\":\"chatcmpl-real123\",\"object\":\"chat.completion.chunk\",\"created\":1700000030,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}",
+        "data: {\"id\":\"chatcmpl-real123\",\"object\":\"chat.completion.chunk\",\"created\":1700000030,\"model\":\"grok-4\",\"choices\":[],\"usage\":{\"prompt_tokens\":11,\"completion_tokens\":3,\"total_tokens\":14,\"completion_tokens_details\":{\"reasoning_tokens\":7,\"text_tokens\":3}}}",
+        "data: [DONE]"
+    ]
+    // swiftlint:enable line_length
+
+    /// Streaming tool-call response using **real xAI framing**.
+    ///
+    /// Tool-call fragments stream in, then a `finish_reason:"tool_calls"` chunk (empty
+    /// delta), then a **separate trailing `{"choices":[],"usage":{…}}` chunk**, then
+    /// `data: [DONE]`.
+    // swiftlint:disable line_length
+    public static let streamingToolCallResponseRealFraming = [
+        "data: {\"id\":\"chatcmpl-real-tools\",\"object\":\"chat.completion.chunk\",\"created\":1700000031,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\"},\"finish_reason\":null}]}",
+        "data: {\"id\":\"chatcmpl-real-tools\",\"object\":\"chat.completion.chunk\",\"created\":1700000031,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_real123\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\"}}]},\"finish_reason\":null}]}",
+        "data: {\"id\":\"chatcmpl-real-tools\",\"object\":\"chat.completion.chunk\",\"created\":1700000031,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{\\\"loc\"}}]},\"finish_reason\":null}]}",
+        "data: {\"id\":\"chatcmpl-real-tools\",\"object\":\"chat.completion.chunk\",\"created\":1700000031,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"ation\\\": \\\"NYC\\\"}\"}}]},\"finish_reason\":null}]}",
+        "data: {\"id\":\"chatcmpl-real-tools\",\"object\":\"chat.completion.chunk\",\"created\":1700000031,\"model\":\"grok-4\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"tool_calls\"}]}",
+        "data: {\"id\":\"chatcmpl-real-tools\",\"object\":\"chat.completion.chunk\",\"created\":1700000031,\"model\":\"grok-4\",\"choices\":[],\"usage\":{\"prompt_tokens\":25,\"completion_tokens\":15,\"total_tokens\":40}}",
+        "data: [DONE]"
+    ]
+    // swiftlint:enable line_length
+
     // MARK: - Tokenization API
 
     /// Sample tokenize response
