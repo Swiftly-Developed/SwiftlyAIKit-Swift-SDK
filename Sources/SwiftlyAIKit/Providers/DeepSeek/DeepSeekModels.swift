@@ -464,6 +464,48 @@ public struct DeepSeekDelta: Codable, Sendable {
     }
 }
 
+// MARK: - Models List Response
+
+/// Response from DeepSeek's GET /models endpoint (OpenAI-compatible)
+public struct DeepSeekModelsResponse: Codable, Sendable {
+    /// Object type (always "list")
+    public let object: String
+    /// Array of available models
+    public let data: [DeepSeekModelInfo]
+
+    enum CodingKeys: String, CodingKey {
+        case object
+        case data
+    }
+
+    public init(object: String = "list", data: [DeepSeekModelInfo]) {
+        self.object = object
+        self.data = data
+    }
+}
+
+/// DeepSeek model information (one entry from GET /models)
+public struct DeepSeekModelInfo: Codable, Sendable {
+    /// Model ID, e.g. "deepseek-chat"
+    public let id: String
+    /// Object type (always "model")
+    public let object: String
+    /// Organization that owns the model, e.g. "deepseek"
+    public let ownedBy: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case object
+        case ownedBy = "owned_by"
+    }
+
+    public init(id: String, object: String = "model", ownedBy: String = "deepseek") {
+        self.id = id
+        self.object = object
+        self.ownedBy = ownedBy
+    }
+}
+
 // MARK: - Error Models
 
 /// DeepSeek error response

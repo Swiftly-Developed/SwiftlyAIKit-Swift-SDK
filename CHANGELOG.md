@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.8] - 2026-07-18
+
+Additive, backward-compatible extension bringing `DeepSeekProvider` to parity with the other
+providers' model-discovery surface. No neutral types, `AIGateway`, `ProviderProtocol`, or
+other providers change; `v0.9.7` consumers compile and behave identically.
+
+### Added
+- **`DeepSeekProvider.listModels(apiKey:)`** — lists available models via DeepSeek's OpenAI-compatible `GET /models` endpoint (Bearer auth), mirroring `OpenAIProvider`/`GrokProvider`/`GeminiProvider`/`CohereProvider`/`MistralProvider`/`AnthropicProvider`. Returns the RAW `DeepSeekModelsResponse`; callers filter to the models they intend to use (e.g. `deepseek-chat`, `deepseek-reasoner`).
+- **`DeepSeekModelsResponse` / `DeepSeekModelInfo`** — `Codable`, `Sendable`, public response types for the models endpoint, with explicit snake_case `CodingKeys` (`owned_by`) to avoid the `.convertFromSnakeCase` conflict on Linux Foundation. DeepSeek's `/models` omits `created`, so `DeepSeekModelInfo` carries only `id`, `object`, and `ownedBy`.
+- **`MockDeepSeekAPI.modelsListResponse`** fixture + `DeepSeekProviderTests` cases decoding the models list, asserting model ids and the `owned_by` snake_case key mapping.
+
 ## [0.9.7] - 2026-07-18
 
 Additive, backward-compatible extension bringing `MistralProvider` to parity with the other
