@@ -498,4 +498,51 @@ struct CohereProviderTests {
             #expect(text.contains("RAG"))
         }
     }
+
+    // MARK: - 10. Models List Tests
+
+    @Test("Decodes models list response")
+    func testDecodeModelsListResponse() throws {
+        let jsonData = MockCohereAPI.modelsListResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(CohereModelsResponse.self, from: jsonData)
+
+        // Raw list is returned verbatim — caller filters by endpoint.
+        #expect(response.models.count == 5)
+        #expect(response.models.map(\.name) == [
+            "command-a-03-2025",
+            "command-r-plus-08-2024",
+            "command-r-08-2024",
+            "command-r7b-12-2024",
+            "embed-english-v3.0"
+        ])
+        // Verify the pagination cursor maps from next_page_token.
+        #expect(response.nextPageToken == "abc123nextpage")
+    }
+
+    @Test("Maps model info snake_case keys")
+    func testModelInfoSnakeCaseMapping() throws {
+        let jsonData = MockCohereAPI.modelsListResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(CohereModelsResponse.self, from: jsonData)
+
+        let commandA = try #require(response.models.first)
+        #expect(commandA.name == "command-a-03-2025")
+        #expect(commandA.endpoints == ["chat"])
+        #expect(commandA.contextLength == 256_000)
+        #expect(commandA.isDeprecated == false)
+        #expect(commandA.finetuned == false)
+        #expect(commandA.defaultEndpoints == ["chat"])
+        #expect(commandA.features?.contains("tools") == true)
+        #expect(commandA.tokenizerURL?.hasPrefix("https://") == true)
+    }
+
+    @Test("Filters models list to chat-capable models")
+    func testFilterModelsToChatEndpoints() throws {
+        let jsonData = MockCohereAPI.modelsListResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(CohereModelsResponse.self, from: jsonData)
+
+        // The provider returns the raw list; downstream callers filter by endpoint.
+        let chatModels = response.models.filter { $0.endpoints?.contains("chat") == true }
+        #expect(chatModels.count == 4)
+        #expect(chatModels.allSatisfy { $0.name.hasPrefix("command") })
+    }
 }
