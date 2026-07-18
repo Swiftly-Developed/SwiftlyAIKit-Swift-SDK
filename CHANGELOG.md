@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.14] - 2026-07-18
+
+Additive, backward-compatible feature: a net-new **voice capability foundation** — a separate
+capability axis from chat, mirroring the structure of `ImageGenerationProvider`. Voice is *not*
+routed through `ProviderProtocol.sendMessage` and voice vendors are *not* wired into the chat
+`AIGateway.createDefaultProviders`. Crucially, this adds **no** `ProviderType` case and changes
+**no** existing neutral type, so every exhaustive `switch` over `ProviderType` in consuming code is
+untouched and `v0.9.13` consumers compile unchanged. This foundation lands ahead of the per-vendor
+voice integrations (ElevenLabs, Deepgram, Cartesia, OpenAI audio).
+
+### Added
+- **`TextToSpeech` protocol** (`Core/VoiceProvider.swift`) — `supportsTextToSpeech` (default
+  `false`) + `textToSpeechModels` (default `[]`), a one-shot `synthesize(_:apiKey:)` and a streaming
+  `streamSynthesize(_:apiKey:) -> AsyncThrowingStream<SpeechAudioChunk, Error>`. Extension defaults
+  throw / finish with `AIError.unsupportedFeature(feature: "text-to-speech", provider:)`, resolving
+  the provider identity the same way `ImageGenerationProvider` does (chat `ProviderProtocol`'s
+  `providerType` if the conformer is one, else `.openai`).
+- **`SpeechToText` protocol** (`Core/VoiceProvider.swift`) — `supportsSpeechToText` (default
+  `false`) + `speechToTextModels` (default `[]`), a one-shot `transcribe(_:apiKey:)` and a streaming
+  `streamTranscribe(_:apiKey:) -> AsyncThrowingStream<TranscriptionChunk, Error>`, with the same
+  unsupported-by-default pattern (`feature: "speech-to-text"`).
+- **Neutral voice value types** (`Models/Voice/`) — `SpeechSynthesisRequest`
+  (`text`/`model`/`voice?`/`format`/`speed?`/`sampleRate?`), `SpeechSynthesisResponse`
+  (`audio`/`format`/`model`), `SpeechAudioChunk`; `TranscriptionRequest`
+  (`audio`/`model`/`language?`/`mimeType?`), `TranscriptionResponse`
+  (`text`/`segments?`/`words?`/`language?`/`durationSeconds?`) with `TranscriptionSegment` /
+  `TranscriptionWord`, `TranscriptionChunk` (`text` + `isFinal`); and `AudioFormat`
+  (`mp3`/`wav`/`pcm`/`opus`/`flac`/`aac`, `Codable`/`Sendable`/`CaseIterable`, with a `mimeType`).
+- **`VoiceProviderType`** (`Models/Voice/VoiceProviderType.swift`) — `elevenLabs`
+  (raw value `"elevenlabs"`), `deepgram`, `cartesia`, `openai`, each with `displayName` + `baseURL`,
+  mirroring `ProviderType`. Kept deliberately **separate** from the chat `ProviderType` so the chat
+  enum's exhaustive switches stay intact. `.openai` here reuses the OpenAI key/base but is its own
+  voice token.
+- **`VoiceCapabilities`** (`Core/VoiceProvider.swift`) — a lightweight metadata registry with
+  `ttsSupported(by:)` / `sttSupported(by:)` / `ttsModels(for:)` / `sttModels(for:)` / `voices(for:)`
+  exhaustive switches over `VoiceProviderType`. Seeded empty; each vendor integration fills its arm.
+- **`VoiceTests` suite** — `VoiceProviderTests` (protocol defaults are unsupported and throw / finish
+  with `AIError.unsupportedFeature`), `VoiceProviderTypeTests` (raw values / `displayName` / `baseURL`
+  / Codable / exhaustiveness), `VoiceCapabilitiesTests` (seeded state + totality over every case), and
+  `VoiceModelsTests` (value-type initializers and `AudioFormat`). No network.
+
 ## [0.9.13] - 2026-07-18
 
 Additive, backward-compatible feature: a new **OpenRouter** provider for OpenRouter's
