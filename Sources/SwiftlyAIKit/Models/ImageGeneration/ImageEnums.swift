@@ -84,6 +84,22 @@ public enum ImageSize: String, Codable, Sendable, CaseIterable {
         }
     }
 
+    /// Aspect ratio string for providers that size images by ratio rather than pixels
+    /// (Google Imagen `:predict` and Gemini-native image generation).
+    ///
+    /// Maps each square size to `"1:1"`, landscape to `"16:9"`, and portrait to `"9:16"` —
+    /// the ratios accepted by Imagen and Gemini image models.
+    public var aspectRatio: String {
+        switch self {
+        case .square256, .square512, .square1024:
+            return "1:1"
+        case .landscape1792x1024:
+            return "16:9"
+        case .portrait1024x1792:
+            return "9:16"
+        }
+    }
+
     /// Check if this size is supported by a specific provider
     public func supportedBy(_ provider: ProviderType) -> Bool {
         switch provider {
@@ -94,6 +110,9 @@ public enum ImageSize: String, Codable, Sendable, CaseIterable {
         case .grok:
             // Grok only supports 1024x1024
             return self == .square1024
+        case .google:
+            // Google Imagen/Gemini size by aspect ratio, so every size maps to a supported ratio
+            return true
         case .appleIntelligence:
             // Image Playground handles sizing automatically
             return true
