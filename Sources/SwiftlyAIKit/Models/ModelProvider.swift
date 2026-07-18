@@ -563,6 +563,8 @@ public enum ModelProvider: String, Codable, Sendable, CaseIterable {
         case .grok2Vision:
             return 128_000
         case .grok4, .grok4Latest, .grokCodeFast:
+            // TODO: verify against xAI model list — grok-4 is documented at 256K.
+            // Static fallback only; live `GrokProvider.listModels` is authoritative for the picker.
             return 128_000 // Assumed based on typical model sizes
         case .grok2Image:
             return 1_024 // Max prompt length for image generation
