@@ -484,3 +484,81 @@ public struct GeminiErrorDetail: Codable, Sendable {
         self.metadata = metadata
     }
 }
+
+// MARK: - Models List
+
+/// Response from Google's `GET /v1beta/models` (models.list) endpoint.
+///
+/// Returned by ``GeminiProvider/listModels(apiKey:)``. The list is RAW — the caller
+/// filters (for example, to entries whose ``GeminiModelInfo/supportedGenerationMethods``
+/// contains `"generateContent"`).
+public struct GeminiModelsResponse: Codable, Sendable {
+    /// Available models.
+    public let models: [GeminiModelInfo]
+
+    /// Token for fetching the next page, if the result set was paginated. `nil` when there
+    /// are no further pages.
+    public let nextPageToken: String?
+
+    enum CodingKeys: String, CodingKey {
+        case models
+        case nextPageToken
+    }
+
+    public init(models: [GeminiModelInfo], nextPageToken: String? = nil) {
+        self.models = models
+        self.nextPageToken = nextPageToken
+    }
+}
+
+/// A single model entry from Google's models.list response.
+///
+/// Field names mirror Google's camelCase JSON and are decoded with a plain `JSONDecoder`
+/// (NO `.convertFromSnakeCase`): that strategy conflicts with explicit `CodingKeys` on
+/// Linux's Foundation (this SDK ships to a Linux Vapor server), and Google's keys are
+/// already camelCase so the strategy would mis-map them anyway.
+public struct GeminiModelInfo: Codable, Sendable {
+    /// Resource name, e.g. `"models/gemini-2.5-pro"`.
+    public let name: String
+
+    /// Human-readable name, e.g. `"Gemini 2.5 Pro"`.
+    public let displayName: String?
+
+    /// Description of the model.
+    public let description: String?
+
+    /// Maximum number of input tokens the model accepts.
+    public let inputTokenLimit: Int?
+
+    /// Maximum number of output tokens the model produces.
+    public let outputTokenLimit: Int?
+
+    /// Generation methods the model supports, e.g. `["generateContent", "countTokens"]`.
+    /// Callers filter to entries containing `"generateContent"` for chat-capable models.
+    public let supportedGenerationMethods: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case displayName
+        case description
+        case inputTokenLimit
+        case outputTokenLimit
+        case supportedGenerationMethods
+    }
+
+    public init(
+        name: String,
+        displayName: String? = nil,
+        description: String? = nil,
+        inputTokenLimit: Int? = nil,
+        outputTokenLimit: Int? = nil,
+        supportedGenerationMethods: [String] = []
+    ) {
+        self.name = name
+        self.displayName = displayName
+        self.description = description
+        self.inputTokenLimit = inputTokenLimit
+        self.outputTokenLimit = outputTokenLimit
+        self.supportedGenerationMethods = supportedGenerationMethods
+    }
+}

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2026-07-18
+
+Additive, backward-compatible patch that finishes wiring Google Gemini into the multi-provider
+foundation (spec AI04), mirroring how OpenAI model discovery landed in `0.9.3`. `0.9.3` consumers
+compile and behave identically; the neutral types and every other provider path are untouched.
+
+### Fixed
+- **Gateway routed `.google` to a broken stub.** `AIGateway.createDefaultProviders()` registered `GoogleProvider()`, whose `sendMessage`/`streamMessage` threw `AIError.unsupportedFeature`, so every `.google` request failed. The gateway now registers the real, config-aware `GeminiProvider` (timeout / maxRetries / enableLogging), matching how Anthropic is constructed.
+
+### Added
+- **`GeminiProvider.listModels(apiKey:)`** — live model discovery via Google's `GET /v1beta/models` (models.list). Returns the RAW list; the caller filters (e.g. to entries whose `supportedGenerationMethods` contains `"generateContent"`). Mirrors `OpenAIProvider.listModels` / `AnthropicProvider.listModels`.
+- **`GeminiModelsResponse` / `GeminiModelInfo`** (`GeminiModels.swift`) — Codable, Sendable types for the models.list shape (`name`, `displayName`, `description`, `inputTokenLimit`, `outputTokenLimit`, `supportedGenerationMethods`, plus optional `nextPageToken`). Explicit `CodingKeys` with a plain decoder (no `.convertFromSnakeCase`) for Linux Foundation compatibility.
+
+### Changed
+- **`GoogleProvider` is now a genuine alias** — it delegates every call (`sendMessage`/`streamMessage`/`countTokens`/`listModels`) to an internal `GeminiProvider` instead of throwing, fulfilling its long-standing "alias for GeminiProvider" doc contract.
+
 ## [0.9.1] - 2026-07-16
 
 Additive, backward-compatible patch so the neutral `AIRequest`/`AIResponse` boundary can

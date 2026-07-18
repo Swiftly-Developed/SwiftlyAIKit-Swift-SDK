@@ -190,6 +190,41 @@ public enum MockGeminiAPI {
         "data: [DONE]"
     ]
 
+    // MARK: - Models List API
+
+    /// Sample models.list response (mirrors Google's `GET /v1beta/models` shape).
+    ///
+    /// Includes a chat-capable model (`generateContent`), a non-chat model (`embedContent`)
+    /// so filtering can be exercised, and a `nextPageToken` for optional pagination. Keys are
+    /// camelCase, matching the real Gemini API.
+    public static let listModelsResponse = """
+    {
+      "models": [
+        {
+          "name": "models/gemini-2.5-pro",
+          "version": "2.5",
+          "displayName": "Gemini 2.5 Pro",
+          "description": "Our most capable model for complex reasoning tasks.",
+          "inputTokenLimit": 2097152,
+          "outputTokenLimit": 65536,
+          "supportedGenerationMethods": ["generateContent", "countTokens"],
+          "temperature": 1.0,
+          "topP": 0.95,
+          "topK": 64
+        },
+        {
+          "name": "models/embedding-001",
+          "displayName": "Embedding 001",
+          "description": "Obtain a distributed representation of a text.",
+          "inputTokenLimit": 2048,
+          "outputTokenLimit": 1,
+          "supportedGenerationMethods": ["embedContent"]
+        }
+      ],
+      "nextPageToken": "abc123"
+    }
+    """
+
     // MARK: - Token Counting API
 
     /// Sample token count response

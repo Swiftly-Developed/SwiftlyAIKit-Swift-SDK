@@ -371,6 +371,62 @@ struct GeminiProviderTests {
         #expect(accumulated == "Hello! How can I help you?")
     }
 
+    // MARK: - Models List Tests
+
+    @Test("Decodes models.list response")
+    func testListModelsResponseDecoding() throws {
+        let data = MockGeminiAPI.listModelsResponse.data(using: .utf8)!
+        // Plain decoder (no .convertFromSnakeCase), matching GeminiProvider.listModels.
+        let response = try JSONDecoder().decode(GeminiModelsResponse.self, from: data)
+
+        #expect(response.models.count == 2)
+        #expect(response.nextPageToken == "abc123")
+
+        let pro = response.models[0]
+        #expect(pro.name == "models/gemini-2.5-pro")
+        #expect(pro.displayName == "Gemini 2.5 Pro")
+        #expect(pro.inputTokenLimit == 2_097_152)
+        #expect(pro.outputTokenLimit == 65_536)
+        #expect(pro.supportedGenerationMethods.contains("generateContent"))
+    }
+
+    @Test("supportedGenerationMethods round-trips through Codable")
+    func testModelInfoSupportedMethodsRoundTrip() throws {
+        let data = MockGeminiAPI.listModelsResponse.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(GeminiModelsResponse.self, from: data)
+
+        let reencoded = try JSONEncoder().encode(decoded)
+        let redecoded = try JSONDecoder().decode(GeminiModelsResponse.self, from: reencoded)
+
+        #expect(redecoded.models[0].supportedGenerationMethods == ["generateContent", "countTokens"])
+        #expect(redecoded.models[1].supportedGenerationMethods == ["embedContent"])
+        #expect(redecoded.nextPageToken == "abc123")
+    }
+
+    @Test("Caller can filter to generateContent-capable models")
+    func testFilterToGenerateContentModels() throws {
+        let data = MockGeminiAPI.listModelsResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(GeminiModelsResponse.self, from: data)
+
+        // listModels returns the RAW list; the caller filters to chat-capable models.
+        let chatModels = response.models.filter { $0.supportedGenerationMethods.contains("generateContent") }
+        #expect(chatModels.count == 1)
+        #expect(chatModels.first?.name == "models/gemini-2.5-pro")
+    }
+
+    @Test("Models list decodes when nextPageToken is absent")
+    func testListModelsWithoutPageToken() throws {
+        let json = """
+        { "models": [ { "name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"] } ] }
+        """
+        let response = try JSONDecoder().decode(GeminiModelsResponse.self, from: Data(json.utf8))
+
+        #expect(response.nextPageToken == nil)
+        #expect(response.models.count == 1)
+        #expect(response.models[0].displayName == nil)
+        #expect(response.models[0].supportedGenerationMethods == ["generateContent"])
+    }
+
     // MARK: - Model Support Tests
 
     @Test("Gemini 2.5 Pro is supported")

@@ -569,7 +569,13 @@ public actor AIGateway {
 
         // Register other providers
         providers[.openai] = OpenAIProvider()
-        providers[.google] = GoogleProvider()
+        // Route .google to the real GeminiProvider (config-aware, mirroring Anthropic above).
+        // GoogleProvider is a thin alias that also delegates to GeminiProvider.
+        providers[.google] = GeminiProvider(
+            timeout: configuration.timeout,
+            maxRetries: configuration.maxRetries,
+            enableLogging: configuration.enableLogging
+        )
         providers[.cohere] = CohereProvider()
         providers[.mistral] = MistralProvider()
         providers[.deepseek] = DeepSeekProvider()

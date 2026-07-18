@@ -34,6 +34,9 @@ import Foundation
 /// - ``streamMessage(_:apiKey:)``
 /// - ``countTokens(_:apiKey:)``
 ///
+/// ### Gemini-Specific Methods
+/// - ``listModels(apiKey:)``
+///
 /// ## See Also
 /// - <doc:GeminiGuide>
 /// - <doc:VisionAndImageAnalysis>
@@ -231,6 +234,27 @@ public struct GeminiProvider: ProviderProtocol {
 
         let countResponse = try JSONDecoder().decode(GeminiCountTokensResponse.self, from: responseData)
         return countResponse.totalTokens
+    }
+
+    // MARK: - Gemini-Specific Methods
+
+    /// List available models from Google's `GET /v1beta/models` (models.list) endpoint.
+    ///
+    /// Returns the RAW model list — the caller is responsible for filtering (for example, to
+    /// models whose ``GeminiModelInfo/supportedGenerationMethods`` contains `"generateContent"`).
+    /// Mirrors ``OpenAIProvider/listModels(apiKey:)`` and ``AnthropicProvider/listModels(apiKey:)``.
+    /// - Parameter apiKey: Google API key (sent as the `?key=` query parameter, as Gemini expects).
+    /// - Returns: The raw list of Gemini models.
+    public func listModels(apiKey: String) async throws -> GeminiModelsResponse {
+        // Gemini authenticates via the ?key= query parameter, not an Authorization header.
+        let url = "\(baseURL)/models?key=\(apiKey)"
+        let headers = buildHeaders(stream: false)
+        let responseData = try await httpClient.get(url: url, headers: headers)
+        let decoder = JSONDecoder()
+        // NOTE: Do NOT use .convertFromSnakeCase — mirrors OpenAIProvider/AnthropicProvider.listModels.
+        // It conflicts with explicit CodingKeys on Linux's Foundation (this SDK ships to a Linux Vapor
+        // server); Gemini's models.list JSON is camelCase and decodes via explicit CodingKeys.
+        return try decoder.decode(GeminiModelsResponse.self, from: responseData)
     }
 
     // MARK: - Private Helper Methods
