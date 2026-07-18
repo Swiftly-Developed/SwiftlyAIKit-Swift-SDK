@@ -6,7 +6,7 @@ import Foundation
 ///
 /// ## Overview
 ///
-/// SwiftlyAIKit supports 11 AI providers:
+/// SwiftlyAIKit supports 12 AI providers:
 /// - ``openai`` - OpenAI GPT models
 /// - ``anthropic`` - Anthropic Claude models
 /// - ``google`` - Google Gemini models
@@ -17,6 +17,7 @@ import Foundation
 /// - ``grok`` - xAI Grok models
 /// - ``groq`` - Groq (OpenAI-compatible, fast inference)
 /// - ``openRouter`` - OpenRouter (OpenAI-compatible multi-vendor aggregator)
+/// - ``ollama`` - Ollama (local/self-hosted LLM server)
 /// - ``appleIntelligence`` - Apple on-device models
 ///
 /// ## Usage
@@ -45,6 +46,7 @@ import Foundation
 /// - ``grok``
 /// - ``groq``
 /// - ``openRouter``
+/// - ``ollama``
 /// - ``appleIntelligence``
 ///
 /// ### Properties
@@ -94,6 +96,9 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
     /// `"openRouter"`, but the provider token is the lowercased `"openrouter"`.
     case openRouter = "openrouter"
 
+    /// Ollama (local/self-hosted LLM server; native `/api/chat`, no API key)
+    case ollama
+
     /// Apple Intelligence (on-device Foundation Models and Image Playground)
     /// Note: Requires iOS 26+/macOS 26+ for Foundation Models, iOS 18.4+/macOS 15.4+ for Image Playground
     case appleIntelligence
@@ -111,6 +116,7 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
         case .grok: return "xAI Grok"
         case .groq: return "Groq"
         case .openRouter: return "OpenRouter"
+        case .ollama: return "Ollama"
         case .appleIntelligence: return "Apple Intelligence"
         }
     }
@@ -138,6 +144,8 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
             return "https://api.groq.com/openai/v1"
         case .openRouter:
             return "https://openrouter.ai/api/v1"
+        case .ollama:
+            return "http://localhost:11434"
         case .appleIntelligence:
             // Apple Intelligence runs on-device, no external API
             return ""
