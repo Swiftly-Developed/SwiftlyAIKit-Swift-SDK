@@ -495,3 +495,152 @@ public struct GeminiProvider: ProviderProtocol {
         }
     }
 }
+
+// MARK: - ImageGenerationProvider
+
+extension GeminiProvider: ImageGenerationProvider {
+    /// Default model used when a request omits the model id.
+    static let defaultImageModel = "gemini-3.1-flash-image"
+
+    /// Image models this provider can serve.
+    ///
+    /// `gemini-*-image` ids are routed to `:generateContent` (Google's live, recommended
+    /// "Nano Banana" image path); `imagen-*` ids are routed to the Imagen `:predict` API,
+    /// which Google has deprecated for shutdown on 2026-08-17.
+    static let imageModels: [String] = [
+        "gemini-3.1-flash-image",
+        "gemini-3.1-flash-lite-image",
+        "gemini-3-pro-image",
+        "gemini-2.5-flash-image",
+        "imagen-4.0-generate-001",
+        "imagen-4.0-fast-generate-001",
+        "imagen-4.0-ultra-generate-001"
+    ]
+
+    public var supportsImageGeneration: Bool { true }
+
+    public var imageGenerationModels: [String] { GeminiProvider.imageModels }
+
+    /// Generate images from a text prompt.
+    ///
+    /// Dispatches on the model id: `imagen-*` ids use the Imagen `:predict` API, all other
+    /// (Gemini-native `gemini-*-image`) ids use `:generateContent` with `responseModalities`.
+    /// Both paths return base64-encoded image bytes in ``GeneratedImage/base64Data``.
+    ///
+    /// - Parameters:
+    ///   - request: The unified image generation request
+    ///   - apiKey: Google API key (sent as the `key` query parameter)
+    /// - Returns: Generated images
+    /// - Throws: AIError / decoding errors on failure
+    public func generateImage(
+        _ request: ImageGenerationRequest,
+        apiKey: String
+    ) async throws -> ImageGenerationResponse {
+        let model = request.model.isEmpty ? GeminiProvider.defaultImageModel : request.model
+
+        if model.lowercased().hasPrefix("imagen") {
+            return try await generateImageViaImagen(request, model: model, apiKey: apiKey)
+        }
+        return try await generateImageViaGenerateContent(request, model: model, apiKey: apiKey)
+    }
+
+    // MARK: Imagen `:predict`
+
+    private func generateImageViaImagen(
+        _ request: ImageGenerationRequest,
+        model: String,
+        apiKey: String
+    ) async throws -> ImageGenerationResponse {
+        let predictRequest = ImagenPredictRequest(
+            instances: [ImagenInstance(prompt: request.prompt)],
+            parameters: ImagenParameters(
+                sampleCount: request.numberOfImages,
+                aspectRatio: request.size.aspectRatio
+            )
+        )
+        let headers = buildHeaders(stream: false)
+        let jsonData = try JSONEncoder().encode(predictRequest)
+
+        let url = "\(baseURL)/models/\(model):predict?key=\(apiKey)"
+        let responseData = try await httpClient.post(url: url, headers: headers, body: jsonData)
+
+        let predictResponse = try JSONDecoder().decode(ImagenPredictResponse.self, from: responseData)
+        let images = GeminiProvider.mapImagenPredictions(predictResponse, size: request.size)
+
+        return ImageGenerationResponse(
+            id: "imagen-img-\(UUID().uuidString.prefix(8))",
+            created: Date(),
+            provider: .google,
+            model: model,
+            images: images,
+            usage: ImageGenerationUsage(imagesGenerated: images.count)
+        )
+    }
+
+    /// Map an Imagen `:predict` response to neutral ``GeneratedImage`` values, in order.
+    static func mapImagenPredictions(_ response: ImagenPredictResponse, size: ImageSize) -> [GeneratedImage] {
+        response.predictions.enumerated().map { index, prediction in
+            GeneratedImage(
+                index: index,
+                url: nil,
+                base64Data: prediction.bytesBase64Encoded,
+                revisedPrompt: nil,
+                size: size,
+                contentType: prediction.mimeType ?? "image/png"
+            )
+        }
+    }
+
+    // MARK: Gemini-native `:generateContent`
+
+    private func generateImageViaGenerateContent(
+        _ request: ImageGenerationRequest,
+        model: String,
+        apiKey: String
+    ) async throws -> ImageGenerationResponse {
+        let generationConfig = GeminiGenerationConfig(
+            responseModalities: ["IMAGE"],
+            imageConfig: GeminiImageConfig(aspectRatio: request.size.aspectRatio)
+        )
+        let geminiRequest = GeminiRequest(
+            contents: [GeminiContent(role: "user", parts: [.text(request.prompt)])],
+            generationConfig: generationConfig
+        )
+        let headers = buildHeaders(stream: false)
+        let jsonData = try JSONEncoder().encode(geminiRequest)
+
+        let url = "\(baseURL)/models/\(model):generateContent?key=\(apiKey)"
+        let responseData = try await httpClient.post(url: url, headers: headers, body: jsonData)
+
+        let geminiResponse = try JSONDecoder().decode(GeminiResponse.self, from: responseData)
+        let images = GeminiProvider.extractImages(from: geminiResponse, size: request.size)
+
+        return ImageGenerationResponse(
+            id: "gemini-img-\(UUID().uuidString.prefix(8))",
+            created: Date(),
+            provider: .google,
+            model: model,
+            images: images,
+            usage: ImageGenerationUsage(imagesGenerated: images.count)
+        )
+    }
+
+    /// Pull every `inlineData` (image) part out of a `:generateContent` response, in order.
+    static func extractImages(from response: GeminiResponse, size: ImageSize) -> [GeneratedImage] {
+        var images: [GeneratedImage] = []
+        for candidate in response.candidates {
+            for part in candidate.content.parts {
+                guard case .inlineData(let mimeType, let data) = part else { continue }
+                images.append(GeneratedImage(
+                    index: images.count,
+                    url: nil,
+                    base64Data: data,
+                    revisedPrompt: nil,
+                    size: size,
+                    contentType: mimeType
+                ))
+            }
+        }
+        return images
+    }
+}

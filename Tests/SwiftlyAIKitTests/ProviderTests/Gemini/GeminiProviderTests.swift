@@ -194,6 +194,122 @@ struct GeminiProviderTests {
         #expect(usage.totalTokenCount == 35)
     }
 
+    // MARK: - Image Generation Tests
+
+    @Test("ImageGenerationCapabilities reports Google as supported")
+    func testImageGenerationCapabilitiesGoogle() {
+        #expect(ImageGenerationCapabilities.isSupported(by: .google))
+
+        let models = ImageGenerationCapabilities.models(for: .google)
+        #expect(!models.isEmpty)
+        #expect(models.contains("gemini-3.1-flash-image"))
+        #expect(models.contains("imagen-4.0-generate-001"))
+
+        #expect(ImageGenerationCapabilities.defaultModel(for: .google) == "gemini-3.1-flash-image")
+        #expect(ImageGenerationCapabilities.supportedSizes(for: .google) == ImageSize.allCases)
+    }
+
+    @Test("GeminiProvider advertises image generation")
+    func testGeminiProviderSupportsImageGeneration() {
+        let provider = GeminiProvider()
+
+        #expect(provider.supportsImageGeneration)
+        #expect(provider.imageGenerationModels.contains("gemini-3.1-flash-image"))
+        #expect(provider.imageGenerationModels.contains("imagen-4.0-generate-001"))
+    }
+
+    @Test("GoogleProvider forwards image generation capability")
+    func testGoogleProviderForwardsImageGeneration() {
+        let provider = GoogleProvider()
+
+        #expect(provider.supportsImageGeneration)
+        #expect(!provider.imageGenerationModels.isEmpty)
+    }
+
+    @Test("Maps ImageSize to Google aspect ratio")
+    func testImageSizeAspectRatio() {
+        #expect(ImageSize.square256.aspectRatio == "1:1")
+        #expect(ImageSize.square1024.aspectRatio == "1:1")
+        #expect(ImageSize.landscape1792x1024.aspectRatio == "16:9")
+        #expect(ImageSize.portrait1024x1792.aspectRatio == "9:16")
+    }
+
+    @Test("Decodes Gemini-native image response and maps to GeneratedImage")
+    func testDecodeGeminiNativeImageResponse() throws {
+        let jsonData = MockGeminiAPI.imageGenerateContentResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(GeminiResponse.self, from: jsonData)
+
+        let images = GeminiProvider.extractImages(from: response, size: .square1024)
+        #expect(images.count == 1)
+        #expect(images[0].base64Data == MockGeminiAPI.sampleImageBase64)
+        #expect(images[0].contentType == "image/png")
+        #expect(images[0].size == .square1024)
+        #expect(images[0].url == nil)
+        #expect(images[0].hasData)
+    }
+
+    @Test("Decodes Imagen predict response and maps to GeneratedImage")
+    func testDecodeImagenPredictResponse() throws {
+        let jsonData = MockGeminiAPI.imagenPredictResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(ImagenPredictResponse.self, from: jsonData)
+
+        #expect(response.predictions.count == 1)
+        #expect(response.predictions[0].bytesBase64Encoded == MockGeminiAPI.sampleImageBase64)
+        #expect(response.predictions[0].mimeType == "image/png")
+
+        let images = GeminiProvider.mapImagenPredictions(response, size: .landscape1792x1024)
+        #expect(images.count == 1)
+        #expect(images[0].base64Data == MockGeminiAPI.sampleImageBase64)
+        #expect(images[0].contentType == "image/png")
+        #expect(images[0].size == .landscape1792x1024)
+    }
+
+    @Test("Encodes Imagen predict request with sampleCount and aspectRatio")
+    func testEncodeImagenPredictRequest() throws {
+        let request = ImagenPredictRequest(
+            instances: [ImagenInstance(prompt: "a cat astronaut")],
+            parameters: ImagenParameters(sampleCount: 3, aspectRatio: "16:9")
+        )
+
+        let data = try JSONEncoder().encode(request)
+        let roundTrip = try JSONDecoder().decode(ImagenPredictRequest.self, from: data)
+
+        #expect(roundTrip.instances.count == 1)
+        #expect(roundTrip.instances[0].prompt == "a cat astronaut")
+        #expect(roundTrip.parameters?.sampleCount == 3)
+        #expect(roundTrip.parameters?.aspectRatio == "16:9")
+    }
+
+    @Test("Encodes Gemini image generation config with responseModalities and imageConfig")
+    func testEncodeGeminiImageGenerationConfig() throws {
+        let config = GeminiGenerationConfig(
+            responseModalities: ["IMAGE"],
+            imageConfig: GeminiImageConfig(aspectRatio: "1:1")
+        )
+
+        let data = try JSONEncoder().encode(config)
+        let jsonString = String(data: data, encoding: .utf8) ?? ""
+        #expect(jsonString.contains("responseModalities"))
+        #expect(jsonString.contains("imageConfig"))
+
+        let roundTrip = try JSONDecoder().decode(GeminiGenerationConfig.self, from: data)
+        #expect(roundTrip.responseModalities == ["IMAGE"])
+        #expect(roundTrip.imageConfig?.aspectRatio == "1:1")
+    }
+
+    @Test("Convenience factories build Google image requests")
+    func testGoogleImageRequestFactories() {
+        let gemini = ImageGenerationRequest.gemini(prompt: "a fox")
+        #expect(gemini.model == "gemini-3.1-flash-image")
+        #expect(gemini.responseFormat == .base64)
+
+        // Imagen clamps numberOfImages to the 1...4 range Google accepts.
+        let imagen = ImageGenerationRequest.imagen(prompt: "a fox", numberOfImages: 9)
+        #expect(imagen.model == "imagen-4.0-generate-001")
+        #expect(imagen.numberOfImages == 4)
+        #expect(imagen.responseFormat == .base64)
+    }
+
     // MARK: - Error Handling Tests
 
     @Test("Parses 400 Bad Request error")

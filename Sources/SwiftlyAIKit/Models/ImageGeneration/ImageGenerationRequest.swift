@@ -206,6 +206,57 @@ extension ImageGenerationRequest {
         )
     }
 
+    /// Create a Google Gemini-native image request (Nano Banana).
+    ///
+    /// Targets the live, recommended `:generateContent` image path. Responses are always
+    /// base64-encoded image bytes.
+    ///
+    /// - Parameters:
+    ///   - prompt: The text prompt describing the desired image
+    ///   - model: Gemini image model id (default: `gemini-3.1-flash-image`)
+    ///   - size: Size of the generated image, mapped to an aspect ratio (default: 1024x1024)
+    /// - Returns: Configured ImageGenerationRequest
+    public static func gemini(
+        prompt: String,
+        model: String = "gemini-3.1-flash-image",
+        size: ImageSize = .square1024
+    ) -> ImageGenerationRequest {
+        ImageGenerationRequest(
+            prompt: prompt,
+            model: model,
+            numberOfImages: 1,
+            size: size,
+            responseFormat: .base64
+        )
+    }
+
+    /// Create a Google Imagen image request (`:predict` API).
+    ///
+    /// - Important: The Imagen `:predict` API and `imagen-*` models are deprecated by Google
+    ///   and scheduled for shutdown on 2026-08-17. Prefer ``gemini(prompt:model:size:)`` for
+    ///   new work.
+    ///
+    /// - Parameters:
+    ///   - prompt: The text prompt describing the desired image
+    ///   - model: Imagen model id (default: `imagen-4.0-generate-001`)
+    ///   - numberOfImages: Number of images to generate (1–4)
+    ///   - size: Size of the generated image, mapped to an aspect ratio (default: 1024x1024)
+    /// - Returns: Configured ImageGenerationRequest
+    public static func imagen(
+        prompt: String,
+        model: String = "imagen-4.0-generate-001",
+        numberOfImages: Int = 1,
+        size: ImageSize = .square1024
+    ) -> ImageGenerationRequest {
+        ImageGenerationRequest(
+            prompt: prompt,
+            model: model,
+            numberOfImages: min(max(numberOfImages, 1), 4),
+            size: size,
+            responseFormat: .base64
+        )
+    }
+
     /// Create an Apple Image Playground request
     ///
     /// - Parameters:
