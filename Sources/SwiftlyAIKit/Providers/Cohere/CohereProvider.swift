@@ -260,6 +260,26 @@ public struct CohereProvider: ProviderProtocol {
         return tokenizeResponse.tokens.count
     }
 
+    // MARK: - Cohere-Specific Methods
+
+    /// List available models from Cohere's GET /models endpoint.
+    ///
+    /// Returns the RAW model list — the caller is responsible for filtering to
+    /// chat-capable models (Cohere's list includes embed, rerank, and classify
+    /// models via each model's `endpoints`). The endpoint is paginated; the first
+    /// page is returned and `nextPageToken` carries the cursor for subsequent pages.
+    /// - Parameter apiKey: API key for authentication
+    /// - Returns: List of available Cohere models
+    public func listModels(apiKey: String) async throws -> CohereModelsResponse {
+        let url = "\(baseURL)/models"
+        let headers = buildHeaders(apiKey: apiKey, stream: false)
+        let responseData = try await httpClient.get(url: url, headers: headers)
+        let decoder = JSONDecoder()
+        // NOTE: Do NOT use .convertFromSnakeCase — mirrors OpenAIProvider/AnthropicProvider.listModels;
+        // explicit CodingKeys with snake_case raw values conflict with it on Linux Foundation.
+        return try decoder.decode(CohereModelsResponse.self, from: responseData)
+    }
+
     // MARK: - Private Helpers
 
     /// Build HTTP headers for Cohere API
