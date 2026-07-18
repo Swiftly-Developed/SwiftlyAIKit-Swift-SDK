@@ -266,7 +266,7 @@ public struct VoiceCapabilities: Sendable {
     /// - Returns: True if the provider supports text-to-speech
     public static func ttsSupported(by provider: VoiceProviderType) -> Bool {
         switch provider {
-        case .elevenLabs: return false
+        case .elevenLabs: return true
         case .deepgram: return false
         case .cartesia: return true
         case .openai: return false
@@ -279,7 +279,7 @@ public struct VoiceCapabilities: Sendable {
     /// - Returns: True if the provider supports speech-to-text
     public static func sttSupported(by provider: VoiceProviderType) -> Bool {
         switch provider {
-        case .elevenLabs: return false
+        case .elevenLabs: return true
         case .deepgram: return false
         case .cartesia: return true
         case .openai: return false
@@ -292,7 +292,7 @@ public struct VoiceCapabilities: Sendable {
     /// - Returns: Array of model identifiers
     public static func ttsModels(for provider: VoiceProviderType) -> [String] {
         switch provider {
-        case .elevenLabs: return []
+        case .elevenLabs: return ["eleven_multilingual_v2", "eleven_turbo_v2_5", "eleven_flash_v2_5"]
         case .deepgram: return []
         case .cartesia: return CartesiaVoiceProvider.ttsModelIDs
         case .openai: return []
@@ -305,7 +305,7 @@ public struct VoiceCapabilities: Sendable {
     /// - Returns: Array of model identifiers
     public static func sttModels(for provider: VoiceProviderType) -> [String] {
         switch provider {
-        case .elevenLabs: return []
+        case .elevenLabs: return ["scribe_v2", "scribe_v1"]
         case .deepgram: return []
         case .cartesia: return CartesiaVoiceProvider.sttModelIDs
         case .openai: return []
@@ -318,7 +318,16 @@ public struct VoiceCapabilities: Sendable {
     /// - Returns: Array of voice identifiers usable in `SpeechSynthesisRequest.voice`
     public static func voices(for provider: VoiceProviderType) -> [String] {
         switch provider {
-        case .elevenLabs: return []
+        case .elevenLabs:
+            // Small stable seed of premade voice IDs (Rachel/Domi/Bella/Antoni/Adam).
+            // Live/account voices are discoverable via `ElevenLabsVoiceProvider.listVoices()`.
+            return [
+                "21m00Tcm4TlvDq8ikWAM",
+                "AZnzlk1XvdvUeBnXmlld",
+                "EXAVITQu4vr4xnSDxMaL",
+                "ErXwobaYiN019PkySvjV",
+                "pNInz6obpgDQGcFmaJgB"
+            ]
         case .deepgram: return []
         // Cartesia voice ids churn and are fetched at runtime via
         // `CartesiaVoiceProvider.listVoices(apiKey:)` rather than hardcoded here.
