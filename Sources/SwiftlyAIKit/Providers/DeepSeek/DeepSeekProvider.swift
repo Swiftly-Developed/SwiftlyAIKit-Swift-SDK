@@ -135,6 +135,8 @@ public struct DeepSeekProvider: ProviderProtocol {
                     // Accumulated content for delta accumulation
                     var accumulatedContent = ""
                     var accumulatedReasoningContent = ""
+                    // Accumulate streamed tool calls by index (id/name arrive first, arguments stream in fragments).
+                    var toolCalls: [Int: (id: String, name: String, args: String)] = [:]
 
                     let stream = httpClient.streamPost(
                         url: endpoint,
@@ -177,10 +179,32 @@ public struct DeepSeekProvider: ProviderProtocol {
                                     accumulatedReasoningContent += reasoningContent
                                 }
 
+                                // Accumulate streamed tool-call fragments
+                                if let toolCallDeltas = delta.tool_calls {
+                                    Self.accumulate(toolCallDeltas, into: &toolCalls)
+                                }
+
+                                // Build content: accumulated text plus, once the finish chunk
+                                // arrives, the fully-assembled tool calls in index order.
+                                var messageContent: [AIMessageContent] = []
+                                if !accumulatedContent.isEmpty {
+                                    messageContent.append(.text(accumulatedContent))
+                                }
+                                if streamChunk.choices.first?.finish_reason != nil {
+                                    for index in toolCalls.keys.sorted() {
+                                        let call = toolCalls[index]!
+                                        messageContent.append(.toolCall(AIToolCall(
+                                            id: call.id,
+                                            name: call.name,
+                                            arguments: call.args.isEmpty ? "{}" : call.args
+                                        )))
+                                    }
+                                }
+
                                 // Create AIResponse with accumulated content
                                 let message = AIMessage(
                                     role: .assistant,
-                                    content: accumulatedContent.isEmpty ? [] : [.text(accumulatedContent)]
+                                    content: messageContent
                                 )
 
                                 let aiResponse = AIResponse(
@@ -258,7 +282,7 @@ public struct DeepSeekProvider: ProviderProtocol {
     // MARK: - Private Helpers
 
     /// Build DeepSeek request from AIRequest
-    private func buildDeepSeekRequest(from request: AIRequest) throws -> DeepSeekRequest {
+    func buildDeepSeekRequest(from request: AIRequest) throws -> DeepSeekRequest {
         // Convert messages
         var deepseekMessages: [DeepSeekMessage] = []
 
@@ -267,31 +291,19 @@ public struct DeepSeekProvider: ProviderProtocol {
             deepseekMessages.append(DeepSeekMessage(role: "system", content: systemPrompt))
         }
 
-        // Add conversation messages
+        // Add conversation messages (text, assistant tool calls, and tool results)
         for message in request.messages {
-            // Convert role to string
-            let roleString = message.role.rawValue
-
-            // Convert content to string
-            let contentString = message.content.compactMap { content -> String? in
-                if case .text(let text) = content {
-                    return text
-                }
-                return nil
-            }.joined()
-
-            let deepseekMessage = DeepSeekMessage(
-                role: roleString,
-                content: contentString.isEmpty ? nil : contentString
-            )
-            deepseekMessages.append(deepseekMessage)
+            deepseekMessages.append(mapMessage(message))
         }
 
-        // Convert tools if present
-        let tools: [DeepSeekTool]? = request.providerOptions?["tools"] as? [DeepSeekTool]
+        // Map tools from the unified request first; fall back to providerOptions for
+        // backward compatibility with callers that pass provider-native DeepSeekTool values.
+        let tools: [DeepSeekTool]? = request.tools?.map { mapTool($0) }
+            ?? (request.providerOptions?["tools"] as? [DeepSeekTool])
 
-        // Convert tool choice if present
-        let toolChoice: DeepSeekToolChoice? = request.providerOptions?["tool_choice"] as? DeepSeekToolChoice
+        // Map tool choice from the unified request first; providerOptions is the fallback.
+        let toolChoice: DeepSeekToolChoice? = request.toolChoice.map { mapToolChoice($0) }
+            ?? (request.providerOptions?["tool_choice"] as? DeepSeekToolChoice)
 
         // Convert response format if present
         let responseFormat: DeepSeekResponseFormat? = request.providerOptions?["response_format"] as? DeepSeekResponseFormat
@@ -314,8 +326,94 @@ public struct DeepSeekProvider: ProviderProtocol {
         )
     }
 
+    /// Map a neutral AIMessage into a DeepSeek wire message, preserving assistant
+    /// tool calls and tool results so multi-turn tool conversations round-trip.
+    private func mapMessage(_ message: AIMessage) -> DeepSeekMessage {
+        // Tool result → dedicated tool-role message keyed by the originating call id.
+        if let toolResult = message.content.first(where: { if case .toolResult = $0 { return true }; return false }),
+           case .toolResult(let id, let result) = toolResult {
+            return DeepSeekMessage(role: "tool", content: result, tool_call_id: id)
+        }
+
+        // Collect assistant tool calls, if any.
+        let toolCalls = message.content.compactMap { content -> DeepSeekToolCall? in
+            if case .toolCall(let call) = content {
+                return DeepSeekToolCall(
+                    id: call.id,
+                    type: call.type,
+                    function: DeepSeekFunctionCall(name: call.name, arguments: call.arguments)
+                )
+            }
+            return nil
+        }
+
+        // Concatenate plain text content.
+        let text = message.content.compactMap { content -> String? in
+            if case .text(let value) = content { return value }
+            return nil
+        }.joined()
+
+        if !toolCalls.isEmpty {
+            return DeepSeekMessage(
+                role: message.role.rawValue,
+                content: text.isEmpty ? nil : text,
+                tool_calls: toolCalls
+            )
+        }
+
+        return DeepSeekMessage(role: message.role.rawValue, content: text.isEmpty ? nil : text)
+    }
+
+    /// Map a neutral AITool into a DeepSeek tool definition (JSON-schema parameters).
+    private func mapTool(_ tool: AITool) -> DeepSeekTool {
+        // Convert AIToolParameters into a JSON Schema dictionary (recursing into nested
+        // objects and arrays-of-objects) and wrap each top-level entry as AnyCodable.
+        let parameters = tool.parameters.jsonSchemaDictionary().mapValues { AnyCodable($0) }
+
+        return DeepSeekTool(
+            function: DeepSeekFunction(
+                name: tool.name,
+                description: tool.description,
+                parameters: parameters
+            )
+        )
+    }
+
+    /// Map the neutral AIToolChoice into DeepSeek's tool-choice wire type.
+    private func mapToolChoice(_ choice: AIToolChoice) -> DeepSeekToolChoice {
+        switch choice {
+        case .auto:
+            return .auto
+        case .required:
+            return .required
+        case .none:
+            return .none
+        case .specific(let toolName):
+            return .function(toolName)
+        }
+    }
+
+    /// Merge streamed tool-call deltas into an index-keyed accumulator.
+    ///
+    /// DeepSeek (like OpenAI) streams a tool call's `id`/`name` in the first fragment
+    /// and its `arguments` as subsequent fragments, all keyed by `index`.
+    static func accumulate(
+        _ deltas: [DeepSeekDeltaToolCall],
+        into accumulator: inout [Int: (id: String, name: String, args: String)]
+    ) {
+        for delta in deltas {
+            var current = accumulator[delta.index] ?? (id: "", name: "", args: "")
+            if let id = delta.id { current.id = id }
+            if let function = delta.function {
+                if let name = function.name { current.name = name }
+                if let arguments = function.arguments { current.args += arguments }
+            }
+            accumulator[delta.index] = current
+        }
+    }
+
     /// Transform DeepSeek response to AIResponse
-    private func transformToAIResponse(_ response: DeepSeekResponse, originalRequest: AIRequest) -> AIResponse {
+    func transformToAIResponse(_ response: DeepSeekResponse, originalRequest: AIRequest) -> AIResponse {
         // Extract first choice
         guard let firstChoice = response.choices.first else {
             let emptyMessage = AIMessage(role: .assistant, content: [])
@@ -342,11 +440,20 @@ public struct DeepSeekProvider: ProviderProtocol {
             message: firstChoice.message
         )
 
-        // Create AI message from content
-        let content: [AIMessageContent] = if let messageContent = firstChoice.message.content {
-            [.text(messageContent)]
-        } else {
-            []
+        // Create AI message from content (text + any tool calls)
+        var content: [AIMessageContent] = []
+        if let messageContent = firstChoice.message.content {
+            content.append(.text(messageContent))
+        }
+        if let toolCalls = firstChoice.message.tool_calls {
+            content.append(contentsOf: toolCalls.map { toolCall in
+                .toolCall(AIToolCall(
+                    id: toolCall.id,
+                    type: toolCall.type,
+                    name: toolCall.function.name,
+                    arguments: toolCall.function.arguments
+                ))
+            })
         }
         let message = AIMessage(role: .assistant, content: content)
 
