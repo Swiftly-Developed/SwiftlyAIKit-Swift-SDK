@@ -6,7 +6,7 @@ import Foundation
 ///
 /// ## Overview
 ///
-/// SwiftlyAIKit supports 10 AI providers:
+/// SwiftlyAIKit supports 11 AI providers:
 /// - ``openai`` - OpenAI GPT models
 /// - ``anthropic`` - Anthropic Claude models
 /// - ``google`` - Google Gemini models
@@ -16,6 +16,7 @@ import Foundation
 /// - ``deepseek`` - DeepSeek models (cost-optimized)
 /// - ``grok`` - xAI Grok models
 /// - ``groq`` - Groq (OpenAI-compatible, fast inference)
+/// - ``openRouter`` - OpenRouter (OpenAI-compatible multi-vendor aggregator)
 /// - ``appleIntelligence`` - Apple on-device models
 ///
 /// ## Usage
@@ -43,6 +44,7 @@ import Foundation
 /// - ``deepseek``
 /// - ``grok``
 /// - ``groq``
+/// - ``openRouter``
 /// - ``appleIntelligence``
 ///
 /// ### Properties
@@ -85,6 +87,13 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
     /// Groq (OpenAI-compatible, fast inference for open models)
     case groq
 
+    /// OpenRouter (OpenAI-compatible aggregator routing to many vendors/models)
+    ///
+    /// Note: the explicit raw value `"openrouter"` is required — the implicit
+    /// String raw value of `openRouter` would be the camelCased case name
+    /// `"openRouter"`, but the provider token is the lowercased `"openrouter"`.
+    case openRouter = "openrouter"
+
     /// Apple Intelligence (on-device Foundation Models and Image Playground)
     /// Note: Requires iOS 26+/macOS 26+ for Foundation Models, iOS 18.4+/macOS 15.4+ for Image Playground
     case appleIntelligence
@@ -101,6 +110,7 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
         case .deepseek: return "DeepSeek"
         case .grok: return "xAI Grok"
         case .groq: return "Groq"
+        case .openRouter: return "OpenRouter"
         case .appleIntelligence: return "Apple Intelligence"
         }
     }
@@ -126,6 +136,8 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
             return "https://api.x.ai/v1"
         case .groq:
             return "https://api.groq.com/openai/v1"
+        case .openRouter:
+            return "https://openrouter.ai/api/v1"
         case .appleIntelligence:
             // Apple Intelligence runs on-device, no external API
             return ""

@@ -137,7 +137,7 @@ public struct ImageGenerationCapabilities: Sendable {
         switch provider {
         case .openai, .grok, .appleIntelligence:
             return true
-        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq:
+        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter:
             return false
         }
     }
@@ -158,7 +158,7 @@ public struct ImageGenerationCapabilities: Sendable {
                 "apple-image-illustration",
                 "apple-image-sketch"
             ]
-        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq:
+        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter:
             return []
         }
     }
@@ -175,7 +175,7 @@ public struct ImageGenerationCapabilities: Sendable {
             return "grok-2-image"
         case .appleIntelligence:
             return "apple-image-animation"
-        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq:
+        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter:
             return nil
         }
     }
@@ -192,7 +192,7 @@ public struct ImageGenerationCapabilities: Sendable {
             return [.square1024]
         case .appleIntelligence:
             return [.square1024] // Image Playground handles sizing automatically
-        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq:
+        case .anthropic, .google, .perplexity, .cohere, .mistral, .deepseek, .groq, .openRouter:
             return []
         }
     }

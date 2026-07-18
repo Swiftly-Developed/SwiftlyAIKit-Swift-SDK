@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.13] - 2026-07-18
+
+Additive, backward-compatible feature: a new **OpenRouter** provider for OpenRouter's
+OpenAI-compatible aggregator API (one key, hundreds of models across many vendors). No neutral
+types change and every existing provider behaves identically; `v0.9.12` consumers compile
+unchanged. Adds one `ProviderType` case, so any exhaustive `switch` over `ProviderType` in
+consuming code will surface a new `.openRouter` arm.
+
+### Added
+- **`OpenRouterProvider`** — `ProviderProtocol` conformer targeting OpenRouter
+  (`https://openrouter.ai/api/v1`, `Authorization: Bearer <key>`, key prefix `sk-or-v1-`). Full
+  chat support: `sendMessage`, `streamMessage` (SSE with cumulative content + streamed tool-call
+  reassembly via a static `accumulate` helper), unified tool calling, and `listModels(apiKey:)` →
+  `GET /models` returning the RAW, live catalog (large and dynamic — no hardcoded fallback list).
+  Namespaced `"vendor/model"` ids (e.g. `anthropic/claude-3.5-sonnet`, `openai/gpt-4o`) are passed
+  through verbatim. Optional `HTTP-Referer` / `X-Title` attribution headers via init params. Mirrors
+  the `OpenAIProvider` shape; text/chat only — no image generation.
+- **`ProviderType.openRouter`** — new case (explicit raw value `"openrouter"`, `displayName`
+  "OpenRouter", `baseURL` `https://openrouter.ai/api/v1`), registered by
+  `AIGateway.createDefaultProviders` as `OpenRouterProvider()`. Marked tool-capable in
+  `ToolCapabilities` and image-generation-unsupported in `ImageGenerationCapabilities`.
+- **`OpenRouterModelsResponse` / `OpenRouterModelInfo`** (with optional `name` / `context_length` /
+  `pricing`) plus the full `OpenRouter*` request/response/streaming/tool Codable set — `Codable`,
+  `Sendable`, snake_case `CodingKeys` (no `.convertFromSnakeCase`).
+- **`MockOpenRouterAPI` fixtures + `OpenRouterProviderTests`** (request/tool mapping, tool-call
+  decode, streaming accumulation, and a multi-vendor `/models` decode asserting namespaced ids
+  survive) and an `AIGatewayOpenRouterDispatchTests` case asserting `.openRouter` routes to a real
+  `OpenRouterProvider`.
+
 ## [0.9.12] - 2026-07-18
 
 Additive, backward-compatible feature: a new **Groq** provider for Groq's OpenAI-compatible
