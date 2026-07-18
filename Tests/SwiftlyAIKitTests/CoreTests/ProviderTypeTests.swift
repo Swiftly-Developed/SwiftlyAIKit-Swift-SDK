@@ -10,8 +10,8 @@ struct ProviderTypeTests {
     @Test("ProviderType is CaseIterable")
     func testCaseIterable() {
         let allCases = ProviderType.allCases
-        // anthropic, openai, google, perplexity, mistral, cohere, deepseek, grok, groq, openRouter, appleIntelligence
-        #expect(allCases.count == 11)
+        // anthropic, openai, google, perplexity, mistral, cohere, deepseek, grok, groq, openRouter, ollama, appleIntelligence
+        #expect(allCases.count == 12)
         #expect(allCases.contains(.openai))
         #expect(allCases.contains(.anthropic))
         #expect(allCases.contains(.google))
@@ -22,6 +22,7 @@ struct ProviderTypeTests {
         #expect(allCases.contains(.grok))
         #expect(allCases.contains(.groq))
         #expect(allCases.contains(.openRouter))
+        #expect(allCases.contains(.ollama))
         #expect(allCases.contains(.appleIntelligence))
     }
 
@@ -96,8 +97,9 @@ struct ProviderTypeTests {
     @Test("Base URLs use HTTPS")
     func testBaseURLsHTTPS() {
         for provider in ProviderType.allCases {
-            // Apple Intelligence runs on-device, no external API
-            if provider == .appleIntelligence {
+            // Apple Intelligence runs on-device, no external API.
+            // Ollama is a local/self-hosted server reached over http://localhost.
+            if provider == .appleIntelligence || provider == .ollama {
                 continue
             }
             #expect(provider.baseURL.hasPrefix("https://"), "Provider \(provider) should use HTTPS")
@@ -124,7 +126,8 @@ struct ProviderTypeTests {
         for provider in ProviderType.allCases {
             // Perplexity and DeepSeek don't use /v1 suffix
             // Apple Intelligence has no external API
-            if provider == .perplexity || provider == .deepseek || provider == .appleIntelligence {
+            // Ollama uses a bare local base URL (no /v1)
+            if provider == .perplexity || provider == .deepseek || provider == .appleIntelligence || provider == .ollama {
                 continue
             }
             #expect(provider.baseURL.hasSuffix("/v1"), "Provider \(provider) base URL should end with /v1")
@@ -319,9 +322,10 @@ struct ProviderTypeTests {
             displayNames.append(provider.displayName)
         }
 
-        #expect(displayNames.count == 11)
+        #expect(displayNames.count == 12)
         #expect(displayNames.contains("Anthropic"))
         #expect(displayNames.contains("OpenRouter"))
+        #expect(displayNames.contains("Ollama"))
         #expect(displayNames.contains("OpenAI"))
         #expect(displayNames.contains("Apple Intelligence"))
     }
@@ -371,8 +375,9 @@ struct ProviderTypeTests {
             uniqueKeysWithValues: ProviderType.allCases.map { ($0, $0.baseURL) }
         )
 
-        #expect(urlMapping.count == 11)
+        #expect(urlMapping.count == 12)
         #expect(urlMapping[.openRouter] == "https://openrouter.ai/api/v1")
+        #expect(urlMapping[.ollama] == "http://localhost:11434")
         #expect(urlMapping[.anthropic] == "https://api.anthropic.com/v1")
         #expect(urlMapping[.openai] == "https://api.openai.com/v1")
         #expect(urlMapping[.appleIntelligence]?.isEmpty == true) // On-device, no external API
@@ -419,6 +424,8 @@ struct ProviderTypeTests {
             result = "groq"
         case .openRouter:
             result = "openRouter"
+        case .ollama:
+            result = "ollama"
         case .appleIntelligence:
             result = "appleIntelligence"
         }
@@ -429,7 +436,7 @@ struct ProviderTypeTests {
     @Test("Can create Set of all providers")
     func testSetOfAllProviders() {
         let allProviders = Set(ProviderType.allCases)
-        #expect(allProviders.count == 11)
+        #expect(allProviders.count == 12)
     }
 
     @Test("Dictionary with provider keys maintains insertion")
