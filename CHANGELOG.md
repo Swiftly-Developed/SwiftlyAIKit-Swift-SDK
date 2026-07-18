@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.7] - 2026-07-18
+
+Additive, backward-compatible extension bringing `MistralProvider` to parity with the other
+providers' model-discovery surface. No neutral types, `AIGateway`, `ProviderProtocol`, or
+other providers change; `v0.9.6` consumers compile and behave identically.
+
+### Added
+- **`MistralProvider.listModels(apiKey:)`** — lists available models via Mistral's `GET /v1/models` endpoint, mirroring `OpenAIProvider`/`GrokProvider`/`GeminiProvider`/`CohereProvider`/`AnthropicProvider`. Returns the RAW `MistralModelsResponse`; callers filter by each model's `capabilities` (e.g. `completionChat`).
+- **`MistralModelsResponse` / `MistralModelInfo` / `MistralModelCapabilities`** — `Codable`, `Sendable`, public response types for the models endpoint, with explicit snake_case `CodingKeys` (`owned_by`, `completion_chat`, `function_calling`) to avoid the `.convertFromSnakeCase` conflict on Linux Foundation. `capabilities` is optional (nil when the API omits it).
+- **`MockMistralAPI.modelsListResponse`** fixture + `MistralProviderTests` cases decoding the models list, asserting model ids, snake_case key mapping, nested capabilities, and chat-capable filtering.
+
 ## [0.9.6] - 2026-07-18
 
 Additive, backward-compatible extension bringing `CohereProvider` to parity with the other
