@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.12] - 2026-07-18
+
+Additive, backward-compatible feature: a new **Groq** provider for Groq's OpenAI-compatible
+Chat Completions API (fast inference for open models). No neutral types change and every existing
+provider behaves identically; `v0.9.11` consumers compile unchanged. Adds one `ProviderType` case,
+so any exhaustive `switch` over `ProviderType` in consuming code will surface a new `.groq` arm.
+
+### Added
+- **`GroqProvider`** — `ProviderProtocol` conformer targeting Groq (`https://api.groq.com/openai/v1`,
+  `Authorization: Bearer <key>`). Full chat support: `sendMessage`, `streamMessage` (SSE with
+  cumulative content + terminal-usage handling), unified tool calling (tool wiring, tool-call
+  reassembly via a static `accumulateToolCalls` helper), and `listModels(apiKey:)` → `GET /models`.
+  Text/chat only — no image generation. Mirrors the OpenAI-compatible `GrokProvider` shape.
+- **`ProviderType.groq`** — new case (`displayName` "Groq", `baseURL` `https://api.groq.com/openai/v1`),
+  registered by `AIGateway.createDefaultProviders` as `GroqProvider()`. Marked tool-capable in
+  `ToolCapabilities` and image-generation-unsupported in `ImageGenerationCapabilities`.
+- **`GroqModelsResponse` / `GroqModelInfo`** plus the full `Groq*` request/response/streaming/tool
+  Codable set — `Codable`, `Sendable`, snake_case wire property names (no `.convertFromSnakeCase`).
+- **`MockGroqAPI` fixtures + `GroqProviderTests`/`GroqStreamingTests`/`GroqToolRoundTripTests`** and an
+  `AIGatewayGroqDispatchTests` case asserting `.groq` routes to a real `GroqProvider`.
+
 ## [0.9.11] - 2026-07-18
 
 Additive, backward-compatible feature: `AppleIntelligenceProvider` now wires the SDK's unified tool
