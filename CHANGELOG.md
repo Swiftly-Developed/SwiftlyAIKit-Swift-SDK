@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.5] - 2026-07-18
+
+Additive, backward-compatible robustness fixes for `GrokProvider` streaming. No neutral
+types, `AIGateway`, `ProviderProtocol`, or other providers change; `v0.9.4` consumers
+compile and behave identically (they now additionally see streamed token usage).
+
+### Fixed
+- **`GrokProvider` streaming now surfaces the terminal usage chunk.** Under OpenAI-compatible SSE, `stream_options.include_usage` makes xAI emit a final `{"choices":[],"usage":{…}}` chunk that carries token usage but no `delta`. The previous stream loop nested `finish_reason` and `usage` handling inside an `if let delta` guard, so that delta-less terminal chunk was skipped and usage was dropped. `finish_reason` and `usage` are now read off every chunk unconditionally, and the fully-assembled final response (content + tool calls + stop reason + usage) is yielded once at stream end. Grok streaming now matches Gemini in reporting real streamed usage.
+- **`finish_reason` survives a delta-less chunk** for the same reason (previously it only survived because OpenAI-compatible finish chunks happen to carry a non-nil empty `delta`).
+
+### Changed
+- **`GrokProvider.accumulateToolCalls` is now a testable `static` helper** (mirroring `OpenAIProvider.accumulate`), unit-testing the index-keyed reassembly of streamed tool-call fragments. Widened from `private` to `static` (internal); no public signature changes.
+- SSE parsing/reassembly extracted into a testable `makeResponseStream(from:)` that drives both production and tests.
+
+### Added
+- **End-to-end streaming tests** (`GrokStreamingTests`) that consume `makeResponseStream` against a mock modelling real xAI framing (content deltas → `finish_reason` chunk → separate trailing `{"choices":[],"usage":{…}}` chunk → `[DONE]`), asserting cumulative content assembly, streamed tool-call reassembly, stop-reason mapping, and terminal-usage surfacing.
+- `MockGrokAPI.streamingResponseRealFraming` / `streamingToolCallResponseRealFraming` fixtures reflecting real xAI SSE framing (usage on its own `choices:[]` chunk).
+
 ## [0.9.1] - 2026-07-16
 
 Additive, backward-compatible patch so the neutral `AIRequest`/`AIResponse` boundary can
