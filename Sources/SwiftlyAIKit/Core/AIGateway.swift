@@ -584,6 +584,7 @@ public actor AIGateway {
         providers[.deepseek] = DeepSeekProvider()
         providers[.perplexity] = PerplexityProvider()
         providers[.grok] = GrokProvider()
+        providers[.groq] = GroqProvider()
 
         // Register Apple Intelligence provider (on-device, no API key required)
         providers[.appleIntelligence] = AppleIntelligenceProvider()
