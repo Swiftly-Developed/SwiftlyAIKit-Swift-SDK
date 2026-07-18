@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.16] - 2026-07-18
+
+Additive, backward-compatible feature: **Gemini image generation**. `GeminiProvider` now conforms
+to `ImageGenerationProvider`, so `gateway.generateImage(_:using: .google)` works. No neutral types
+change in a breaking way (only additive fields/factories) and every existing provider behaves
+identically; `v0.9.15` consumers compile unchanged.
+
+### Added
+- **`GeminiProvider: ImageGenerationProvider`** — `supportsImageGeneration = true`,
+  `imageGenerationModels`, and `generateImage(_:apiKey:)` that dispatches on the model id:
+  `gemini-*-image` ids use Google's live, recommended `:generateContent` image path
+  (`responseModalities: ["IMAGE"]`, decoding `inlineData` parts), and `imagen-*` ids use the Imagen
+  `:predict` API (`predictions[].bytesBase64Encoded`). Both return base64 image bytes. API key is
+  passed as the `key` query parameter, matching send/stream. `GoogleProvider` forwards the same
+  conformance. **Note:** Google has deprecated the Imagen `:predict` API and `imagen-*` models for
+  shutdown on 2026-08-17 — prefer the `gemini-*-image` models.
+- **`ImageGenerationCapabilities` now reports `.google` as supported** across `isSupported`,
+  `models`, `defaultModel` (`gemini-3.1-flash-image`), and `supportedSizes` (all `ImageSize` cases,
+  mapped by aspect ratio). Seeded models: `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`,
+  `gemini-3-pro-image`, `gemini-2.5-flash-image`, `imagen-4.0-generate-001`,
+  `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`.
+- **`ImagenPredictRequest` / `ImagenInstance` / `ImagenParameters` / `ImagenPredictResponse` /
+  `ImagenPrediction`** Imagen `:predict` Codables, plus `responseModalities` / `imageConfig`
+  (`GeminiImageConfig`) fields on `GeminiGenerationConfig` for the Gemini-native image path — all
+  `Codable`, `Sendable`, camelCase (no `.convertFromSnakeCase`).
+- **`ImageSize.aspectRatio`** helper (square → `"1:1"`, landscape → `"16:9"`, portrait → `"9:16"`),
+  `ImageSize.supportedBy(.google)`, and `ImageGenerationRequest.gemini(prompt:model:size:)` /
+  `.imagen(prompt:model:numberOfImages:size:)` convenience factories.
+- **`AIGateway.determineImageProvider`** routes `imagen`/`gemini` model ids to `.google` when no
+  provider is passed explicitly.
+- **`MockGeminiAPI` image fixtures + `GeminiProviderTests` image cases** — capabilities/provider
+  advertisement, fixture-decode of both the Gemini-native and Imagen responses mapped to
+  `GeneratedImage`, request encoding, aspect-ratio mapping, and the convenience factories.
+
 ## [0.9.15] - 2026-07-18
 
 Additive, backward-compatible feature: a new **Ollama** provider for Ollama's native local/
