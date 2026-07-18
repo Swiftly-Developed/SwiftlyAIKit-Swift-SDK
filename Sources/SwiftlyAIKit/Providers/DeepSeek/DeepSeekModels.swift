@@ -446,7 +446,7 @@ public struct DeepSeekDelta: Codable, Sendable {
     public let content: String?
 
     /// Tool calls (incremental)
-    public let tool_calls: [DeepSeekToolCall]?
+    public let tool_calls: [DeepSeekDeltaToolCall]?
 
     /// Reasoning content delta (for deepseek-reasoner model)
     public let reasoning_content: String?
@@ -454,13 +454,58 @@ public struct DeepSeekDelta: Codable, Sendable {
     public init(
         role: String? = nil,
         content: String? = nil,
-        tool_calls: [DeepSeekToolCall]? = nil,
+        tool_calls: [DeepSeekDeltaToolCall]? = nil,
         reasoning_content: String? = nil
     ) {
         self.role = role
         self.content = content
         self.tool_calls = tool_calls
         self.reasoning_content = reasoning_content
+    }
+}
+
+/// DeepSeek incremental tool-call fragment (streaming)
+///
+/// Mirrors OpenAI's streamed tool-call shape: the `id`/`name` arrive in the first
+/// fragment and `arguments` stream in as subsequent fragments, all keyed by `index`.
+/// Fields are optional because later fragments omit everything but the argument chunk.
+public struct DeepSeekDeltaToolCall: Codable, Sendable {
+    /// Index correlating fragments of the same tool call
+    public let index: Int
+
+    /// Tool call ID (only in the first fragment)
+    public let id: String?
+
+    /// Type of tool (only in the first fragment, always "function")
+    public let type: String?
+
+    /// Incremental function call details
+    public let function: DeepSeekDeltaFunctionCall?
+
+    public init(
+        index: Int,
+        id: String? = nil,
+        type: String? = nil,
+        function: DeepSeekDeltaFunctionCall? = nil
+    ) {
+        self.index = index
+        self.id = id
+        self.type = type
+        self.function = function
+    }
+}
+
+/// DeepSeek incremental function call fragment (streaming)
+public struct DeepSeekDeltaFunctionCall: Codable, Sendable {
+    /// Function name (only in the first fragment)
+    public let name: String?
+
+    /// Incremental function arguments (JSON string fragment)
+    public let arguments: String?
+
+    public init(name: String? = nil, arguments: String? = nil) {
+        self.name = name
+        self.arguments = arguments
     }
 }
 

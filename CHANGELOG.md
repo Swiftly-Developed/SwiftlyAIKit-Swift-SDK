@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.9] - 2026-07-18
+
+Capability-parity fix: `DeepSeekProvider` now honours the SDK's unified tool API. Previously it
+mapped tools only from `providerOptions["tools"]` (a provider-native `[DeepSeekTool]` cast that
+never matched the `AnyCodable`-boxed options dictionary, so neutral-API callers got no tool
+calling at all). It now reads `request.tools` / `request.toolChoice` directly, mirroring
+`OpenAIProvider`. Additive and backward-compatible — the `providerOptions` path is retained as a
+fallback; `v0.9.8` consumers compile and behave identically.
+
+### Fixed
+- **`DeepSeekProvider` now maps the unified `request.tools` / `request.toolChoice`** into DeepSeek's OpenAI-compatible wire types (function name/description/JSON-schema parameters, incl. nested objects and arrays-of-objects), instead of ignoring them. The legacy `providerOptions["tools"]` / `providerOptions["tool_choice"]` values are kept as an override fallback for backward compatibility.
+- **Multi-turn tool conversations round-trip** — assistant `.toolCall` content maps to a DeepSeek assistant message with `tool_calls`, and `.toolResult` content maps to a `tool`-role message keyed by `tool_call_id`.
+- **Non-streaming responses decode `tool_calls`** into neutral `.toolCall(AIToolCall)` content blocks (arguments preserved as the raw JSON string, as `OpenAIProvider` does); the `tool_calls` finish-reason continues to map to `.toolUse`.
+- **Streaming assembles index-keyed tool-call fragments** via a new testable `DeepSeekProvider.accumulate(_:into:)` helper (id/name arrive first, `arguments` stream in fragments), emitting fully-assembled `.toolCall` blocks on the finish chunk — mirroring `OpenAIProvider`/`GrokProvider`.
+
+### Changed
+- **`DeepSeekDelta.tool_calls`** is now typed `[DeepSeekDeltaToolCall]?` (new `DeepSeekDeltaToolCall` / `DeepSeekDeltaFunctionCall` types with optional fields) so partial streaming fragments decode; the strict `DeepSeekToolCall` type is unchanged for non-streaming responses and request messages.
+
+### Added
+- **`DeepSeekProviderToolTests`** — mirrors `OpenAIProviderTests`: neutral `request.tools`/`toolChoice` wiring (asserting the neutral API, not `providerOptions`, reaches the wire body), specific tool-choice mapping, multi-turn round-trip, response `tool_calls` → `.toolCall` decoding, streaming accumulation by index, and nested-object schema emission.
+
 ## [0.9.8] - 2026-07-18
 
 Additive, backward-compatible extension bringing `DeepSeekProvider` to parity with the other
