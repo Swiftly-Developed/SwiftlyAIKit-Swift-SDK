@@ -6,7 +6,7 @@ import Foundation
 ///
 /// ## Overview
 ///
-/// SwiftlyAIKit supports 9 AI providers:
+/// SwiftlyAIKit supports 10 AI providers:
 /// - ``openai`` - OpenAI GPT models
 /// - ``anthropic`` - Anthropic Claude models
 /// - ``google`` - Google Gemini models
@@ -15,6 +15,7 @@ import Foundation
 /// - ``mistral`` - Mistral AI models (EU-hosted)
 /// - ``deepseek`` - DeepSeek models (cost-optimized)
 /// - ``grok`` - xAI Grok models
+/// - ``groq`` - Groq (OpenAI-compatible, fast inference)
 /// - ``appleIntelligence`` - Apple on-device models
 ///
 /// ## Usage
@@ -41,6 +42,7 @@ import Foundation
 /// - ``mistral``
 /// - ``deepseek``
 /// - ``grok``
+/// - ``groq``
 /// - ``appleIntelligence``
 ///
 /// ### Properties
@@ -80,6 +82,9 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
     /// xAI (Grok models)
     case grok
 
+    /// Groq (OpenAI-compatible, fast inference for open models)
+    case groq
+
     /// Apple Intelligence (on-device Foundation Models and Image Playground)
     /// Note: Requires iOS 26+/macOS 26+ for Foundation Models, iOS 18.4+/macOS 15.4+ for Image Playground
     case appleIntelligence
@@ -95,6 +100,7 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
         case .mistral: return "Mistral AI"
         case .deepseek: return "DeepSeek"
         case .grok: return "xAI Grok"
+        case .groq: return "Groq"
         case .appleIntelligence: return "Apple Intelligence"
         }
     }
@@ -118,6 +124,8 @@ public enum ProviderType: String, Codable, Sendable, Hashable, CaseIterable {
             return "https://api.deepseek.com"
         case .grok:
             return "https://api.x.ai/v1"
+        case .groq:
+            return "https://api.groq.com/openai/v1"
         case .appleIntelligence:
             // Apple Intelligence runs on-device, no external API
             return ""
