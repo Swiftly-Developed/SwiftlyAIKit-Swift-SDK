@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.16] - 2026-07-18
+
+Additive, backward-compatible feature: the first **voice vendor integration** — an **ElevenLabs**
+voice provider on top of the `v0.9.14` voice foundation. It conforms to both `TextToSpeech` and
+`SpeechToText` and fills the `VoiceCapabilities.elevenLabs` arms. Voice remains a separate axis from
+chat: this adds **no** `ProviderType` case, changes **no** neutral type, and is not wired into
+`AIGateway.createDefaultProviders`, so `v0.9.15` consumers compile unchanged.
+
+### Added
+- **`ElevenLabsVoiceProvider`** — a value-type provider (mirroring `OpenAIProvider`/`OllamaProvider`'s
+  `init()` / `init(httpClient:)` pair) conforming to `TextToSpeech` + `SpeechToText`. Distinctives vs.
+  the OpenAI-compatible providers: authentication uses an **`xi-api-key`** header (not
+  `Authorization: Bearer`); **`output_format` is a query parameter** on the TTS endpoints; and TTS
+  responses are **raw audio bytes** (no JSON envelope). Text-to-speech via
+  `/text-to-speech/{voice_id}` (one-shot `synthesize`) and `/text-to-speech/{voice_id}/stream`
+  (chunked `streamSynthesize`), with `voice_settings.speed` sent only when the request specifies a
+  speed and a default premade "Rachel" voice when none is given. Speech-to-text via the Scribe
+  `/speech-to-text` multipart endpoint (`transcribe`; `streamTranscribe` calls it once and emits a
+  single final chunk, since Scribe REST is batch). Plus two extra helpers outside the neutral voice
+  protocols: `listVoices(apiKey:)` → `GET /voices` and
+  `cloneVoice(name:files:description:apiKey:fileMimeType:)` → `POST /voices/add`. `.flac`/`.aac`
+  output formats throw `AIError.invalidRequest` (unsupported by ElevenLabs).
+- **`ElevenLabsVoiceInfo`** (public) plus the internal `ElevenLabs*` Codable set
+  (`ElevenLabsSpeechRequest`, `ElevenLabsVoiceSettings`, `ElevenLabsTranscriptionResponse`,
+  `ElevenLabsTranscriptionWord`, `ElevenLabsVoicesResponse`, `ElevenLabsVoiceDTO`,
+  `ElevenLabsAddVoiceResponse`) — explicit snake_case `CodingKeys`, plain `JSONEncoder`/`JSONDecoder`
+  (no `.convertFromSnakeCase`).
+- **`VoiceCapabilities.elevenLabs` arms populated** — `ttsSupported`/`sttSupported` → `true`;
+  `ttsModels` → `eleven_multilingual_v2`, `eleven_turbo_v2_5`, `eleven_flash_v2_5`; `sttModels` →
+  `scribe_v2`, `scribe_v1`; `voices` → a stable seed of five premade voice IDs (Rachel/Domi/Bella/
+  Antoni/Adam). All other providers' arms remain seeded empty/false.
+- **`MockElevenLabsAPI` fixtures + `ElevenLabsProviderTests`** — driving the internal helpers and
+  decoding canned fixtures (no `MockHTTPClient`): speech-request-body encoding, output-format mapping
+  (incl. flac/aac throw), `xi-api-key` header assertion, TTS URL construction (one-shot + `/stream` +
+  `?output_format=`), Scribe transcription mapping (word timing with spacing/audio-event tokens
+  dropped), and multipart body construction. The `VoiceCapabilitiesTests` were updated to pin the
+  populated ElevenLabs arm while keeping every other provider seeded.
+
 ## [0.9.15] - 2026-07-18
 
 Additive, backward-compatible feature: a new **Ollama** provider for Ollama's native local/
