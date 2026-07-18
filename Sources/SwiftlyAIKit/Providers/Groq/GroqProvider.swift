@@ -13,9 +13,6 @@ import Foundation
 ///
 /// ### Groq-Specific Methods
 /// - ``listModels(apiKey:)``
-///
-/// ## See Also
-/// - <doc:GrokGuide>
 public struct GroqProvider: ProviderProtocol {
     public let providerType: ProviderType = .groq
 
