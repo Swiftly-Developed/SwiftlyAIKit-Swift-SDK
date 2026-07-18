@@ -409,4 +409,46 @@ struct MistralProviderTests {
         let decoded = try JSONDecoder().decode(MistralToolChoice.self, from: jsonData)
         #expect(decoded == .required)
     }
+
+    // MARK: - Models List Tests
+
+    @Test("Decodes models list response")
+    func testDecodeModelsListResponse() throws {
+        let jsonData = MockMistralAPI.modelsListResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(MistralModelsResponse.self, from: jsonData)
+
+        // Raw list is returned verbatim — caller filters by capability.
+        #expect(response.object == "list")
+        #expect(response.data.count == 5)
+        #expect(response.data.map(\.id) == [
+            "mistral-large-latest",
+            "mistral-small-latest",
+            "open-mistral-nemo",
+            "codestral-latest",
+            "pixtral-large-latest"
+        ])
+        #expect(response.data[0].object == "model")
+        #expect(response.data[0].ownedBy == "mistralai")
+        #expect(response.data[0].created == 1_711_670_400)
+    }
+
+    @Test("Decodes nested model capabilities")
+    func testDecodeModelCapabilities() throws {
+        let jsonData = MockMistralAPI.modelsListResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(MistralModelsResponse.self, from: jsonData)
+
+        let large = try #require(response.data.first)
+        #expect(large.capabilities?.completionChat == true)
+        #expect(large.capabilities?.functionCalling == true)
+    }
+
+    @Test("Filters models list to chat-capable models")
+    func testFilterModelsToChatCapable() throws {
+        let jsonData = MockMistralAPI.modelsListResponse.data(using: .utf8)!
+        let response = try JSONDecoder().decode(MistralModelsResponse.self, from: jsonData)
+
+        // The provider returns the raw list; downstream callers filter by capability.
+        let chatModels = response.data.filter { $0.capabilities?.completionChat == true }
+        #expect(chatModels.count == 5)
+    }
 }
