@@ -65,6 +65,10 @@ import Foundation
 /// ### Provider Identity
 /// - ``providerType``
 ///
+/// ### Capabilities
+/// - ``supportsTools``
+/// - ``ToolCapabilities``
+///
 /// ### Core Operations
 /// - ``sendMessage(_:apiKey:)``
 /// - ``streamMessage(_:apiKey:)``
@@ -95,6 +99,21 @@ import Foundation
 public protocol ProviderProtocol: Sendable {
     /// The type of provider this implementation represents
     var providerType: ProviderType { get }
+
+    // MARK: - Capabilities
+
+    /// Whether this provider supports tool / function calling
+    ///
+    /// Callers can inspect this before populating ``AIRequest/tools`` to decide whether a provider
+    /// can act on function-calling requests. Providers that do **not** support tools (for example
+    /// Perplexity's search/answer Sonar API) return `false`; a request's ``AIRequest/tools`` are
+    /// then ignored rather than sent to the provider.
+    ///
+    /// The default implementation returns `true`, so existing tool-capable providers keep working
+    /// unchanged. Providers without tool support override this to return `false`.
+    ///
+    /// - SeeAlso: ``ToolCapabilities/isSupported(by:)`` for a static, provider-type–keyed lookup.
+    var supportsTools: Bool { get }
 
     // MARK: - Core Message Operations
 
@@ -233,6 +252,12 @@ public struct BatchResult: Codable, Sendable {
 // MARK: - Default Implementations
 
 extension ProviderProtocol {
+    /// Default: tool / function calling is supported
+    ///
+    /// Existing tool-capable providers inherit this and keep working unchanged. Providers without
+    /// tool support (e.g. ``PerplexityProvider``) override it to return `false`.
+    public var supportsTools: Bool { true }
+
     /// Default implementation returns nil (not supported)
     public func countTokens(_ request: AIRequest, apiKey: String) async throws -> Int? {
         nil
