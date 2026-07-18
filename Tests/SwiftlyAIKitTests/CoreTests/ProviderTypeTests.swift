@@ -10,8 +10,8 @@ struct ProviderTypeTests {
     @Test("ProviderType is CaseIterable")
     func testCaseIterable() {
         let allCases = ProviderType.allCases
-        // anthropic, openai, google, perplexity, mistral, cohere, deepseek, grok, groq, appleIntelligence
-        #expect(allCases.count == 10)
+        // anthropic, openai, google, perplexity, mistral, cohere, deepseek, grok, groq, openRouter, appleIntelligence
+        #expect(allCases.count == 11)
         #expect(allCases.contains(.openai))
         #expect(allCases.contains(.anthropic))
         #expect(allCases.contains(.google))
@@ -21,6 +21,7 @@ struct ProviderTypeTests {
         #expect(allCases.contains(.deepseek))
         #expect(allCases.contains(.grok))
         #expect(allCases.contains(.groq))
+        #expect(allCases.contains(.openRouter))
         #expect(allCases.contains(.appleIntelligence))
     }
 
@@ -318,8 +319,9 @@ struct ProviderTypeTests {
             displayNames.append(provider.displayName)
         }
 
-        #expect(displayNames.count == 10)
+        #expect(displayNames.count == 11)
         #expect(displayNames.contains("Anthropic"))
+        #expect(displayNames.contains("OpenRouter"))
         #expect(displayNames.contains("OpenAI"))
         #expect(displayNames.contains("Apple Intelligence"))
     }
@@ -369,7 +371,8 @@ struct ProviderTypeTests {
             uniqueKeysWithValues: ProviderType.allCases.map { ($0, $0.baseURL) }
         )
 
-        #expect(urlMapping.count == 10)
+        #expect(urlMapping.count == 11)
+        #expect(urlMapping[.openRouter] == "https://openrouter.ai/api/v1")
         #expect(urlMapping[.anthropic] == "https://api.anthropic.com/v1")
         #expect(urlMapping[.openai] == "https://api.openai.com/v1")
         #expect(urlMapping[.appleIntelligence]?.isEmpty == true) // On-device, no external API
@@ -414,6 +417,8 @@ struct ProviderTypeTests {
             result = "grok"
         case .groq:
             result = "groq"
+        case .openRouter:
+            result = "openRouter"
         case .appleIntelligence:
             result = "appleIntelligence"
         }
@@ -424,7 +429,7 @@ struct ProviderTypeTests {
     @Test("Can create Set of all providers")
     func testSetOfAllProviders() {
         let allProviders = Set(ProviderType.allCases)
-        #expect(allProviders.count == 10)
+        #expect(allProviders.count == 11)
     }
 
     @Test("Dictionary with provider keys maintains insertion")
