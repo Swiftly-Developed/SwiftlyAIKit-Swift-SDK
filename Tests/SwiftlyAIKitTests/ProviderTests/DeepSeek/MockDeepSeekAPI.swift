@@ -288,4 +288,25 @@ public enum MockDeepSeekAPI {
       }
     }
     """
+
+    // MARK: - Models List API
+
+    /// Sample response from the GET /models endpoint (OpenAI-compatible)
+    public static let modelsListResponse = """
+    {
+      "object": "list",
+      "data": [
+        {
+          "id": "deepseek-chat",
+          "object": "model",
+          "owned_by": "deepseek"
+        },
+        {
+          "id": "deepseek-reasoner",
+          "object": "model",
+          "owned_by": "deepseek"
+        }
+      ]
+    }
+    """
 }

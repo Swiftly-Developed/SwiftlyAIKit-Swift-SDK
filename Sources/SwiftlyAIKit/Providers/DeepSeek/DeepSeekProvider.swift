@@ -234,6 +234,27 @@ public struct DeepSeekProvider: ProviderProtocol {
         return totalChars / 4
     }
 
+    // MARK: - DeepSeek-Specific Methods
+
+    /// List available models from DeepSeek's GET /models endpoint (OpenAI-compatible).
+    ///
+    /// Returns the RAW model list — the caller is responsible for filtering to the
+    /// models they intend to use (e.g. `deepseek-chat`, `deepseek-reasoner`).
+    /// - Parameter apiKey: API key for authentication
+    /// - Returns: List of available DeepSeek models
+    public func listModels(apiKey: String) async throws -> DeepSeekModelsResponse {
+        let url = "\(baseURL)/models"
+        let headers = [
+            ("Authorization", "Bearer \(apiKey)"),
+            ("Content-Type", "application/json")
+        ]
+        let responseData = try await httpClient.get(url: url, headers: headers)
+        let decoder = JSONDecoder()
+        // NOTE: Do NOT use .convertFromSnakeCase — mirrors OpenAIProvider.listModels;
+        // explicit CodingKeys with snake_case raw values conflict with it on Linux Foundation.
+        return try decoder.decode(DeepSeekModelsResponse.self, from: responseData)
+    }
+
     // MARK: - Private Helpers
 
     /// Build DeepSeek request from AIRequest
