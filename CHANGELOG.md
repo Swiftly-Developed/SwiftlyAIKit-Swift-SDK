@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.17] - 2026-07-18
+
+Additive, backward-compatible feature: a new **OpenAI voice provider**. `OpenAIVoiceProvider`
+conforms to the voice capability protocols (`TextToSpeech` + `SpeechToText`), reusing the OpenAI
+API key/base (`https://api.openai.com/v1`, `Authorization: Bearer sk-…`) and keyed to the existing
+`VoiceProviderType.openai`. It is kept entirely separate from the chat `OpenAIProvider`: it does not
+conform to `ProviderProtocol`, adds no `ProviderType` case, and is not routed through
+`AIGateway.sendMessage`. `v0.9.16` consumers compile unchanged.
+
+### Added
+- **`OpenAIVoiceProvider: TextToSpeech, SpeechToText`** — a distinct voice type mirroring the chat
+  provider's construction (value type, default + injecting `HTTPClientManager` inits, `[(String,String)]`
+  Bearer headers, explicit snake_case `CodingKeys`):
+  - **Text-to-speech** via `POST /audio/speech` — `synthesize(_:apiKey:)` returns the audio bytes as a
+    `SpeechSynthesisResponse`; `streamSynthesize(_:apiKey:)` streams the audio body as
+    `SpeechAudioChunk`s. Maps `AudioFormat` to `response_format` and defaults the voice to `alloy`.
+  - **Speech-to-text** via `POST /audio/transcriptions` — `transcribe(_:apiKey:)` builds a
+    `multipart/form-data` body and decodes the `{ text, … }` (json / verbose_json) response into a
+    neutral `TranscriptionResponse`; `streamTranscribe(_:apiKey:)` streams SSE `transcript.text.delta`
+    / `transcript.text.done` events as `TranscriptionChunk`s, gated to `gpt-4o-transcribe` /
+    `gpt-4o-mini-transcribe` (`whisper-1` finishes with `AIError.unsupportedFeature`).
+  - Static registries: `ttsModels` (`tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`), `sttModels`
+    (`whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`), and 11 built-in `voices`.
+- **`OpenAISpeechRequest` / `OpenAITranscriptionResponse` (+ `Segment`/`Word`) /
+  `OpenAITranscriptionStreamEvent`** — OpenAI voice wire types, separate from the chat wire types.
+- **`VoiceCapabilities` now reports `.openai` as supported** across `ttsSupported`, `sttSupported`,
+  `ttsModels`, `sttModels`, and `voices`, delegating to the provider's registries. The other vendor
+  arms remain seeded empty.
+
 ## [0.9.16] - 2026-07-18
 
 Additive, backward-compatible feature: **Gemini image generation**. `GeminiProvider` now conforms
