@@ -346,4 +346,80 @@ public enum MockMistralAPI {
         temperature: 1.0,
         randomSeed: 42
     )
+
+    // MARK: - Models List API
+
+    /// Sample response from the GET /models endpoint
+    public static let modelsListResponse = """
+    {
+      "object": "list",
+      "data": [
+        {
+          "id": "mistral-large-latest",
+          "object": "model",
+          "created": 1711670400,
+          "owned_by": "mistralai",
+          "capabilities": {
+            "completion_chat": true,
+            "completion_fim": false,
+            "function_calling": true,
+            "fine_tuning": false,
+            "vision": false
+          }
+        },
+        {
+          "id": "mistral-small-latest",
+          "object": "model",
+          "created": 1708387200,
+          "owned_by": "mistralai",
+          "capabilities": {
+            "completion_chat": true,
+            "completion_fim": false,
+            "function_calling": true,
+            "fine_tuning": true,
+            "vision": false
+          }
+        },
+        {
+          "id": "open-mistral-nemo",
+          "object": "model",
+          "created": 1721260800,
+          "owned_by": "mistralai",
+          "capabilities": {
+            "completion_chat": true,
+            "completion_fim": false,
+            "function_calling": true,
+            "fine_tuning": false,
+            "vision": false
+          }
+        },
+        {
+          "id": "codestral-latest",
+          "object": "model",
+          "created": 1716336000,
+          "owned_by": "mistralai",
+          "capabilities": {
+            "completion_chat": true,
+            "completion_fim": true,
+            "function_calling": true,
+            "fine_tuning": false,
+            "vision": false
+          }
+        },
+        {
+          "id": "pixtral-large-latest",
+          "object": "model",
+          "created": 1731369600,
+          "owned_by": "mistralai",
+          "capabilities": {
+            "completion_chat": true,
+            "completion_fim": false,
+            "function_calling": true,
+            "fine_tuning": false,
+            "vision": true
+          }
+        }
+      ]
+    }
+    """
 }

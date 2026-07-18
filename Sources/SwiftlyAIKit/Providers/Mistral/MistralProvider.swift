@@ -186,6 +186,24 @@ public struct MistralProvider: ProviderProtocol {
         nil
     }
 
+    // MARK: - Mistral-Specific Methods
+
+    /// List available models from Mistral's GET /v1/models endpoint.
+    ///
+    /// Returns the RAW model list — the caller is responsible for filtering to
+    /// chat-capable models (inspect `capabilities.completionChat`).
+    /// - Parameter apiKey: API key for authentication
+    /// - Returns: List of available Mistral models
+    public func listModels(apiKey: String) async throws -> MistralModelsResponse {
+        let url = "\(baseURL)/models"
+        let headers = buildHeaders(apiKey: apiKey, stream: false)
+        let responseData = try await httpClient.get(url: url, headers: headers)
+        let decoder = JSONDecoder()
+        // NOTE: Do NOT use .convertFromSnakeCase — mirrors OpenAIProvider.listModels;
+        // explicit CodingKeys with snake_case raw values conflict with it on Linux Foundation.
+        return try decoder.decode(MistralModelsResponse.self, from: responseData)
+    }
+
     // MARK: - Private Helpers
 
     /// Build HTTP headers for Mistral API
