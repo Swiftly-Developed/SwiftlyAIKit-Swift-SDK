@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.11] - 2026-07-18
+
+Additive, backward-compatible feature: `AppleIntelligenceProvider` now wires the SDK's unified tool
+API onto Apple's Foundation Models `Tool` API (iOS 26+ / macOS 26+). Neutral `AITool` definitions
+are translated into Foundation Models `GenerationSchema`s and registered with the on-device session;
+when the model requests a tool, the invocation is surfaced to the caller as a neutral `.toolCall`
+content block with a `.toolUse` stop reason (parity with the HTTP providers) rather than executed
+in-process. Everything is gated by `#if canImport(FoundationModels)` + `@available(iOS 26, macOS 26)`
+and compiles unchanged on older SDKs. With no tools supplied — or when Foundation Models is
+unavailable — behaviour is identical to `v0.9.10`.
+
+### Added
+- **`AppleIntelligenceProvider` Foundation Models tool calling (iOS/macOS 26+)** — `request.tools`
+  are translated into Foundation Models tools via `DynamicGenerationSchema` (the runtime counterpart
+  of `@Generable`, since `AITool` schemas are defined at runtime) and registered on the
+  `LanguageModelSession`. A requested tool is returned as `.toolCall(AIToolCall)` + `stopReason
+  == .toolUse`, for both `sendMessage` and `streamMessage`.
+- **`AppleIntelligenceProvider.supportsTools`** now reflects real support —
+  `AppleIntelligenceCapabilities.foundationModelsAvailable` (`true` only where Foundation Models is
+  available) — instead of inheriting the protocol default.
+- **`AppleIntelligenceProviderTests`** — assert neutral `AITool`s translate into a valid
+  `GenerationSchema` (including enum, integer, nested-object and array parameters; availability
+  gated) and that a captured on-device tool call maps to a `.toolUse` response (platform-independent).
+
+### Changed
+- **`ToolCapabilities.isSupported(by: .appleIntelligence)`** returns `true` where
+  `canImport(FoundationModels)` (iOS 26+ / macOS 26+ SDK), `false` otherwise — previously a flat
+  `false`. The exhaustive switch is preserved.
+
 ## [0.9.10] - 2026-07-18
 
 Additive, backward-compatible capability-detection surface. Callers can now ask, per provider,
