@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.17] - 2026-07-18
+
+Additive, backward-compatible feature: a new **Cartesia** voice provider on the voice capability
+axis (`v0.9.14`). No neutral types change, no chat `ProviderType` case is added, and every existing
+provider behaves identically; `v0.9.16` consumers compile unchanged. The `VoiceProviderType.cartesia`
+arm of `VoiceCapabilities` flips from empty to supported.
+
+### Added
+- **`CartesiaVoiceProvider`** — conforms to `TextToSpeech` and `SpeechToText` (voice axis; not a chat
+  `ProviderProtocol`). Sends **both** required Cartesia headers on every call — `X-API-Key` (key prefix
+  `sk_car_`) and `Cartesia-Version` (the global date-stamped API version, default `2026-03-01`,
+  overridable via `init(baseURL:apiVersion:)`). Two inits mirror the chat providers: a default one and
+  an injectable `init(httpClient:…)`.
+  - `synthesize(_:apiKey:)` → `POST /tts/bytes`, returning the one-shot audio bytes as
+    `SpeechSynthesisResponse`.
+  - `streamSynthesize(_:apiKey:)` → low-latency `POST /tts/sse`; a buffered, byte-level SSE parser
+    reassembles `data:` frames split across network chunks and base64-decodes each `"chunk"` event into
+    a `SpeechAudioChunk`, finishing on `"done"` and throwing on `"error"`.
+  - `transcribe(_:apiKey:)` → Ink-Whisper `POST /stt` via a hand-assembled `multipart/form-data` body
+    (`model=ink-whisper`, optional `language`, word timestamps, and the audio `file` part) — the SDK's
+    first multipart upload. Streaming STT is WebSocket-only and left to the protocol default.
+  - `listVoices(apiKey:)` → `GET /voices`, so voice ids are fetched at runtime rather than hardcoded.
+  - `AudioFormat` maps to Cartesia's `raw`/`wav`/`mp3` containers; `.opus`/`.flac`/`.aac` are rejected
+    with `AIError.invalidRequest`.
+- **`CartesiaModels`** — the provider-specific Codable DTOs (`CartesiaTTSRequest` with nested
+  `CartesiaVoiceSpecifier`/`CartesiaOutputFormat`, `CartesiaSSEEvent`, `CartesiaTranscriptionResponse`,
+  `CartesiaVoicesResponse` + public `CartesiaVoice`) — explicit snake_case `CodingKeys`.
+- **`VoiceCapabilities.cartesia` arm filled** — `ttsSupported`/`sttSupported` return `true`;
+  `ttsModels` = `["sonic-3", "sonic-3.5", "sonic-2", "sonic-turbo"]`, `sttModels` = `["ink-whisper"]`;
+  `voices` stays empty (fetched at runtime).
+- **`MockCartesiaAPI` fixtures + `CartesiaVoiceProviderTests`** — TTS body mapping, both-headers-present
+  assertions, SSE assembly incl. a split-across-network-chunks reassembly test and an error-event test,
+  Ink-Whisper decode, multipart body shape, and `listVoices` decode; the foundation
+  `VoiceCapabilitiesTests` are updated for the now-filled Cartesia arm.
+
 ## [0.9.16] - 2026-07-18
 
 Additive, backward-compatible feature: **Gemini image generation**. `GeminiProvider` now conforms
