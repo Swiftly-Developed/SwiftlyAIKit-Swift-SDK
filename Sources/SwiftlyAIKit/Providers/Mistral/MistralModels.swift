@@ -512,3 +512,77 @@ public struct MistralOptions: Codable, Sendable {
         self.promptMode = promptMode
     }
 }
+
+// MARK: - Models List Response
+
+/// Response from Mistral's GET /v1/models endpoint
+public struct MistralModelsResponse: Codable, Sendable {
+    /// Object type (always "list")
+    public let object: String
+    /// Array of available models
+    public let data: [MistralModelInfo]
+
+    enum CodingKeys: String, CodingKey {
+        case object
+        case data
+    }
+
+    public init(object: String = "list", data: [MistralModelInfo]) {
+        self.object = object
+        self.data = data
+    }
+}
+
+/// Mistral model information (one entry from GET /v1/models)
+public struct MistralModelInfo: Codable, Sendable {
+    /// Model ID, e.g. "mistral-large-latest"
+    public let id: String
+    /// Object type (always "model")
+    public let object: String
+    /// Unix timestamp (seconds) of model creation
+    public let created: Int
+    /// Organization that owns the model, e.g. "mistralai"
+    public let ownedBy: String
+    /// Capability flags for the model (nil when omitted by the API)
+    public let capabilities: MistralModelCapabilities?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case object
+        case created
+        case ownedBy = "owned_by"
+        case capabilities
+    }
+
+    public init(
+        id: String,
+        object: String = "model",
+        created: Int = 0,
+        ownedBy: String = "mistralai",
+        capabilities: MistralModelCapabilities? = nil
+    ) {
+        self.id = id
+        self.object = object
+        self.created = created
+        self.ownedBy = ownedBy
+        self.capabilities = capabilities
+    }
+}
+
+/// Capability flags for a Mistral model (nested under each model in GET /v1/models)
+public struct MistralModelCapabilities: Codable, Sendable {
+    /// Whether the model supports chat completions
+    public let completionChat: Bool?
+    /// Whether the model supports function/tool calling
+    public let functionCalling: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case completionChat = "completion_chat"
+        case functionCalling = "function_calling"
+    }
+
+    public init(completionChat: Bool? = nil, functionCalling: Bool? = nil) {
+        self.completionChat = completionChat
+        self.functionCalling = functionCalling
+    }
+}
