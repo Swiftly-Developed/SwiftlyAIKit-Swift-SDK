@@ -12,9 +12,14 @@ struct ToolCapabilitiesTests {
         #expect(ToolCapabilities.isSupported(by: .perplexity) == false)
     }
 
-    @Test("Apple Intelligence does not support tool calling (not wired)")
-    func testAppleIntelligenceUnsupported() {
+    @Test("Apple Intelligence tool support tracks Foundation Models availability")
+    func testAppleIntelligenceToolSupport() {
+        // Tool calling is wired through Foundation Models (iOS 26+ / macOS 26+ SDK).
+        #if canImport(FoundationModels)
+        #expect(ToolCapabilities.isSupported(by: .appleIntelligence) == true)
+        #else
         #expect(ToolCapabilities.isSupported(by: .appleIntelligence) == false)
+        #endif
     }
 
     @Test("Tool-capable providers support tool calling")

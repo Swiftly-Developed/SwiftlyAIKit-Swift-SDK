@@ -10,7 +10,8 @@ import Foundation
 ///
 /// Most providers support tool calling. The exceptions are:
 /// - **Perplexity** — the Sonar API is a pure search/answer API with no function calling.
-/// - **Apple Intelligence** — tool calling is not wired through this SDK.
+/// - **Apple Intelligence** — supported only where Foundation Models is available (iOS 26+ /
+///   macOS 26+ SDK); on older SDKs it reports `false`.
 ///
 /// ## Usage
 ///
@@ -40,7 +41,15 @@ public struct ToolCapabilities: Sendable {
         switch provider {
         case .openai, .anthropic, .google, .grok, .cohere, .mistral, .deepseek:
             return true
-        case .perplexity, .appleIntelligence:
+        case .appleIntelligence:
+            // Tool calling is wired through Foundation Models, which only exists on the
+            // iOS 26+ / macOS 26+ SDK. On older SDKs the provider ignores tools.
+            #if canImport(FoundationModels)
+            return true
+            #else
+            return false
+            #endif
+        case .perplexity:
             return false
         }
     }
