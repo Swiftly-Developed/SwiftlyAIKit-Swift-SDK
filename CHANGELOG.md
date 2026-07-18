@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.19] - 2026-07-18
+
+Additive, backward-compatible feature: a **Deepgram** voice provider on the voice capability
+axis (`v0.9.14`). No neutral types change and no chat `ProviderType` case is added; every existing
+provider behaves identically and `v0.9.18` consumers compile unchanged. The
+`VoiceProviderType.deepgram` arm of `VoiceCapabilities` flips from empty to supported.
+
+### Added
+- **`DeepgramVoiceProvider`** — conforms to `SpeechToText` + `TextToSpeech` (voice axis; not a chat
+  `ProviderProtocol`). One-shot `transcribe` (Nova, `POST /listen`, raw audio bytes,
+  `Authorization: Token` — literally `Token`, not `Bearer`), `synthesize` + chunked
+  `streamSynthesize` (Aura-2, `POST /speak`). `streamTranscribe` throws `unsupportedFeature`
+  (Deepgram live STT needs a WebSocket, which `HTTPClientManager` does not provide).
+- **`DeepgramModels`** — `DeepgramListenResponse` (nested channels/alternatives/words + metadata)
+  and `DeepgramSpeakRequest`, explicit snake_case `CodingKeys`.
+- **`VoiceCapabilities.deepgram` arm filled** — `ttsSupported`/`sttSupported` return `true`;
+  `sttModels` = `["nova-3", "nova-2"]`, `ttsModels`/`voices` = the Aura-2 voice ids.
+- **`MockDeepgramAPI` fixtures + `DeepgramVoiceProviderTests`** under `VoiceTests/Deepgram/`; the
+  foundation `VoiceCapabilitiesTests` are updated for the now-filled Deepgram arm.
+
 ## [0.9.18] - 2026-07-18
 
 Additive, backward-compatible feature: another **voice vendor integration** — an **ElevenLabs**
