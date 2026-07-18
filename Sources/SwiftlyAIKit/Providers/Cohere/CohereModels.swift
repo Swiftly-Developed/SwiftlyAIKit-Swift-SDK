@@ -440,6 +440,80 @@ public struct CohereTokenizeResponse: Codable, Sendable {
     }
 }
 
+// MARK: - Models List Response
+
+/// Response from Cohere's GET /models endpoint
+///
+/// The endpoint is paginated; `nextPageToken` carries the cursor for the next page
+/// (nil / absent on the final page).
+public struct CohereModelsResponse: Codable, Sendable {
+    /// Array of available models
+    public let models: [CohereModelInfo]
+    /// Cursor for the next page of results (nil on the final page)
+    public let nextPageToken: String?
+
+    enum CodingKeys: String, CodingKey {
+        case models
+        case nextPageToken = "next_page_token"
+    }
+
+    public init(models: [CohereModelInfo], nextPageToken: String? = nil) {
+        self.models = models
+        self.nextPageToken = nextPageToken
+    }
+}
+
+/// Cohere model information (one entry from GET /models)
+public struct CohereModelInfo: Codable, Sendable {
+    /// Model name / identifier used in API requests, e.g. "command-a-03-2025"
+    public let name: String
+    /// API endpoints this model is compatible with, e.g. ["chat", "embed"]
+    public let endpoints: [String]?
+    /// Maximum number of tokens the model can process
+    public let contextLength: Int?
+    /// Whether the model is deprecated
+    public let isDeprecated: Bool?
+    /// Whether the model is a fine-tuned model
+    public let finetuned: Bool?
+    /// Public URL to the model's tokenizer configuration
+    public let tokenizerURL: String?
+    /// Default API endpoints for this model
+    public let defaultEndpoints: [String]?
+    /// Supported features, e.g. ["json_mode", "tools"]
+    public let features: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case endpoints
+        case contextLength = "context_length"
+        case isDeprecated = "is_deprecated"
+        case finetuned
+        case tokenizerURL = "tokenizer_url"
+        case defaultEndpoints = "default_endpoints"
+        case features
+    }
+
+    public init(
+        name: String,
+        endpoints: [String]? = nil,
+        contextLength: Int? = nil,
+        isDeprecated: Bool? = nil,
+        finetuned: Bool? = nil,
+        tokenizerURL: String? = nil,
+        defaultEndpoints: [String]? = nil,
+        features: [String]? = nil
+    ) {
+        self.name = name
+        self.endpoints = endpoints
+        self.contextLength = contextLength
+        self.isDeprecated = isDeprecated
+        self.finetuned = finetuned
+        self.tokenizerURL = tokenizerURL
+        self.defaultEndpoints = defaultEndpoints
+        self.features = features
+    }
+}
+
 // MARK: - Error Response
 
 /// Error response from Cohere API
