@@ -32,6 +32,17 @@ public struct AppleIntelligenceProvider: ProviderProtocol, ImageGenerationProvid
     /// Initialize Apple Intelligence provider
     public init() {}
 
+    // MARK: - Capabilities
+
+    /// Whether tool / function calling is supported on this device
+    ///
+    /// Tool calling is wired through Apple's Foundation Models `Tool` API, which requires
+    /// iOS 26+ / macOS 26+ with Apple Intelligence enabled. On older systems (or when the model
+    /// is unavailable) this is `false` and any ``AIRequest/tools`` are ignored.
+    public var supportsTools: Bool {
+        AppleIntelligenceCapabilities.foundationModelsAvailable
+    }
+
     // MARK: - ProviderProtocol Implementation
 
     /// Send a message using Foundation Models
@@ -117,6 +128,30 @@ public struct AppleIntelligenceProvider: ProviderProtocol, ImageGenerationProvid
         )
     }
 
+    // MARK: - Tool Call Mapping
+
+    /// Build a neutral tool-use ``AIResponse`` from a captured on-device tool invocation.
+    ///
+    /// Foundation Models executes registered tools in-process. SwiftlyAIKit instead surfaces the
+    /// invocation to the caller (parity with the HTTP providers), so a captured call becomes a
+    /// `.toolCall` content block with a `.toolUse` stop reason. Kept free of any Foundation Models
+    /// types so it compiles — and is unit-testable — on every platform.
+    func makeToolUseResponse(name: String, argumentsJSON: String) -> AIResponse {
+        let call = AIToolCall(
+            id: "apple-fm-tool-\(UUID().uuidString.prefix(8))",
+            name: name,
+            arguments: argumentsJSON
+        )
+        return AIResponse(
+            id: "apple-fm-\(UUID().uuidString.prefix(8))",
+            model: AppleIntelligenceModel.foundationModel.rawValue,
+            message: AIMessage(role: .assistant, content: [.toolCall(call)]),
+            stopReason: .toolUse,
+            usage: nil,
+            provider: .appleIntelligence
+        )
+    }
+
     // MARK: - Foundation Models Implementation
 
     #if canImport(FoundationModels)
@@ -127,11 +162,14 @@ public struct AppleIntelligenceProvider: ProviderProtocol, ImageGenerationProvid
             throw AppleIntelligenceError.notEnabled
         }
 
-        // Create a language model session
-        let session = LanguageModelSession()
-
         // Build the prompt from messages
         let prompt = buildPromptFromMessages(request)
+
+        // Register neutral tools with the on-device session when supplied. The recorder captures the
+        // first tool the model tries to invoke so we can surface it to the caller as `.toolUse`
+        // (parity with the HTTP providers) instead of executing it in-process.
+        let recorder = AppleToolCallRecorder()
+        let session = try makeSession(for: request, recorder: recorder)
 
         do {
             // Generate response
@@ -152,9 +190,31 @@ public struct AppleIntelligenceProvider: ProviderProtocol, ImageGenerationProvid
                 provider: .appleIntelligence
             )
         } catch {
+            // A registered tool being invoked aborts generation; surface it as a neutral tool call.
+            if let call = recorder.capturedCall {
+                return makeToolUseResponse(name: call.name, argumentsJSON: call.argumentsJSON)
+            }
             // Map FoundationModels errors to our error types
             throw Self.mapFoundationModelsError(error)
         }
+    }
+
+    /// Build a Foundation Models session, registering intercepting tools when the request carries
+    /// any. With no tools this is identical to `LanguageModelSession()` — behaviour is unchanged.
+    @available(iOS 26.0, macOS 26.0, *)
+    private func makeSession(for request: AIRequest, recorder: AppleToolCallRecorder) throws -> LanguageModelSession {
+        guard let tools = request.tools, !tools.isEmpty else {
+            return LanguageModelSession()
+        }
+        let fmTools: [any Tool] = try tools.map { tool in
+            InterceptingTool(
+                name: tool.name,
+                description: tool.description,
+                parameters: try Self.makeGenerationSchema(for: tool),
+                recorder: recorder
+            )
+        }
+        return LanguageModelSession(tools: fmTools)
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -166,8 +226,9 @@ public struct AppleIntelligenceProvider: ProviderProtocol, ImageGenerationProvid
 
         return AsyncThrowingStream { continuation in
             Task {
+                let recorder = AppleToolCallRecorder()
                 do {
-                    let session = LanguageModelSession()
+                    let session = try makeSession(for: request, recorder: recorder)
                     let prompt = buildPromptFromMessages(request)
 
                     var previousContent = ""
@@ -223,7 +284,14 @@ public struct AppleIntelligenceProvider: ProviderProtocol, ImageGenerationProvid
                     continuation.yield(finalResponse)
                     continuation.finish()
                 } catch {
-                    continuation.finish(throwing: Self.mapFoundationModelsError(error))
+                    // A registered tool being invoked aborts generation; surface the neutral tool
+                    // call as a terminal `.toolUse` chunk rather than an error.
+                    if let call = recorder.capturedCall {
+                        continuation.yield(makeToolUseResponse(name: call.name, argumentsJSON: call.argumentsJSON))
+                        continuation.finish()
+                    } else {
+                        continuation.finish(throwing: Self.mapFoundationModelsError(error))
+                    }
                 }
             }
         }
@@ -301,6 +369,98 @@ public struct AppleIntelligenceProvider: ProviderProtocol, ImageGenerationProvid
 
         return parts.joined(separator: "\n\n")
     }
+
+    // MARK: - Tool Schema Translation
+
+    /// Translate a neutral ``AITool`` into a Foundation Models ``GenerationSchema``.
+    ///
+    /// Because `AITool` schemas are defined at runtime (JSON-Schema dictionaries) rather than at
+    /// compile time, this uses `DynamicGenerationSchema` — the runtime counterpart of the
+    /// `@Generable` macro — rather than a statically generated schema.
+    @available(iOS 26.0, macOS 26.0, *)
+    static func makeGenerationSchema(for tool: AITool) throws -> GenerationSchema {
+        let root = makeDynamicSchema(
+            for: tool.parameters,
+            name: tool.name,
+            description: tool.description
+        )
+        return try GenerationSchema(root: root, dependencies: [])
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private static func makeDynamicSchema(
+        for parameters: AIToolParameters,
+        name: String,
+        description: String?
+    ) -> DynamicGenerationSchema {
+        let required = Set(parameters.required ?? [])
+        let properties = parameters.properties.map { key, value in
+            DynamicGenerationSchema.Property(
+                name: key,
+                description: value.description,
+                schema: makeDynamicSchema(for: value, name: key),
+                isOptional: !required.contains(key)
+            )
+        }
+        return DynamicGenerationSchema(name: name, description: description, properties: properties)
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private static func makeDynamicSchema(for property: AIToolProperty, name: String) -> DynamicGenerationSchema {
+        switch property.type {
+        case "integer":
+            return DynamicGenerationSchema(type: Int.self)
+        case "number":
+            return DynamicGenerationSchema(type: Double.self)
+        case "boolean":
+            return DynamicGenerationSchema(type: Bool.self)
+        case "array":
+            return DynamicGenerationSchema(arrayOf: makeDynamicSchema(forItems: property.items))
+        case "object":
+            let required = Set(property.required ?? [])
+            let nested = (property.properties ?? [:]).map { key, value in
+                DynamicGenerationSchema.Property(
+                    name: key,
+                    description: value.description,
+                    schema: makeDynamicSchema(for: value, name: key),
+                    isOptional: !required.contains(key)
+                )
+            }
+            return DynamicGenerationSchema(name: name, description: property.description, properties: nested)
+        default:
+            // "string" and anything unrecognised → string (with an enum constraint when present).
+            if let enumValues = property.enum, !enumValues.isEmpty {
+                return DynamicGenerationSchema(name: name, description: property.description, anyOf: enumValues)
+            }
+            return DynamicGenerationSchema(type: String.self)
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private static func makeDynamicSchema(forItems items: AIToolPropertyItems?) -> DynamicGenerationSchema {
+        guard let items else { return DynamicGenerationSchema(type: String.self) }
+        switch items.type {
+        case "integer":
+            return DynamicGenerationSchema(type: Int.self)
+        case "number":
+            return DynamicGenerationSchema(type: Double.self)
+        case "boolean":
+            return DynamicGenerationSchema(type: Bool.self)
+        case "object":
+            let required = Set(items.required ?? [])
+            let nested = (items.properties ?? [:]).map { key, value in
+                DynamicGenerationSchema.Property(
+                    name: key,
+                    description: value.description,
+                    schema: makeDynamicSchema(for: value, name: key),
+                    isOptional: !required.contains(key)
+                )
+            }
+            return DynamicGenerationSchema(name: "item", description: items.description, properties: nested)
+        default:
+            return DynamicGenerationSchema(type: String.self)
+        }
+    }
     #endif
 
     // MARK: - Image Playground Implementation
@@ -327,3 +487,57 @@ public struct AppleIntelligenceProvider: ProviderProtocol, ImageGenerationProvid
     }
     #endif
 }
+
+// MARK: - Foundation Models Tool Bridging
+
+#if canImport(FoundationModels)
+import FoundationModels
+
+/// Captures the first tool the on-device model tries to invoke during a generation.
+///
+/// Foundation Models runs registered tools in-process; to surface the call to the SDK caller we
+/// record the invocation from ``InterceptingTool/call(arguments:)`` and abort generation, then
+/// rebuild it as a neutral `.toolCall` response.
+final class AppleToolCallRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedCall: (name: String, argumentsJSON: String)?
+
+    func record(name: String, argumentsJSON: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        if storedCall == nil {
+            storedCall = (name, argumentsJSON)
+        }
+    }
+
+    var capturedCall: (name: String, argumentsJSON: String)? {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedCall
+    }
+}
+
+/// Sentinel thrown from an intercepting tool's `call` to stop generation once the model requests a
+/// tool. The recorded invocation is then surfaced as a neutral `.toolUse` response.
+enum AppleToolInterception: Error {
+    case toolRequested
+}
+
+/// A Foundation Models ``Tool`` that records the model's invocation and aborts, rather than
+/// executing anything, so the SDK can hand the tool call back to the caller.
+@available(iOS 26.0, macOS 26.0, *)
+struct InterceptingTool: Tool {
+    typealias Arguments = GeneratedContent
+    typealias Output = String
+
+    let name: String
+    let description: String
+    let parameters: GenerationSchema
+    let recorder: AppleToolCallRecorder
+
+    func call(arguments: GeneratedContent) async throws -> String {
+        recorder.record(name: name, argumentsJSON: arguments.jsonString)
+        throw AppleToolInterception.toolRequested
+    }
+}
+#endif
