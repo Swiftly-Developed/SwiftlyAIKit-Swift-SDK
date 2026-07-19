@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.20] - 2026-07-19
+
+Additive, backward-compatible feature: **Perplexity tool / function calling**. `PerplexityProvider`
+now reports `supportsTools == true` and `ToolCapabilities.isSupported(by: .perplexity)` returns
+`true`. Tool-free requests are unchanged (Sonar Chat Completions); tool-bearing requests are routed
+to Perplexity's **Agent API**. Unblocks Swiftly Workspace **AI09** (Perplexity at full tool +
+streaming parity). No neutral types change; `v0.9.19` consumers compile unchanged.
+
+### Upstream capability finding (load-bearing)
+
+Verified against current Perplexity docs (and cross-checked with litellm / Vercel AI SDK): the Sonar
+Chat Completions endpoint (`POST /chat/completions`; models `sonar`, `sonar-pro`,
+`sonar-reasoning`, …) **has no custom function calling** — it is in maintenance mode, and the
+`v0.9.19` "no tool calling" note was correct *for that endpoint*. Custom function calling lives only
+on the **Agent API** (`POST /v1/agent`, alias `POST /v1/responses`), which is fully compatible with
+OpenAI's *Responses* API (an `input` item list + flattened `tools` array + an `output` item list of
+`message` / `function_call` items) and addresses models by `provider/model` id (e.g.
+`openai/gpt-5.6-sol`, `perplexity/sonar`) rather than plain Sonar ids. `PerplexityProvider` therefore
+routes tool-bearing requests to the Agent API and, when the request model is a plain Sonar id,
+selects a tool-capable Agent model (`agentModel`, default `openai/gpt-5.6-sol`).
+
+### Added
+- **`PerplexityAgentModels.swift`** — the Agent API (Responses) wire types: `PerplexityAgentRequest`
+  (`input`/`tools`/`tool_choice`/`max_output_tokens`/`stream`), `PerplexityAgentInputItem`
+  (`message` / `function_call` / `function_call_output`, keyed by `call_id`),
+  `PerplexityAgentTool` (flattened `type: function`), `PerplexityAgentToolChoice`,
+  `PerplexityAgentResponse`/`PerplexityAgentOutputItem`/`PerplexityAgentUsage`, and
+  `PerplexityAgentStreamEvent` (typed `response.*` SSE events).
+- **`PerplexityProvider` Agent routing** — `sendMessage`/`streamMessage` dispatch tool-bearing
+  requests to `POST /v1/responses`; returned `function_call` items parse into `.toolCall` content
+  (keyed by `call_id`) with stop reason `.toolUse`; multi-turn replays `function_call` +
+  `function_call_output`; streamed tool-call argument deltas accumulate. New `agentModel` init
+  parameter (default `PerplexityProvider.defaultAgentModel` = `openai/gpt-5.6-sol`) and per-request
+  `providerOptions["agent_model"]` override; a `provider/model` request id (e.g. `perplexity/sonar`)
+  passes through unchanged.
+- **Agent fixtures + `PerplexityAgentToolTests`** — request wiring, model routing, multi-turn
+  replay, response parse, and streamed accumulation. The old "omits tools" degradation assertions
+  are removed/inverted; `ToolCapabilitiesTests` now asserts Perplexity is supported.
+
+### Changed
+- **`ToolCapabilities.isSupported(by: .perplexity)`** flips `false` → `true`; `supportsTools` on
+  `PerplexityProvider` is now `true`. Stale "no function/tool calling" doc comments corrected.
+
+## [0.9.19] - 2026-07-18
+
+Additive, backward-compatible feature: a **Deepgram** voice provider on the voice capability
+axis (`v0.9.14`). No neutral types change and no chat `ProviderType` case is added; every existing
+provider behaves identically and `v0.9.18` consumers compile unchanged. The
+`VoiceProviderType.deepgram` arm of `VoiceCapabilities` flips from empty to supported.
+
+### Added
+- **`DeepgramVoiceProvider`** — conforms to `SpeechToText` + `TextToSpeech` (voice axis; not a chat
+  `ProviderProtocol`). One-shot `transcribe` (Nova, `POST /listen`, raw audio bytes,
+  `Authorization: Token` — literally `Token`, not `Bearer`), `synthesize` + chunked
+  `streamSynthesize` (Aura-2, `POST /speak`). `streamTranscribe` throws `unsupportedFeature`
+  (Deepgram live STT needs a WebSocket, which `HTTPClientManager` does not provide).
+- **`DeepgramModels`** — `DeepgramListenResponse` (nested channels/alternatives/words + metadata)
+  and `DeepgramSpeakRequest`, explicit snake_case `CodingKeys`.
+- **`VoiceCapabilities.deepgram` arm filled** — `ttsSupported`/`sttSupported` return `true`;
+  `sttModels` = `["nova-3", "nova-2"]`, `ttsModels`/`voices` = the Aura-2 voice ids.
+- **`MockDeepgramAPI` fixtures + `DeepgramVoiceProviderTests`** under `VoiceTests/Deepgram/`; the
+  foundation `VoiceCapabilitiesTests` are updated for the now-filled Deepgram arm.
+
 ## [0.9.18] - 2026-07-18
 
 Additive, backward-compatible feature: another **voice vendor integration** — an **ElevenLabs**

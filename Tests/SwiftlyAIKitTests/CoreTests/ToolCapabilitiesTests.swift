@@ -7,9 +7,10 @@ import Foundation
 struct ToolCapabilitiesTests {
     // MARK: - Per-Provider Support
 
-    @Test("Perplexity does not support tool calling")
-    func testPerplexityUnsupported() {
-        #expect(ToolCapabilities.isSupported(by: .perplexity) == false)
+    @Test("Perplexity supports tool calling via the Agent API")
+    func testPerplexitySupported() {
+        // Tool-bearing requests are routed to Perplexity's Agent API (/v1/responses).
+        #expect(ToolCapabilities.isSupported(by: .perplexity) == true)
     }
 
     @Test("Apple Intelligence tool support tracks Foundation Models availability")
@@ -32,6 +33,7 @@ struct ToolCapabilitiesTests {
         #expect(ToolCapabilities.isSupported(by: .deepseek) == true)
         #expect(ToolCapabilities.isSupported(by: .grok) == true)
         #expect(ToolCapabilities.isSupported(by: .ollama) == true)
+        #expect(ToolCapabilities.isSupported(by: .perplexity) == true)
     }
 
     @Test("Every provider type has an explicit tool-support verdict")

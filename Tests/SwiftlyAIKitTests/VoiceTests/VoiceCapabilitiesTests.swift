@@ -4,18 +4,18 @@ import Foundation
 
 /// Tests for the ``VoiceCapabilities`` metadata registry
 ///
-/// Each vendor integration fills its own arm. ElevenLabs and Cartesia are now populated; Deepgram
-/// and OpenAI remain seeded empty pending their own integrations. These tests pin the seeded arms,
-/// assert the populated ElevenLabs and Cartesia arms, and — by iterating every case — guarantee the
-/// switches remain exhaustive and total across all ``VoiceProviderType`` values.
+/// Each vendor integration fills its own arm. ElevenLabs, Cartesia, and Deepgram are now populated;
+/// only OpenAI remains seeded empty pending its own integration. These tests pin the seeded arm,
+/// assert the populated ElevenLabs/Cartesia/Deepgram arms, and — by iterating every case — guarantee
+/// the switches remain exhaustive and total across all ``VoiceProviderType`` values.
 @Suite("VoiceCapabilities Tests")
 struct VoiceCapabilitiesTests {
     /// Providers whose arms are still seeded empty (no TTS/STT support) pending their own integration.
-    private static let unseededProviders: [VoiceProviderType] = [.deepgram, .openai]
+    private static let unseededProviders: [VoiceProviderType] = [.openai]
 
     /// Providers that expose no static voice catalog (either unintegrated, or fetching voices at
-    /// runtime like Cartesia). ElevenLabs is the only provider that seeds a static voice list.
-    private static let providersWithoutStaticVoices: [VoiceProviderType] = [.deepgram, .openai, .cartesia]
+    /// runtime like Cartesia). ElevenLabs and Deepgram seed static voice lists.
+    private static let providersWithoutStaticVoices: [VoiceProviderType] = [.openai, .cartesia]
 
     // MARK: - Seeded (empty) State
 
@@ -47,8 +47,9 @@ struct VoiceCapabilitiesTests {
         }
     }
 
-    @Test("voices is empty for every provider except ElevenLabs (others fetch at runtime)")
+    @Test("voices is empty for the providers whose catalogs are fetched at runtime")
     func testVoicesSeed() {
+        // ElevenLabs and Deepgram seed static voice lists; Cartesia and OpenAI do not.
         for provider in Self.providersWithoutStaticVoices {
             #expect(VoiceCapabilities.voices(for: provider).isEmpty)
         }
@@ -94,6 +95,17 @@ struct VoiceCapabilitiesTests {
         #expect(VoiceCapabilities.sttSupported(by: .cartesia))
         #expect(VoiceCapabilities.ttsModels(for: .cartesia).contains("sonic-3"))
         #expect(VoiceCapabilities.sttModels(for: .cartesia) == ["ink-whisper"])
+    }
+
+    // MARK: - Deepgram Arm (populated)
+
+    @Test("Deepgram arm advertises TTS + STT support with its model lists")
+    func testDeepgramArmFilled() {
+        #expect(VoiceCapabilities.ttsSupported(by: .deepgram))
+        #expect(VoiceCapabilities.sttSupported(by: .deepgram))
+        #expect(VoiceCapabilities.sttModels(for: .deepgram) == ["nova-3", "nova-2"])
+        #expect(VoiceCapabilities.ttsModels(for: .deepgram).contains("aura-2-thalia-en"))
+        #expect(VoiceCapabilities.voices(for: .deepgram).contains("aura-2-thalia-en"))
     }
 
     // MARK: - Totality

@@ -267,7 +267,7 @@ public struct VoiceCapabilities: Sendable {
     public static func ttsSupported(by provider: VoiceProviderType) -> Bool {
         switch provider {
         case .elevenLabs: return true
-        case .deepgram: return false
+        case .deepgram: return true
         case .cartesia: return true
         case .openai: return false
         }
@@ -280,7 +280,7 @@ public struct VoiceCapabilities: Sendable {
     public static func sttSupported(by provider: VoiceProviderType) -> Bool {
         switch provider {
         case .elevenLabs: return true
-        case .deepgram: return false
+        case .deepgram: return true
         case .cartesia: return true
         case .openai: return false
         }
@@ -293,7 +293,7 @@ public struct VoiceCapabilities: Sendable {
     public static func ttsModels(for provider: VoiceProviderType) -> [String] {
         switch provider {
         case .elevenLabs: return ["eleven_multilingual_v2", "eleven_turbo_v2_5", "eleven_flash_v2_5"]
-        case .deepgram: return []
+        case .deepgram: return DeepgramVoiceProvider.auraVoices
         case .cartesia: return CartesiaVoiceProvider.ttsModelIDs
         case .openai: return []
         }
@@ -306,7 +306,7 @@ public struct VoiceCapabilities: Sendable {
     public static func sttModels(for provider: VoiceProviderType) -> [String] {
         switch provider {
         case .elevenLabs: return ["scribe_v2", "scribe_v1"]
-        case .deepgram: return []
+        case .deepgram: return ["nova-3", "nova-2"]
         case .cartesia: return CartesiaVoiceProvider.sttModelIDs
         case .openai: return []
         }
@@ -328,7 +328,7 @@ public struct VoiceCapabilities: Sendable {
                 "ErXwobaYiN019PkySvjV",
                 "pNInz6obpgDQGcFmaJgB"
             ]
-        case .deepgram: return []
+        case .deepgram: return DeepgramVoiceProvider.auraVoices
         // Cartesia voice ids churn and are fetched at runtime via
         // `CartesiaVoiceProvider.listVoices(apiKey:)` rather than hardcoded here.
         case .cartesia: return []
