@@ -507,4 +507,123 @@ struct PerplexityProviderTests {
             Issue.record("Response format not extracted correctly")
         }
     }
+
+    // MARK: - Sonar SSE Framing Tests (Bug 1)
+
+    /// The tool-free Sonar stream frames each event as a `data: <json>` SSE line. Feeding the raw
+    /// framing to `parseSSEDataPayloads` must yield the stripped JSON payloads (not the `data: `
+    /// prefix, which previously crashed decode with `DecodingError`) and flag the `[DONE]` sentinel.
+    @Test("parseSSEDataPayloads strips data: prefix and detects [DONE]")
+    func testParseSSEDataPayloads() throws {
+        let sse = MockPerplexityAPI.streamEvents.joined(separator: "\n") + "\n"
+        var buffer = ""
+        let (payloads, done) = PerplexityProvider.parseSSEDataPayloads(
+            from: Data(sse.utf8),
+            buffer: &buffer
+        )
+
+        // 7 chunk events, plus the [DONE] sentinel (excluded from payloads but sets `done`).
+        #expect(payloads.count == 7)
+        #expect(done)
+
+        // Every stripped payload must now decode cleanly into a PerplexityStreamChunk.
+        var accumulated = ""
+        for payload in payloads {
+            let chunk = try JSONDecoder().decode(PerplexityStreamChunk.self, from: Data(payload.utf8))
+            if let content = chunk.choices.first?.delta.content {
+                accumulated += content
+            }
+        }
+        #expect(accumulated == "Hello! How can I help you?")
+    }
+
+    /// A single SSE `data:` line split across two network chunks must be reassembled via the
+    /// buffer rather than producing a partial (undecodable) payload.
+    @Test("parseSSEDataPayloads buffers a line split across chunks")
+    func testParseSSEDataPayloadsBuffersAcrossChunks() throws {
+        let line = MockPerplexityAPI.streamEvents[0] + "\n"
+        let bytes = Array(line.utf8)
+        let splitIndex = bytes.count / 2
+
+        var buffer = ""
+        let (firstPayloads, firstDone) = PerplexityProvider.parseSSEDataPayloads(
+            from: Data(bytes[..<splitIndex]),
+            buffer: &buffer
+        )
+        // No complete line yet — nothing should be emitted.
+        #expect(firstPayloads.isEmpty)
+        #expect(!firstDone)
+
+        let (secondPayloads, secondDone) = PerplexityProvider.parseSSEDataPayloads(
+            from: Data(bytes[splitIndex...]),
+            buffer: &buffer
+        )
+        #expect(secondPayloads.count == 1)
+        #expect(!secondDone)
+
+        let chunk = try JSONDecoder().decode(
+            PerplexityStreamChunk.self,
+            from: Data(secondPayloads[0].utf8)
+        )
+        #expect(chunk.choices.first?.delta.content == "Hello")
+    }
+
+    // MARK: - Sonar System Prompt Tests (Bug 2)
+
+    /// A tool-free Sonar request built with a non-empty `systemPrompt` must send a leading
+    /// `system` message on the wire (Sonar has no separate system parameter).
+    @Test("mapToPerplexityRequest prepends systemPrompt as a leading system message")
+    func testSystemPromptPrependedToSonarRequest() throws {
+        let provider = PerplexityProvider()
+        let request = AIRequest(
+            model: "sonar",
+            messages: [AIMessage(role: .user, content: [.text("Hello")])],
+            systemPrompt: "You are a helpful assistant with web search."
+        )
+
+        let mapped = try provider.mapToPerplexityRequest(request)
+        #expect(mapped.messages.count == 2)
+        #expect(mapped.messages.first?.role == "system")
+        #expect(mapped.messages.first?.content == "You are a helpful assistant with web search.")
+        #expect(mapped.messages.last?.role == "user")
+
+        // Assert on the encoded body: the system message must be present on the wire.
+        let encoded = try JSONEncoder().encode(mapped)
+        let roundTripped = try JSONDecoder().decode(PerplexityRequest.self, from: encoded)
+        #expect(roundTripped.messages.first?.role == "system")
+    }
+
+    /// When the caller already supplied a leading `system` message, the neutral `systemPrompt`
+    /// must not be prepended a second time — the explicit message takes precedence.
+    @Test("mapToPerplexityRequest does not double-prepend when a system message exists")
+    func testSystemPromptNotDoublePrepended() throws {
+        let provider = PerplexityProvider()
+        let request = AIRequest(
+            model: "sonar",
+            messages: [
+                AIMessage(role: .system, content: [.text("Explicit system message")]),
+                AIMessage(role: .user, content: [.text("Hello")])
+            ],
+            systemPrompt: "Neutral system prompt"
+        )
+
+        let mapped = try provider.mapToPerplexityRequest(request)
+        let systemMessages = mapped.messages.filter { $0.role == "system" }
+        #expect(systemMessages.count == 1)
+        #expect(systemMessages.first?.content == "Explicit system message")
+    }
+
+    /// A tool-free Sonar request with no `systemPrompt` and no system message must not gain one.
+    @Test("mapToPerplexityRequest omits system message when systemPrompt is nil")
+    func testNoSystemMessageWhenSystemPromptNil() throws {
+        let provider = PerplexityProvider()
+        let request = AIRequest(
+            model: "sonar",
+            messages: [AIMessage(role: .user, content: [.text("Hello")])]
+        )
+
+        let mapped = try provider.mapToPerplexityRequest(request)
+        #expect(mapped.messages.count == 1)
+        #expect(mapped.messages.first?.role == "user")
+    }
 }

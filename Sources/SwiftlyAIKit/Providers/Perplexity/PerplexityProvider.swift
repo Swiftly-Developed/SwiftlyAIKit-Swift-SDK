@@ -34,6 +34,7 @@ import FoundationNetworking
 ///
 /// ## See Also
 /// - <doc:PerplexityGuide>
+// swiftlint:disable:next type_body_length
 public struct PerplexityProvider: ProviderProtocol {
     public let providerType: ProviderType = .perplexity
 
@@ -169,11 +170,16 @@ public struct PerplexityProvider: ProviderProtocol {
                     )
 
                     var accumulatedText = ""
+                    var buffer = ""
 
                     for try await chunk in stream {
-                        let streamChunk = try JSONDecoder().decode(PerplexityStreamChunk.self, from: chunk)
+                        let (payloads, done) = Self.parseSSEDataPayloads(from: chunk, buffer: &buffer)
+                        for jsonString in payloads {
+                            guard let data = jsonString.data(using: .utf8),
+                                  let streamChunk = try? JSONDecoder().decode(PerplexityStreamChunk.self, from: data)
+                            else { continue }
 
-                        if let choice = streamChunk.choices.first {
+                            guard let choice = streamChunk.choices.first else { continue }
                             if let content = choice.delta.content {
                                 accumulatedText += content
                             }
@@ -193,6 +199,11 @@ public struct PerplexityProvider: ProviderProtocol {
                             )
 
                             continuation.yield(response)
+                        }
+
+                        if done {
+                            continuation.finish()
+                            return
                         }
                     }
 
@@ -304,17 +315,11 @@ public struct PerplexityProvider: ProviderProtocol {
                     var responseID = ""
                     var accumulatedText = ""
                     var toolCalls: [Int: AgentToolCallAccumulator] = [:]
+                    var buffer = ""
 
                     for try await chunk in stream {
-                        let chunkString = String(data: chunk, encoding: .utf8) ?? ""
-                        for line in chunkString.split(separator: "\n") {
-                            let trimmed = line.trimmingCharacters(in: .whitespaces)
-                            guard trimmed.hasPrefix("data: ") else { continue }
-                            let jsonString = String(trimmed.dropFirst(6))
-                            if jsonString == "[DONE]" {
-                                continuation.finish()
-                                return
-                            }
+                        let (payloads, done) = Self.parseSSEDataPayloads(from: chunk, buffer: &buffer)
+                        for jsonString in payloads {
                             guard let data = jsonString.data(using: .utf8),
                                   let event = try? JSONDecoder().decode(PerplexityAgentStreamEvent.self, from: data)
                             else { continue }
@@ -341,6 +346,11 @@ public struct PerplexityProvider: ProviderProtocol {
                             ) {
                                 continuation.yield(partial)
                             }
+                        }
+
+                        if done {
+                            continuation.finish()
+                            return
                         }
                     }
 
@@ -565,10 +575,19 @@ public struct PerplexityProvider: ProviderProtocol {
     /// never reach this method: ``sendMessage(_:apiKey:)`` routes them to the Agent API via
     /// ``buildAgentRequest(from:stream:)``. Exposed as `internal` so tests can assert the Sonar body.
     func mapToPerplexityRequest(_ request: AIRequest) throws -> PerplexityRequest {
-        let messages = request.messages.map { message in
+        var messages = request.messages.map { message in
             let role = mapRole(message.role)
             let content = message.textContent
             return PerplexityMessage(role: role, content: content)
+        }
+
+        // Sonar has no separate system parameter, so forward `systemPrompt` as a leading `system`
+        // message (mirrors `OpenAIProvider.mapToOpenAIRequest`, and Perplexity's own Agent path,
+        // which sends `systemPrompt` as `instructions`). Precedence: an explicit leading system
+        // message supplied by the caller wins — skip the prepend so we never send two.
+        if let systemPrompt = request.systemPrompt, !systemPrompt.isEmpty,
+           messages.first?.role != "system" {
+            messages.insert(PerplexityMessage(role: "system", content: systemPrompt), at: 0)
         }
 
         return PerplexityRequest(
@@ -704,5 +723,45 @@ public struct PerplexityProvider: ProviderProtocol {
         default:
             return .endTurn
         }
+    }
+}
+
+// MARK: - SSE Framing
+
+extension PerplexityProvider {
+    /// Extract the JSON payloads of `data:` Server-Sent-Event lines from one streamed byte chunk.
+    ///
+    /// Both Perplexity stream paths — Sonar (`/chat/completions`) and the Agent API
+    /// (`/v1/responses`) — frame their responses as SSE: `data: <json>` lines terminated by
+    /// newlines, closed by a `data: [DONE]` sentinel. This helper appends the chunk to `buffer`,
+    /// splits off every complete (newline-terminated) line, keeps only `data:` lines, strips the
+    /// prefix, and reports via `done` whether the terminal `[DONE]` sentinel was seen. A partial
+    /// trailing line is retained in `buffer` so a `data:` line split across chunk boundaries is
+    /// reassembled on the next call. Exposed `internal` so tests can drive the framing directly.
+    static func parseSSEDataPayloads(
+        from chunk: Data,
+        buffer: inout String
+    ) -> (payloads: [String], done: Bool) {
+        buffer += String(data: chunk, encoding: .utf8) ?? ""
+        var payloads: [String] = []
+        var done = false
+
+        while let newlineIndex = buffer.firstIndex(of: "\n") {
+            let line = String(buffer[..<newlineIndex])
+            buffer.removeSubrange(buffer.startIndex...newlineIndex)
+
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("data:") else { continue }
+
+            let payload = trimmed.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
+            if payload == "[DONE]" {
+                done = true
+                break
+            }
+            if payload.isEmpty { continue }
+            payloads.append(String(payload))
+        }
+
+        return (payloads, done)
     }
 }
