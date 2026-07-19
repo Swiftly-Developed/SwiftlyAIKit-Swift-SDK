@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.21] - 2026-07-19
+
+Bug-fix release completing **Perplexity Sonar (tool-free) parity** on top of `v0.9.20`'s Agent-API
+tool calling: the tool-free Sonar path now streams correctly and forwards the system prompt. The
+Agent/tool path is unchanged (and still green); no neutral types change; `v0.9.20` consumers compile
+unchanged.
+
+### Fixed
+- **Tool-free Sonar streaming crashed with `DecodingError`.** `streamSonarMessage` JSON-decoded each
+  raw SSE chunk without stripping the `data: ` line prefix or handling the `[DONE]` sentinel, so the
+  first byte (`d` of `data:`) threw `DecodingError.dataCorrupted` and made a streamed Sonar request
+  unusable. Both stream paths now share a single SSE line-parsing helper
+  (`PerplexityProvider.parseSSEDataPayloads(from:buffer:)`) that splits on newlines, keeps only
+  `data:` lines, strips the prefix, skips `[DONE]`, and buffers a partial trailing line across chunk
+  boundaries. The Agent path's previously-inline framing was refactored onto the same helper.
+- **Tool-free Sonar dropped the system prompt.** `mapToPerplexityRequest` mapped only
+  `request.messages` and never read `request.systemPrompt`, so a Sonar request built with a neutral
+  `systemPrompt` (and no explicit system-role message) lost its instructions. It now prepends a
+  leading `system` message from `request.systemPrompt` — mirroring `OpenAIProvider` and Perplexity's
+  own Agent path (which forwards it as `instructions`) — and skips the prepend when the caller
+  already supplied a leading system message (explicit message takes precedence; never two).
+
+### Tests
+- `parseSSEDataPayloads` unit tests: `data:`-prefixed fixture decode + `[DONE]` detection, and a
+  line split across two chunks reassembled via the buffer.
+- Sonar system-prompt wire assertions: prepend on the encoded body, no double-system when a system
+  message is present, and no system message when `systemPrompt` is nil.
+- 796 tests pass (up from 791).
+
 ## [0.9.20] - 2026-07-19
 
 Additive, backward-compatible feature: **Perplexity tool / function calling**. `PerplexityProvider`
