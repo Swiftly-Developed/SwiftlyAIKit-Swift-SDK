@@ -279,4 +279,74 @@ public enum MockPerplexityAPI {
       ]
     }
     """
+
+    // MARK: - Agent API (Tool Calling) Responses
+
+    /// Agent API response where the model requested a custom function call.
+    public static let agentFunctionCallResponse = """
+    {
+      "id": "resp_abc123",
+      "model": "openai/gpt-5.6-sol",
+      "status": "completed",
+      "output": [
+        {
+          "type": "function_call",
+          "id": "fc_abc123",
+          "call_id": "call_xyz789",
+          "name": "get_weather",
+          "arguments": "{\\"location\\":\\"San Francisco\\"}"
+        }
+      ],
+      "usage": {
+        "input_tokens": 40,
+        "output_tokens": 12
+      }
+    }
+    """
+
+    /// Agent API response carrying a final assistant message (no tool call).
+    public static let agentMessageResponse = """
+    {
+      "id": "resp_def456",
+      "model": "openai/gpt-5.6-sol",
+      "status": "completed",
+      "output": [
+        {
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            { "type": "output_text", "text": "The weather in San Francisco is 72F and sunny." }
+          ]
+        }
+      ],
+      "usage": {
+        "input_tokens": 55,
+        "output_tokens": 18
+      }
+    }
+    """
+
+    // MARK: - Agent API Streaming
+
+    /// SSE events for an Agent API run that streams a custom function call.
+    // swiftlint:disable line_length
+    public static let agentToolStreamEvents: [String] = [
+        #"data: {"type":"response.created","response":{"id":"resp_stream1","output":[]}}"#,
+        #"data: {"type":"response.output_item.added","output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"get_weather","arguments":""}}"#,
+        #"data: {"type":"response.function_call_arguments.delta","output_index":0,"item_id":"fc_1","delta":"{\"location\":"}"#,
+        #"data: {"type":"response.function_call_arguments.delta","output_index":0,"item_id":"fc_1","delta":"\"SF\"}"}"#,
+        #"data: {"type":"response.function_call_arguments.done","output_index":0,"item_id":"fc_1","arguments":"{\"location\":\"SF\"}"}"#,
+        #"data: {"type":"response.completed","response":{"id":"resp_stream1","model":"openai/gpt-5.6-sol","status":"completed","output":[{"type":"function_call","id":"fc_1","call_id":"call_1","name":"get_weather","arguments":"{\"location\":\"SF\"}"}],"usage":{"input_tokens":40,"output_tokens":12}}}"#,
+        "data: [DONE]"
+    ]
+
+    /// SSE events for an Agent API run that streams assistant text.
+    public static let agentTextStreamEvents: [String] = [
+        #"data: {"type":"response.created","response":{"id":"resp_text1","output":[]}}"#,
+        #"data: {"type":"response.output_text.delta","output_index":0,"item_id":"msg_1","delta":"Hello"}"#,
+        #"data: {"type":"response.output_text.delta","output_index":0,"item_id":"msg_1","delta":" world"}"#,
+        #"data: {"type":"response.completed","response":{"id":"resp_text1","model":"openai/gpt-5.6-sol","status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Hello world"}]}],"usage":{"input_tokens":5,"output_tokens":2}}}"#,
+        "data: [DONE]"
+    ]
+    // swiftlint:enable line_length
 }

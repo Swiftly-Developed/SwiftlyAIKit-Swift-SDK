@@ -5,7 +5,25 @@ import FoundationNetworking
 
 /// Provider implementation for Perplexity AI
 ///
-/// Real-time web search with automatic citations.
+/// Real-time web search with automatic citations (the Sonar Chat Completions API) **plus** custom
+/// function / tool calling (the Agent API).
+///
+/// ## Two endpoints, routed by the request
+///
+/// Perplexity exposes two distinct surfaces, and this provider routes to the right one automatically:
+///
+/// - **Sonar** (`POST /chat/completions`) — real-time, web-grounded answers with citations. Used
+///   for ordinary (tool-free) requests. Has **no** function/tool calling.
+/// - **Agent API** (`POST /v1/responses`) — an OpenAI *Responses*-API-compatible surface that adds
+///   custom function calling and built-in tools. Used whenever a request carries ``AIRequest/tools``
+///   (or continues a tool run). See ``buildAgentRequest(from:stream:)``.
+///
+/// Because custom function calling is only available on the Agent API — and the Agent API addresses
+/// models as `provider/model` ids (e.g. `openai/gpt-5.6-sol`, `perplexity/sonar`) rather than the
+/// plain Sonar ids — a tool-bearing request whose model is a plain Sonar id (`sonar`, `sonar-pro`,
+/// …) is routed to the configured Agent model (``agentModel``, default `openai/gpt-5.6-sol`). Pass an
+/// explicit `provider/model` id (e.g. `perplexity/sonar`), set ``agentModel``, or send
+/// `providerOptions["agent_model"]` to control which model handles the tool run.
 ///
 /// ## Topics
 ///
@@ -19,47 +37,73 @@ import FoundationNetworking
 public struct PerplexityProvider: ProviderProtocol {
     public let providerType: ProviderType = .perplexity
 
-    /// Perplexity's Sonar API is a pure search/answer API with no function/tool calling.
+    /// Perplexity supports tool / function calling via its **Agent API** (`POST /v1/responses`).
     ///
-    /// Tool calling is therefore unsupported. When a caller passes ``AIRequest/tools`` /
-    /// ``AIRequest/toolChoice`` this provider **degrades gracefully**: the tools are ignored
-    /// (a documented no-op) and the normal Sonar request proceeds. See ``mapToPerplexityRequest(_:)``
-    /// — the neutral request's tool fields are intentionally not mapped onto ``PerplexityRequest``,
-    /// which has no tools field, so nothing tool-related ever reaches the wire body.
+    /// When a caller passes ``AIRequest/tools`` / ``AIRequest/toolChoice``, this provider routes the
+    /// request to the Agent API (OpenAI *Responses*-API shape), maps the neutral tools to the
+    /// Agent `tools` array, parses returned `function_call` items into ``AIMessageContent/toolCall(_:)``
+    /// content, and round-trips tool results (`function_call_output`) for multi-turn runs. Tool-free
+    /// requests continue to use the Sonar Chat Completions API unchanged.
     ///
-    /// Ignore-and-proceed is chosen over throwing because tool support is a *field* on the normal
-    /// message path (not a separate operation like batching or image generation, which throw
-    /// ``AIError/unsupportedFeature(feature:provider:)``); throwing would break existing callers
-    /// that happen to attach tools to an otherwise-valid Sonar request. Callers that need to detect
-    /// support up front can read this flag or ``ToolCapabilities/isSupported(by:)``.
-    public var supportsTools: Bool { false }
+    /// Note: the Agent API addresses models by `provider/model` id, so a tool-bearing request whose
+    /// model is a plain Sonar id is served by ``agentModel`` (default `openai/gpt-5.6-sol`) unless a
+    /// `provider/model` id or `providerOptions["agent_model"]` overrides it.
+    public var supportsTools: Bool { true }
+
+    /// Default Agent-API model used for tool runs when the request model is a plain Sonar id.
+    ///
+    /// `openai/gpt-5.6-sol` is Perplexity's documented model for custom function calling. Callers who
+    /// prefer Perplexity's own grounded model can pass `perplexity/sonar` (any `provider/model` id
+    /// passes through) or override ``agentModel`` / `providerOptions["agent_model"]`.
+    public static let defaultAgentModel = "openai/gpt-5.6-sol"
 
     private let baseURL: String
     private let httpClient: HTTPClientManager
 
+    /// Agent-API model used for tool runs when the request carries a plain Sonar model id.
+    public let agentModel: String
+
     // MARK: - Initialization
 
     /// Initialize with default configuration
-    public init() {
+    /// - Parameter agentModel: Agent-API model for tool runs with a plain Sonar model id
+    ///   (default ``defaultAgentModel``).
+    public init(agentModel: String = Self.defaultAgentModel) {
         self.baseURL = ProviderType.perplexity.baseURL
         self.httpClient = HTTPClientManager()
+        self.agentModel = agentModel
     }
 
     /// Initialize with custom base URL
-    public init(baseURL: String) {
+    /// - Parameters:
+    ///   - baseURL: Base URL for the Perplexity API
+    ///   - agentModel: Agent-API model for tool runs with a plain Sonar model id
+    ///     (default ``defaultAgentModel``).
+    public init(baseURL: String, agentModel: String = Self.defaultAgentModel) {
         self.baseURL = baseURL
         self.httpClient = HTTPClientManager()
+        self.agentModel = agentModel
     }
 
     /// Initialize with custom HTTP client
-    public init(httpClient: HTTPClientManager) {
+    /// - Parameters:
+    ///   - httpClient: Custom HTTP client manager
+    ///   - agentModel: Agent-API model for tool runs with a plain Sonar model id
+    ///     (default ``defaultAgentModel``).
+    public init(httpClient: HTTPClientManager, agentModel: String = Self.defaultAgentModel) {
         self.baseURL = ProviderType.perplexity.baseURL
         self.httpClient = httpClient
+        self.agentModel = agentModel
     }
 
     // MARK: - ProviderProtocol Implementation
 
     public func sendMessage(_ request: AIRequest, apiKey: String) async throws -> AIResponse {
+        // Tool-bearing requests can only be served by the Agent API; tool-free requests use Sonar.
+        if requestUsesTools(request) {
+            return try await sendAgentMessage(request, apiKey: apiKey)
+        }
+
         let perplexityRequest = try mapToPerplexityRequest(request)
         let url = "\(baseURL)/chat/completions"
 
@@ -80,6 +124,16 @@ public struct PerplexityProvider: ProviderProtocol {
     }
 
     public func streamMessage(_ request: AIRequest, apiKey: String) -> AsyncThrowingStream<AIResponse, Error> {
+        // Tool-bearing requests stream via the Agent API; tool-free requests via Sonar.
+        if requestUsesTools(request) {
+            return streamAgentMessage(request, apiKey: apiKey)
+        }
+        return streamSonarMessage(request, apiKey: apiKey)
+    }
+
+    // MARK: - Sonar Streaming
+
+    private func streamSonarMessage(_ request: AIRequest, apiKey: String) -> AsyncThrowingStream<AIResponse, Error> {
         AsyncThrowingStream { continuation in
             Task {
                 do {
@@ -150,14 +204,366 @@ public struct PerplexityProvider: ProviderProtocol {
         }
     }
 
-    // MARK: - Request Mapping
+    // MARK: - Agent API (Tool Calling)
 
-    /// Map a neutral ``AIRequest`` to Perplexity's Sonar request shape.
+    /// Whether a request must be served by the Agent API rather than the Sonar path.
     ///
-    /// `request.tools` / `request.toolChoice` are intentionally **not** mapped: the Sonar API has no
-    /// function-calling support, so `PerplexityRequest` has no tools field and any tools attached to
-    /// the request are silently dropped (see ``supportsTools``). Exposed as `internal` (rather than
-    /// `private`) so tests can assert the wire body omits tools.
+    /// True when the request carries tools, or continues an in-flight tool run (a message already
+    /// holds a `toolCall`/`toolResult` even if `tools` was dropped on the follow-up turn).
+    func requestUsesTools(_ request: AIRequest) -> Bool {
+        if let tools = request.tools, !tools.isEmpty { return true }
+        return request.messages.contains { message in
+            message.content.contains { part in
+                switch part {
+                case .toolCall, .toolResult:
+                    return true
+                default:
+                    return false
+                }
+            }
+        }
+    }
+
+    /// Resolve the Agent-API model id for a tool run.
+    ///
+    /// A `provider/model` id (containing `/`, e.g. `perplexity/sonar`) passes through unchanged; a
+    /// plain Sonar id is replaced by `providerOptions["agent_model"]` if present, otherwise
+    /// ``agentModel``.
+    func resolveAgentModel(for request: AIRequest) -> String {
+        if let override = request.providerOptions?["agent_model"]?.value as? String, !override.isEmpty {
+            return override
+        }
+        if request.model.contains("/") {
+            return request.model
+        }
+        return agentModel
+    }
+
+    /// Map a neutral ``AIRequest`` to the Agent API (Responses) request shape.
+    ///
+    /// Exposed as `internal` (not `private`) so tests can assert the wire body carries
+    /// `tools`/`tool_choice` and the replayed `function_call`/`function_call_output` input items.
+    func buildAgentRequest(from request: AIRequest, stream: Bool) throws -> PerplexityAgentRequest {
+        var input: [PerplexityAgentInputItem] = []
+        for message in request.messages {
+            input.append(contentsOf: agentInputItems(from: message))
+        }
+
+        let tools = request.tools?.map { mapAgentTool($0) }
+        let toolChoice = request.toolChoice.map { mapAgentToolChoice($0) }
+
+        return PerplexityAgentRequest(
+            model: resolveAgentModel(for: request),
+            input: input,
+            instructions: request.systemPrompt,
+            maxOutputTokens: request.maxTokens,
+            temperature: request.temperature,
+            topP: request.topP,
+            stream: stream ? true : nil,
+            tools: tools,
+            toolChoice: toolChoice
+        )
+    }
+
+    private func sendAgentMessage(_ request: AIRequest, apiKey: String) async throws -> AIResponse {
+        let agentRequest = try buildAgentRequest(from: request, stream: false)
+        let url = "\(baseURL)/v1/responses"
+
+        let headers: [(String, String)] = [
+            ("Authorization", "Bearer \(apiKey)"),
+            ("Content-Type", "application/json")
+        ]
+
+        let jsonData = try JSONEncoder().encode(agentRequest)
+        let responseData = try await httpClient.post(
+            url: url,
+            headers: headers,
+            body: jsonData
+        )
+
+        let agentResponse = try JSONDecoder().decode(PerplexityAgentResponse.self, from: responseData)
+        return transformAgentResponse(agentResponse, model: agentRequest.model)
+    }
+
+    private func streamAgentMessage(_ request: AIRequest, apiKey: String) -> AsyncThrowingStream<AIResponse, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let agentRequest = try buildAgentRequest(from: request, stream: true)
+                    let url = "\(baseURL)/v1/responses"
+                    let headers: [(String, String)] = [
+                        ("Authorization", "Bearer \(apiKey)"),
+                        ("Content-Type", "application/json"),
+                        ("Accept", "text/event-stream")
+                    ]
+
+                    let jsonData = try JSONEncoder().encode(agentRequest)
+                    let stream = httpClient.streamPost(url: url, headers: headers, body: jsonData)
+
+                    let model = agentRequest.model
+                    var responseID = ""
+                    var accumulatedText = ""
+                    var toolCalls: [Int: AgentToolCallAccumulator] = [:]
+
+                    for try await chunk in stream {
+                        let chunkString = String(data: chunk, encoding: .utf8) ?? ""
+                        for line in chunkString.split(separator: "\n") {
+                            let trimmed = line.trimmingCharacters(in: .whitespaces)
+                            guard trimmed.hasPrefix("data: ") else { continue }
+                            let jsonString = String(trimmed.dropFirst(6))
+                            if jsonString == "[DONE]" {
+                                continuation.finish()
+                                return
+                            }
+                            guard let data = jsonString.data(using: .utf8),
+                                  let event = try? JSONDecoder().decode(PerplexityAgentStreamEvent.self, from: data)
+                            else { continue }
+
+                            if event.type == "response.completed" {
+                                let final = finalizeAgentStream(
+                                    event: event,
+                                    responseID: responseID,
+                                    accumulatedText: accumulatedText,
+                                    toolCalls: toolCalls,
+                                    model: model
+                                )
+                                continuation.yield(final)
+                                continuation.finish()
+                                return
+                            }
+
+                            if let partial = Self.reduceAgentStreamEvent(
+                                event,
+                                responseID: &responseID,
+                                accumulatedText: &accumulatedText,
+                                toolCalls: &toolCalls,
+                                model: model
+                            ) {
+                                continuation.yield(partial)
+                            }
+                        }
+                    }
+
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    // MARK: - Agent Request Mapping
+
+    private func agentInputItems(from message: AIMessage) -> [PerplexityAgentInputItem] {
+        var items: [PerplexityAgentInputItem] = []
+        var textParts: [String] = []
+
+        for part in message.content {
+            switch part {
+            case .text(let text):
+                textParts.append(text)
+            case .toolCall(let call):
+                items.append(.functionCall(callID: call.id, name: call.name, arguments: call.arguments))
+            case .toolResult(let id, let result):
+                items.append(.functionCallOutput(callID: id, output: result))
+            default:
+                break // images/documents are not supported on the tool path
+            }
+        }
+
+        if !textParts.isEmpty {
+            let messageItem = PerplexityAgentInputItem.message(
+                role: mapRole(message.role),
+                content: textParts.joined(separator: "\n")
+            )
+            items.insert(messageItem, at: 0)
+        }
+
+        return items
+    }
+
+    private func mapAgentTool(_ tool: AITool) -> PerplexityAgentTool {
+        let parameters = tool.parameters.jsonSchemaDictionary().mapValues { AnyCodable($0) }
+        return PerplexityAgentTool(
+            name: tool.name,
+            description: tool.description,
+            parameters: parameters
+        )
+    }
+
+    private func mapAgentToolChoice(_ choice: AIToolChoice) -> PerplexityAgentToolChoice {
+        switch choice {
+        case .auto:
+            return .auto
+        case .required:
+            return .required
+        case .none:
+            return .none
+        case .specific(let toolName):
+            return .function(toolName)
+        }
+    }
+
+    // MARK: - Agent Response Mapping
+
+    /// Map an Agent API response into a neutral ``AIResponse``, parsing `function_call` output items
+    /// into ``AIMessageContent/toolCall(_:)`` content (keyed by `call_id`) and setting the stop reason
+    /// to ``AIStopReason/toolUse`` when the model requested a tool.
+    ///
+    /// Exposed as `internal` so tests can decode a fixture and assert the neutral mapping.
+    func transformAgentResponse(_ response: PerplexityAgentResponse, model: String) -> AIResponse {
+        var content: [AIMessageContent] = []
+        var sawToolCall = false
+
+        for item in response.output {
+            switch item.type {
+            case "message":
+                for part in item.content ?? [] where part.text?.isEmpty == false {
+                    content.append(.text(part.text ?? ""))
+                }
+            case "function_call":
+                guard let name = item.name else { continue }
+                sawToolCall = true
+                content.append(.toolCall(AIToolCall(
+                    id: item.callID ?? item.id ?? "",
+                    name: name,
+                    arguments: item.arguments ?? "{}"
+                )))
+            default:
+                break
+            }
+        }
+
+        let usage = response.usage.map {
+            AIUsage(inputTokens: $0.inputTokens ?? 0, outputTokens: $0.outputTokens ?? 0)
+        }
+
+        return AIResponse(
+            id: response.id,
+            model: response.model ?? model,
+            message: AIMessage(role: .assistant, content: content),
+            stopReason: sawToolCall ? .toolUse : .endTurn,
+            usage: usage,
+            provider: .perplexity
+        )
+    }
+
+    // MARK: - Agent Streaming Helpers
+
+    /// Per-function-call accumulator for streamed Agent API tool calls.
+    struct AgentToolCallAccumulator: Sendable, Equatable {
+        var callID: String
+        var name: String
+        var arguments: String
+    }
+
+    /// Merge one Agent API stream event into the running text + tool-call accumulators.
+    ///
+    /// A `function_call` streams as `response.output_item.added` (announcing `call_id`/`name`), then
+    /// `response.function_call_arguments.delta` fragments, then `.done`; text streams as
+    /// `response.output_text.delta`. Returns a partial ``AIResponse`` to yield for incremental text,
+    /// or `nil` for tool-call/bookkeeping events. Exposed `internal` so tests can drive accumulation.
+    static func reduceAgentStreamEvent(
+        _ event: PerplexityAgentStreamEvent,
+        responseID: inout String,
+        accumulatedText: inout String,
+        toolCalls: inout [Int: AgentToolCallAccumulator],
+        model: String
+    ) -> AIResponse? {
+        switch event.type {
+        case "response.created", "response.in_progress":
+            if let id = event.response?.id { responseID = id }
+            return nil
+
+        case "response.output_item.added":
+            if let item = event.item, item.type == "function_call", let index = event.outputIndex {
+                toolCalls[index] = AgentToolCallAccumulator(
+                    callID: item.callID ?? item.id ?? "",
+                    name: item.name ?? "",
+                    arguments: item.arguments ?? ""
+                )
+            }
+            return nil
+
+        case "response.function_call_arguments.delta":
+            if let index = event.outputIndex, let delta = event.delta {
+                var current = toolCalls[index] ?? AgentToolCallAccumulator(callID: "", name: "", arguments: "")
+                current.arguments += delta
+                toolCalls[index] = current
+            }
+            return nil
+
+        case "response.function_call_arguments.done":
+            if let index = event.outputIndex, let arguments = event.arguments {
+                var current = toolCalls[index] ?? AgentToolCallAccumulator(callID: "", name: "", arguments: "")
+                current.arguments = arguments
+                toolCalls[index] = current
+            }
+            return nil
+
+        case "response.output_text.delta":
+            guard let delta = event.delta else { return nil }
+            accumulatedText += delta
+            return AIResponse(
+                id: responseID.isEmpty ? (event.itemID ?? "pplx-agent") : responseID,
+                model: model,
+                message: AIMessage(role: .assistant, content: [.text(accumulatedText)]),
+                stopReason: nil,
+                usage: nil,
+                provider: .perplexity
+            )
+
+        default:
+            return nil
+        }
+    }
+
+    /// Build the terminal ``AIResponse`` for a streaming Agent run.
+    ///
+    /// Prefers the authoritative full response carried on `response.completed`; otherwise assembles
+    /// from the streamed text and tool-call accumulators.
+    private func finalizeAgentStream(
+        event: PerplexityAgentStreamEvent,
+        responseID: String,
+        accumulatedText: String,
+        toolCalls: [Int: AgentToolCallAccumulator],
+        model: String
+    ) -> AIResponse {
+        if let response = event.response {
+            return transformAgentResponse(response, model: model)
+        }
+
+        var content: [AIMessageContent] = []
+        if !accumulatedText.isEmpty {
+            content.append(.text(accumulatedText))
+        }
+        for index in toolCalls.keys.sorted() {
+            guard let call = toolCalls[index] else { continue }
+            content.append(.toolCall(AIToolCall(
+                id: call.callID,
+                name: call.name,
+                arguments: call.arguments.isEmpty ? "{}" : call.arguments
+            )))
+        }
+
+        return AIResponse(
+            id: responseID.isEmpty ? "pplx-agent" : responseID,
+            model: model,
+            message: AIMessage(role: .assistant, content: content),
+            stopReason: toolCalls.isEmpty ? .endTurn : .toolUse,
+            usage: nil,
+            provider: .perplexity
+        )
+    }
+
+    // MARK: - Sonar Request Mapping
+
+    /// Map a neutral ``AIRequest`` to Perplexity's Sonar (Chat Completions) request shape.
+    ///
+    /// This path serves **tool-free** requests only — the Sonar API has no function calling, so
+    /// `request.tools` / `request.toolChoice` have no wire representation here. Tool-bearing requests
+    /// never reach this method: ``sendMessage(_:apiKey:)`` routes them to the Agent API via
+    /// ``buildAgentRequest(from:stream:)``. Exposed as `internal` so tests can assert the Sonar body.
     func mapToPerplexityRequest(_ request: AIRequest) throws -> PerplexityRequest {
         let messages = request.messages.map { message in
             let role = mapRole(message.role)
@@ -246,7 +652,7 @@ public struct PerplexityProvider: ProviderProtocol {
         return ResponseFormat(type: type, jsonSchema: jsonSchema)
     }
 
-    // MARK: - Response Mapping
+    // MARK: - Sonar Response Mapping
 
     private func mapToAIResponse(_ response: PerplexityResponse, model: String) throws -> AIResponse {
         guard let choice = response.choices.first else {
