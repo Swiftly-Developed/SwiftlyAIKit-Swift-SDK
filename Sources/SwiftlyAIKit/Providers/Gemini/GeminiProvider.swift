@@ -307,14 +307,31 @@ public struct GeminiProvider: ProviderProtocol {
     }
 
     private func mapContents(_ request: AIRequest) throws -> [GeminiContent] {
-        try request.messages.map { message in
+        // Build an id -> function-name lookup from every assistant tool call so that a
+        // later tool result (which only carries the id) maps to the correct
+        // functionResponse name. Gemini identifies function responses by name, not id.
+        let toolCallNamesByID = toolCallNameLookup(request.messages)
+        return try request.messages.map { message in
             let role = message.role == .user ? "user" : "model"
-            let parts = try message.content.map { try mapContentPart($0) }
+            let parts = try message.content.map { try mapContentPart($0, toolCallNamesByID: toolCallNamesByID) }
             return GeminiContent(role: role, parts: parts)
         }
     }
 
-    private func mapContentPart(_ content: AIMessageContent) throws -> GeminiPart {
+    /// Map each tool-call id to its function name across the whole conversation.
+    private func toolCallNameLookup(_ messages: [AIMessage]) -> [String: String] {
+        var lookup: [String: String] = [:]
+        for message in messages {
+            for content in message.content {
+                if case .toolCall(let toolCall) = content {
+                    lookup[toolCall.id] = toolCall.name
+                }
+            }
+        }
+        return lookup
+    }
+
+    private func mapContentPart(_ content: AIMessageContent, toolCallNamesByID: [String: String]) throws -> GeminiPart {
         switch content {
         case .text(let text):
             return .text(text)
@@ -336,20 +353,18 @@ public struct GeminiProvider: ProviderProtocol {
             return .inlineData(mimeType: mediaType, data: base64Data)
 
         case .toolCall(let toolCall):
-            // Map to Gemini function call
-            // Parse arguments JSON string to dictionary
-            guard let argsData = toolCall.arguments.data(using: .utf8),
-                  let argsDict = try? JSONSerialization.jsonObject(with: argsData) as? [String: Any] else {
-                throw AIError.invalidRequest(message: "Invalid tool call arguments")
-            }
-            let args = argsDict.mapValues { AnyCodable($0) }
+            // Map to Gemini function call. Tolerate an empty / non-object argument string
+            // (e.g. a zero-argument call) by falling back to an empty object, mirroring the
+            // response-decoding side instead of throwing `.invalidRequest`.
+            let args = toolCall.normalizedArgumentsDictionary.mapValues { AnyCodable($0) }
             return .functionCall(name: toolCall.name, args: args)
 
         case .toolResult(let id, let result):
-            // Map to Gemini function response
-            // Gemini expects the function name in the response, but we only have the ID
-            // We'll use the ID as the name for now
-            return .functionResponse(name: id, response: ["result": AnyCodable(result)])
+            // Gemini identifies function responses by the function *name*, not by an id.
+            // Resolve the originating tool call's name from the conversation; fall back to
+            // the id (which Gemini responses use as the id) when it can't be resolved.
+            let name = toolCallNamesByID[id] ?? id
+            return .functionResponse(name: name, response: ["result": AnyCodable(result)])
 
         case .custom:
             throw AIError.unsupportedFeature(feature: "Custom content", provider: .google)

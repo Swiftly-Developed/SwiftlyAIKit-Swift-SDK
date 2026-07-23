@@ -71,7 +71,7 @@ import Foundation
 /// - <doc:ErrorHandling>
 /// - <doc:CommonPitfalls>
 /// - ``AIGateway``
-public enum AIError: Error, Sendable, Equatable {
+public enum AIError: LocalizedError, Sendable, Equatable {
     // MARK: - Authentication Errors
 
     /// API key is missing or not provided
@@ -255,6 +255,16 @@ public enum AIError: Error, Sendable, Equatable {
         case .unknown(let message):
             return "Unknown error: \(message)"
         }
+    }
+
+    /// `LocalizedError` conformance so that `(error as Error).localizedDescription`
+    /// returns the human-readable message on both Darwin and Linux.
+    ///
+    /// Without this, an `AIError` surfaced through the `any Error` path bridges to an
+    /// `NSError` whose default description is the useless ordinal
+    /// `"(SwiftlyAIKit.AIError error N.)"`, which would otherwise leak to end users.
+    public var errorDescription: String? {
+        localizedDescription
     }
 
     /// Check if error is retryable
