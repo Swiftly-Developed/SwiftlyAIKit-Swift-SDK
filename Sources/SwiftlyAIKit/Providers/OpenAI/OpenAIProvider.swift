@@ -436,7 +436,7 @@ public struct OpenAIProvider: ProviderProtocol, ImageGenerationProvider {
                     type: toolCall.type,
                     function: OpenAIToolCall.FunctionCall(
                         name: toolCall.name,
-                        arguments: toolCall.arguments
+                        arguments: toolCall.normalizedArgumentsJSON
                     )
                 )
             }

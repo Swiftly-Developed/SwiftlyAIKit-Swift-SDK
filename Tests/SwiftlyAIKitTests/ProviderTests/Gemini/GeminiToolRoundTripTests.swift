@@ -59,6 +59,38 @@ struct GeminiToolRoundTripTests {
         #expect(respName == "get_weather")
     }
 
+    @Test("Tool round-trip tolerates empty args and resolves functionResponse name from id")
+    func testEmptyArgsAndIdNameResolution() throws {
+        // Neutral conversation where the tool-call id ("t1") differs from the function
+        // name ("search") and the arguments string is empty. Request mapping must NOT throw
+        // and must resolve the functionResponse back to the *name*, not the id.
+        let request = AIRequest(
+            model: "gemini-2.5-pro",
+            messages: [
+                AIMessage(role: .user, content: [.text("hi")]),
+                AIMessage(role: .assistant, content: [
+                    .toolCall(AIToolCall(id: "t1", type: "function", name: "search", arguments: ""))
+                ]),
+                AIMessage(role: .user, content: [.toolResult(id: "t1", result: "ok")])
+            ]
+        )
+
+        let mapped = try GeminiProvider().mapToGeminiRequest(request)
+
+        guard case .functionCall(let callName, let args) = mapped.contents[1].parts.first else {
+            Issue.record("Expected functionCall part")
+            return
+        }
+        #expect(callName == "search")
+        #expect(args.isEmpty) // empty arguments string tolerated as {}
+
+        guard case .functionResponse(let respName, _) = mapped.contents[2].parts.first else {
+            Issue.record("Expected functionResponse part")
+            return
+        }
+        #expect(respName == "search") // resolved from the tool call, not the id "t1"
+    }
+
     @Test("Function-call response sets stopReason .toolUse")
     func testFunctionCallStopReason() throws {
         let data = MockGeminiAPI.functionCallResponse.data(using: .utf8)!

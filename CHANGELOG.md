@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.22] - 2026-07-23
+
+Bug-fix release making the **neutral → provider tool-conversation mapping** symmetric with the
+response side, and giving `AIError` a readable message on the `any Error` path. Multi-turn tool
+calling (assistant `.toolCall` followed by a user `.toolResult`) now maps correctly for every
+provider that reads the neutral `AIRequest.messages`/`.tools` — previously only Anthropic (fed
+native blocks) worked, and Google/OpenAI failed with `AIError.invalidRequest`. No neutral types
+change; `v0.9.21` consumers compile unchanged.
+
+### Fixed
+- **`AIError` now conforms to `LocalizedError`.** Surfaced through the `any Error` path,
+  `error.localizedDescription` bridged to an `NSError` whose default description was the useless
+  ordinal `"(SwiftlyAIKit.AIError error N.)"` — on Darwin *and* Linux — which leaked to end users.
+  `errorDescription` now returns the existing human-readable `localizedDescription` member.
+- **Request-side tool-call argument parsing threw on empty / non-object arguments.** The response
+  decoders already tolerated a missing/empty function-call argument payload (falling back to `{}`),
+  but the request mappers did not: `GeminiProvider` threw `.invalidRequest("Invalid tool call
+  arguments")`, and the OpenAI/Cohere/Mistral/OpenRouter mappers forwarded an empty `""` arguments
+  string straight to the API as invalid JSON. Two shared helpers on `AIToolCall`
+  (`normalizedArgumentsJSON` / `normalizedArgumentsDictionary`) now normalize empty or non-object
+  arguments to an empty object, and every request mapper uses them.
+- **Gemini tool results mapped to the wrong `functionResponse` name.** Gemini identifies a function
+  response by the function *name*, but `mapContentPart` emitted the neutral tool-call *id*. The
+  mapper now builds an id → name lookup across the whole conversation and resolves the correct name
+  (falling back to the id only when unresolvable), so a round-trip using an arbitrary tool-call id
+  (e.g. `"t1"`) maps back to the real function name.
+
+### Tests
+- Decisive no-network round-trip for both Gemini and OpenAI: a neutral conversation with an empty
+  `arguments` string and an id (`"t1"`) distinct from the function name (`"search"`) maps without
+  throwing and produces a valid provider request (Gemini `functionResponse` resolves to `"search"`;
+  OpenAI arguments normalize to `"{}"`).
+- `AIError` `LocalizedError` conformance: `errorDescription == localizedDescription` for every case,
+  and the `any Error` bridge never leaks the `"AIError error N"` ordinal.
+- 800 tests pass (up from 796).
+
 ## [0.9.21] - 2026-07-19
 
 Bug-fix release completing **Perplexity Sonar (tool-free) parity** on top of `v0.9.20`'s Agent-API

@@ -347,6 +347,35 @@ public struct AIToolCall: Codable, Sendable, Hashable {
         self.name = name
         self.arguments = arguments
     }
+
+    /// The `arguments` string normalized to a valid JSON-object string.
+    ///
+    /// Providers require function-call arguments to be a JSON object. Models — and some
+    /// neutral→provider round-trips — occasionally emit an empty string or a non-object
+    /// payload for zero-argument calls. This mirrors the tolerance already applied on the
+    /// response-decoding side by falling back to `"{}"` in those cases, instead of letting
+    /// the request mappers throw `.invalidRequest` or forwarding invalid JSON to the API.
+    public var normalizedArgumentsJSON: String {
+        let trimmed = arguments.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let data = trimmed.data(using: .utf8),
+              (try? JSONSerialization.jsonObject(with: data)) is [String: Any] else {
+            return "{}"
+        }
+        return trimmed
+    }
+
+    /// The `arguments` parsed into a dictionary, tolerating empty / non-object payloads by
+    /// returning an empty dictionary (mirrors ``normalizedArgumentsJSON`` and the
+    /// response-decoding fallback). Used by providers that build a typed argument map
+    /// (e.g. Gemini's `functionCall`) rather than forwarding the raw JSON string.
+    public var normalizedArgumentsDictionary: [String: Any] {
+        guard let data = arguments.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return [:]
+        }
+        return dict
+    }
 }
 
 // MARK: - JSON Schema Serialization
