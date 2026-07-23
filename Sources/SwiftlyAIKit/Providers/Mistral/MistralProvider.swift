@@ -279,7 +279,7 @@ public struct MistralProvider: ProviderProtocol {
                     type: toolCall.type,
                     function: MistralToolCall.FunctionCall(
                         name: toolCall.name,
-                        arguments: toolCall.arguments
+                        arguments: toolCall.normalizedArgumentsJSON
                     )
                 )
             }

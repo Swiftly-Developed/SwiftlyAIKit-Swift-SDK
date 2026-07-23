@@ -345,4 +345,24 @@ struct AIErrorTests {
             #expect(error == errorCopy, "Error should equal itself")
         }
     }
+
+    // MARK: - LocalizedError Conformance
+
+    @Test("errorDescription matches localizedDescription")
+    func testErrorDescriptionMatchesLocalizedDescription() {
+        for error in SampleErrors.allErrors {
+            #expect(error.errorDescription == error.localizedDescription)
+        }
+    }
+
+    @Test("any Error localizedDescription does not leak the ordinal description")
+    func testAnyErrorDoesNotLeakOrdinal() {
+        // Via the `any Error` / NSError bridge, `localizedDescription` must be the readable
+        // message, not the "(SwiftlyAIKit.AIError error N.)" ordinal (Darwin and Linux).
+        for error in SampleErrors.allErrors {
+            let anyError: any Error = error
+            #expect(anyError.localizedDescription == error.localizedDescription)
+            #expect(!anyError.localizedDescription.contains("AIError error"))
+        }
+    }
 }

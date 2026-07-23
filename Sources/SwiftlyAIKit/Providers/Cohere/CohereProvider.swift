@@ -389,7 +389,7 @@ public struct CohereProvider: ProviderProtocol {
                     type: toolCall.type,
                     function: CohereToolCall.FunctionCall(
                         name: toolCall.name,
-                        arguments: toolCall.arguments
+                        arguments: toolCall.normalizedArgumentsJSON
                     )
                 )
             }

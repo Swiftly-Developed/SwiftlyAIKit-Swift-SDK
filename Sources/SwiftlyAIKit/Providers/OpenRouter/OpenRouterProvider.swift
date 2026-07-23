@@ -338,7 +338,7 @@ public struct OpenRouterProvider: ProviderProtocol {
                     type: toolCall.type,
                     function: OpenRouterToolCall.FunctionCall(
                         name: toolCall.name,
-                        arguments: toolCall.arguments
+                        arguments: toolCall.normalizedArgumentsJSON
                     )
                 )
             }
