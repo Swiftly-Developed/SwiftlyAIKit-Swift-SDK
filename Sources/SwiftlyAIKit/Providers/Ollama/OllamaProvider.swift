@@ -87,6 +87,7 @@ public struct OllamaProvider: ProviderProtocol {
 
         // Make HTTP request (no Authorization header — Ollama auth is base-URL reachability)
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: chatURL,
             headers: buildHeaders(),
             body: requestData
@@ -110,6 +111,7 @@ public struct OllamaProvider: ProviderProtocol {
                     let requestData = try JSONEncoder().encode(streamRequest)
 
                     let dataStream = httpClient.streamPost(
+                        provider: providerType,
                         url: chatURL,
                         headers: buildHeaders(),
                         body: requestData
@@ -261,7 +263,7 @@ public struct OllamaProvider: ProviderProtocol {
     /// - Returns: List of models available on the Ollama server
     public func listModels(apiKey: String) async throws -> OllamaModelsResponse {
         // GET /api/tags with no Authorization header.
-        let responseData = try await httpClient.get(url: tagsURL, headers: [])
+        let responseData = try await httpClient.get(provider: providerType, url: tagsURL, headers: [])
         return try JSONDecoder().decode(OllamaModelsResponse.self, from: responseData)
     }
 

@@ -82,6 +82,7 @@ public struct GroqProvider: ProviderProtocol {
 
         // Make HTTP request
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: endpoint,
             headers: headers,
             body: requestData
@@ -115,6 +116,7 @@ public struct GroqProvider: ProviderProtocol {
                     let requestData = try JSONEncoder().encode(streamRequest)
 
                     let dataStream = httpClient.streamPost(
+                        provider: providerType,
                         url: endpoint,
                         headers: headers,
                         body: requestData
@@ -288,7 +290,7 @@ public struct GroqProvider: ProviderProtocol {
     public func listModels(apiKey: String) async throws -> GroqModelsResponse {
         let endpoint = "\(baseURL)/models"
         let headers = [("Authorization", "Bearer \(apiKey)")]
-        let responseData = try await httpClient.get(url: endpoint, headers: headers)
+        let responseData = try await httpClient.get(provider: providerType, url: endpoint, headers: headers)
         return try JSONDecoder().decode(GroqModelsResponse.self, from: responseData)
     }
 
