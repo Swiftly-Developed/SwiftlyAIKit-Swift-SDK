@@ -28,7 +28,12 @@ import Foundation
 ///         let providerRequest = transformRequest(request)
 ///
 ///         // 2. Make HTTP request
-///         let response = try await httpClient.post(url, body: providerRequest)
+///         let response = try await httpClient.post(
+///             provider: providerType,
+///             url: url,
+///             headers: headers,
+///             body: providerRequest
+///         )
 ///
 ///         // 3. Transform response to AIResponse
 ///         return try parseResponse(response)
