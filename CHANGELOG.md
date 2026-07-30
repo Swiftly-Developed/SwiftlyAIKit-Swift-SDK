@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.23] - 2026-07-30
+
+Bug-fix release correcting **provider attribution on every HTTP-level error**. `HTTPClientManager`
+is provider-agnostic, but it labelled every non-2xx response `.anthropic`, so a 404 from
+`api.openai.com` surfaced as `"Resource not found: endpoint (Anthropic)"`. All 9 providers except
+Anthropic were affected, and Anthropic read correctly only by coincidence. No neutral types change
+and no existing call signature becomes invalid; `v0.9.22` consumers compile unchanged.
+
+> **Behavioural change — error *messages* differ for non-Anthropic providers.** Any consumer that
+> string-matches on `"(Anthropic)"`, or on `AIError.localizedDescription` generally, will now see
+> the real vendor name (`"(OpenAI)"`, `"(Google AI)"`, `"(xAI Grok)"`, …). The `AIError` rendering
+> *format* is unchanged — only the provider value inside it is now correct.
+
+### Fixed
+- **Every HTTP-level error from every provider was attributed to Anthropic.** Both `performRequest`
+  (shared by `post` and `get`) and `streamPost` called
+  `mapHTTPError(status:message:provider:)` with a hardcoded `provider: .anthropic`, even though
+  `HTTPClientManager` stores no provider and cannot infer one from a URL. 8 of the 9 `mapHTTPError`
+  arms carry the provider label, so this affected far more than 404s: `401` ("Invalid API key for
+  Anthropic"), `403`, `404`, `429` ("Rate limit exceeded for Anthropic"), `500`, `503`, `529`, and
+  the default `.providerError` arm. Only `400` (`.invalidRequest`) and `413` (`.requestTooLarge`)
+  were unaffected, as those cases carry no provider field.
+- **`get` was affected too, not just `post`/`streamPost`.** `get` shares `performRequest`, so every
+  `listModels` failure across all providers was mislabelled by the same literal.
+- `post`, `get` and `streamPost` now take a `provider: ProviderType` parameter and forward it to
+  `mapHTTPError`. All 61 in-repo call sites across 14 provider files pass their own provider
+  explicitly; the 11 chat providers pass their declared `providerType` rather than a repeated
+  literal, so the label cannot drift from the provider's own identity.
+
+### Changed
+- The new `provider:` parameter **defaults to `.anthropic`**, so existing external callers of these
+  `public` methods still compile. The default reproduces the old (incorrect) label, so callers
+  outside this package should pass `provider:` explicitly to get accurate attribution — the DocC
+  guides for writing custom providers have been updated to always pass it. Making the parameter
+  required is a candidate for `0.10.0`.
+
+### Known limitations
+- The three voice providers (Cartesia, ElevenLabs, Deepgram) still label HTTP errors `"OpenAI"`.
+  The chat `ProviderType` enum deliberately has no cases for voice vendors (they live in the
+  separate `VoiceProviderType` enum, so chat's exhaustive switches stay untouched), so they reuse
+  the voice layer's pre-existing `.openai` fallback from `voiceErrorProviderType(for:)`. This is now
+  an explicit, documented `httpErrorProvider` constant in each voice provider rather than a bare
+  literal. Giving voice vendors accurate labels requires a vendor-neutral provider field on
+  `AIError` and is out of scope for a patch release.
+
+### Tests
+- New `HTTPClientManagerProviderAttributionTests` drives a real loopback HTTP server through the
+  real `post` / `get` / `streamPost` code paths — provider attribution is a property of the HTTP
+  layer itself, so it needs an actual request/response round trip rather than the repo's usual
+  helper-level unit tests.
+- All **8** provider-carrying statuses are swept for each of the three methods (24 parameterized
+  cases), asserting the error carries the calling provider and explicitly that it is not
+  `.anthropic`. Verified red before the fix (53 issues) and green after.
+- A structural guard asserts no `provider: .anthropic` argument literal survives in
+  `HTTPClientManager.swift` and that every `mapHTTPError` call forwards the threaded parameter —
+  this is what fails if the shortcut is ever reintroduced, independent of which statuses the
+  behavioural tests happen to exercise.
+- 807 tests pass (up from 800). Zero new lint violations.
+
 ## [0.9.22] - 2026-07-23
 
 Bug-fix release making the **neutral → provider tool-conversation mapping** symmetric with the
