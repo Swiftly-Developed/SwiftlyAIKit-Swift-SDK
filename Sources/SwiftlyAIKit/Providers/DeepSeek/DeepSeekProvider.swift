@@ -83,6 +83,7 @@ public struct DeepSeekProvider: ProviderProtocol {
 
         // Make HTTP request
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: endpoint,
             headers: headers,
             body: requestData
@@ -139,6 +140,7 @@ public struct DeepSeekProvider: ProviderProtocol {
                     var toolCalls: [Int: (id: String, name: String, args: String)] = [:]
 
                     let stream = httpClient.streamPost(
+                        provider: providerType,
                         url: endpoint,
                         headers: headers,
                         body: requestData
@@ -272,7 +274,7 @@ public struct DeepSeekProvider: ProviderProtocol {
             ("Authorization", "Bearer \(apiKey)"),
             ("Content-Type", "application/json")
         ]
-        let responseData = try await httpClient.get(url: url, headers: headers)
+        let responseData = try await httpClient.get(provider: providerType, url: url, headers: headers)
         let decoder = JSONDecoder()
         // NOTE: Do NOT use .convertFromSnakeCase — mirrors OpenAIProvider.listModels;
         // explicit CodingKeys with snake_case raw values conflict with it on Linux Foundation.
