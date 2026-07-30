@@ -99,6 +99,7 @@ public struct GeminiProvider: ProviderProtocol {
 
         let url = "\(baseURL)/models/\(request.model):generateContent?key=\(apiKey)"
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: url,
             headers: headers,
             body: jsonData
@@ -118,6 +119,7 @@ public struct GeminiProvider: ProviderProtocol {
 
                     let url = "\(baseURL)/models/\(request.model):streamGenerateContent?alt=sse&key=\(apiKey)"
                     let stream = httpClient.streamPost(
+                        provider: providerType,
                         url: url,
                         headers: headers,
                         body: jsonData
@@ -227,6 +229,7 @@ public struct GeminiProvider: ProviderProtocol {
 
         let url = "\(baseURL)/models/\(request.model):countTokens?key=\(apiKey)"
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: url,
             headers: headers,
             body: jsonData
@@ -247,7 +250,7 @@ public struct GeminiProvider: ProviderProtocol {
     public func listModels(apiKey: String) async throws -> GeminiModelsResponse {
         let url = "\(baseURL)/models?key=\(apiKey)"
         let headers = buildHeaders(stream: false)
-        let responseData = try await httpClient.get(url: url, headers: headers)
+        let responseData = try await httpClient.get(provider: providerType, url: url, headers: headers)
         let decoder = JSONDecoder()
         // NOTE: plain decoder — Google's payload is camelCase, matching the model properties.
         // Do NOT enable .convertFromSnakeCase (mirrors OpenAIProvider/AnthropicProvider
@@ -577,7 +580,7 @@ extension GeminiProvider: ImageGenerationProvider {
         let jsonData = try JSONEncoder().encode(predictRequest)
 
         let url = "\(baseURL)/models/\(model):predict?key=\(apiKey)"
-        let responseData = try await httpClient.post(url: url, headers: headers, body: jsonData)
+        let responseData = try await httpClient.post(provider: providerType, url: url, headers: headers, body: jsonData)
 
         let predictResponse = try JSONDecoder().decode(ImagenPredictResponse.self, from: responseData)
         let images = GeminiProvider.mapImagenPredictions(predictResponse, size: request.size)
@@ -625,7 +628,7 @@ extension GeminiProvider: ImageGenerationProvider {
         let jsonData = try JSONEncoder().encode(geminiRequest)
 
         let url = "\(baseURL)/models/\(model):generateContent?key=\(apiKey)"
-        let responseData = try await httpClient.post(url: url, headers: headers, body: jsonData)
+        let responseData = try await httpClient.post(provider: providerType, url: url, headers: headers, body: jsonData)
 
         let geminiResponse = try JSONDecoder().decode(GeminiResponse.self, from: responseData)
         let images = GeminiProvider.extractImages(from: geminiResponse, size: request.size)

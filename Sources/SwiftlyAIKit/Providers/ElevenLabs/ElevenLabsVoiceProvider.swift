@@ -14,6 +14,18 @@ import Foundation
 /// - **TTS responses are raw audio bytes** (no JSON envelope); Scribe STT is JSON.
 public struct ElevenLabsVoiceProvider: TextToSpeech, SpeechToText {
     private let httpClient: HTTPClientManager
+
+    /// Provider label applied to HTTP-level failures raised by ``HTTPClientManager``.
+    ///
+    /// The chat `ProviderType` enum has no `elevenlabs` case on purpose — voice vendors
+    /// live in the separate `VoiceProviderType` enum so chat's exhaustive switches stay
+    /// untouched. This mirrors the voice layer's existing fallback in
+    /// `voiceErrorProviderType(for:)` (`Core/VoiceProvider.swift`), so ElevenLabs HTTP errors
+    /// are labelled "OpenAI" rather than being silently mislabelled "Anthropic".
+    ///
+    /// This is a known limitation, not the hardcoding bug fixed in 0.9.23: giving voice
+    /// vendors accurate labels needs a vendor-neutral provider field on `AIError`.
+    private static let httpErrorProvider: ProviderType = .openai
     let baseURL: String
     private let timeout: Int
     private let maxRetries: Int
@@ -101,6 +113,7 @@ public struct ElevenLabsVoiceProvider: TextToSpeech, SpeechToText {
         let body = try buildSpeechRequestBody(from: request)
 
         let audio = try await httpClient.post(
+            provider: Self.httpErrorProvider,
             url: url,
             headers: buildHeaders(apiKey: apiKey),
             body: body
@@ -122,6 +135,7 @@ public struct ElevenLabsVoiceProvider: TextToSpeech, SpeechToText {
                     let body = try buildSpeechRequestBody(from: request)
 
                     let dataStream = httpClient.streamPost(
+                        provider: Self.httpErrorProvider,
                         url: url,
                         headers: buildHeaders(apiKey: apiKey),
                         body: body
@@ -165,7 +179,7 @@ public struct ElevenLabsVoiceProvider: TextToSpeech, SpeechToText {
             contentType: "multipart/form-data; boundary=\(boundary)"
         )
 
-        let responseData = try await httpClient.post(url: sttURL, headers: headers, body: body)
+        let responseData = try await httpClient.post(provider: Self.httpErrorProvider, url: sttURL, headers: headers, body: body)
         let decoded = try JSONDecoder().decode(ElevenLabsTranscriptionResponse.self, from: responseData)
         return mapTranscription(decoded)
     }
@@ -196,6 +210,7 @@ public struct ElevenLabsVoiceProvider: TextToSpeech, SpeechToText {
     /// - Returns: The account's voices as neutral ``ElevenLabsVoiceInfo`` values.
     public func listVoices(apiKey: String) async throws -> [ElevenLabsVoiceInfo] {
         let responseData = try await httpClient.get(
+            provider: Self.httpErrorProvider,
             url: "\(baseURL)/voices",
             headers: buildHeaders(apiKey: apiKey)
         )
@@ -240,6 +255,7 @@ public struct ElevenLabsVoiceProvider: TextToSpeech, SpeechToText {
         )
 
         let responseData = try await httpClient.post(
+            provider: Self.httpErrorProvider,
             url: "\(baseURL)/voices/add",
             headers: headers,
             body: body

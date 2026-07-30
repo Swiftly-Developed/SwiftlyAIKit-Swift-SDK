@@ -28,11 +28,20 @@ import NIOHTTP1
 /// let manager = HTTPClientManager()
 ///
 /// let data = try await manager.post(
+///     provider: .anthropic,
 ///     url: "https://api.anthropic.com/v1/messages",
 ///     headers: [("x-api-key", apiKey)],
 ///     body: requestData
 /// )
 /// ```
+///
+/// ## Error Attribution
+///
+/// This manager is provider-agnostic: it has no way to know which vendor a URL
+/// belongs to. Pass `provider:` on every call so HTTP-level failures (401, 403,
+/// 404, 429, 500, 503, 529, and other non-2xx statuses) are attributed to the
+/// correct vendor in the thrown ``AIError``. Omitting it falls back to
+/// `.anthropic`, which mislabels the error for every other provider.
 ///
 /// ## Retry Logic
 ///
@@ -51,9 +60,9 @@ import NIOHTTP1
 /// - ``init(httpClient:maxRetries:timeout:enableLogging:)``
 ///
 /// ### HTTP Methods
-/// - ``post(url:headers:body:context:)``
-/// - ``get(url:headers:context:)``
-/// - ``streamPost(url:headers:body:context:)``
+/// - ``post(provider:url:headers:body:context:)``
+/// - ``get(provider:url:headers:context:)``
+/// - ``streamPost(provider:url:headers:body:context:)``
 ///
 /// ### Related Types
 /// - ``AIError``
@@ -94,6 +103,10 @@ public actor HTTPClientManager {
     /// Perform a POST request with JSON body
     ///
     /// - Parameters:
+    ///   - provider: The provider this request is being made to. Used to attribute
+    ///     HTTP-level failures to the correct vendor in the thrown ``AIError``.
+    ///     Defaults to `.anthropic` for source compatibility; **always pass it
+    ///     explicitly** — an omitted provider mislabels every error from this call.
     ///   - url: The request URL
     ///   - headers: HTTP headers
     ///   - body: Request body as Data
@@ -101,6 +114,7 @@ public actor HTTPClientManager {
     /// - Returns: Response body as Data
     /// - Throws: AIError if request fails
     public func post(
+        provider: ProviderType = .anthropic,
         url: String,
         headers: [(String, String)],
         body: Data,
@@ -123,6 +137,7 @@ public actor HTTPClientManager {
                 method: .POST,
                 headers: headers,
                 body: body,
+                provider: provider,
                 context: httpContext
             )
         }
@@ -131,12 +146,17 @@ public actor HTTPClientManager {
     /// Perform a GET request
     ///
     /// - Parameters:
+    ///   - provider: The provider this request is being made to. Used to attribute
+    ///     HTTP-level failures to the correct vendor in the thrown ``AIError``.
+    ///     Defaults to `.anthropic` for source compatibility; **always pass it
+    ///     explicitly** — an omitted provider mislabels every error from this call.
     ///   - url: The request URL
     ///   - headers: HTTP headers
     ///   - context: Optional logging context for request correlation
     /// - Returns: Response body as Data
     /// - Throws: AIError if request fails
     public func get(
+        provider: ProviderType = .anthropic,
         url: String,
         headers: [(String, String)],
         context: LogContext? = nil
@@ -157,6 +177,7 @@ public actor HTTPClientManager {
                 method: .GET,
                 headers: headers,
                 body: nil,
+                provider: provider,
                 context: httpContext
             )
         }
@@ -165,12 +186,17 @@ public actor HTTPClientManager {
     /// Stream a POST request with Server-Sent Events
     ///
     /// - Parameters:
+    ///   - provider: The provider this request is being made to. Used to attribute
+    ///     HTTP-level failures to the correct vendor in the thrown ``AIError``.
+    ///     Defaults to `.anthropic` for source compatibility; **always pass it
+    ///     explicitly** — an omitted provider mislabels every error from this call.
     ///   - url: The request URL
     ///   - headers: HTTP headers
     ///   - body: Request body as Data
     ///   - context: Optional logging context for request correlation
     /// - Returns: AsyncThrowingStream of data chunks
     nonisolated public func streamPost(
+        provider: ProviderType = .anthropic,
         url: String,
         headers: [(String, String)],
         body: Data,
@@ -226,7 +252,7 @@ public actor HTTPClientManager {
                     guard response.status == .ok else {
                         let bodyData = try await response.body.collect(upTo: 1024 * 1024) // 1MB limit
                         let errorMessage = bodyData.getString(at: 0, length: bodyData.readableBytes) ?? ""
-                        let error = self.mapHTTPError(status: response.status, message: errorMessage, provider: .anthropic)
+                        let error = self.mapHTTPError(status: response.status, message: errorMessage, provider: provider)
                         await aiLog(.error, "Stream request failed", context: streamContext, metadata: [
                             "status": "\(response.status.code)",
                             "error": errorMessage.prefix(200).description
@@ -278,6 +304,7 @@ public actor HTTPClientManager {
         method: HTTPMethod,
         headers: [(String, String)],
         body: Data?,
+        provider: ProviderType,
         context: LogContext? = nil
     ) async throws -> Data {
         guard let requestURL = URL(string: url) else {
@@ -342,7 +369,7 @@ public actor HTTPClientManager {
         // Handle error status codes
         guard response.status.code >= 200 && response.status.code < 300 else {
             let errorMessage = responseBody.getString(at: 0, length: responseBody.readableBytes) ?? ""
-            let error = mapHTTPError(status: response.status, message: errorMessage, provider: .anthropic)
+            let error = mapHTTPError(status: response.status, message: errorMessage, provider: provider)
             await aiLog(.error, "HTTP request failed with error status", context: context, metadata: [
                 "status": "\(response.status.code)",
                 "error": errorMessage.prefix(200).description

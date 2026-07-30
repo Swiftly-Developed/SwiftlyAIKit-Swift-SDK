@@ -89,6 +89,7 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
 
         // Make HTTP request
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: endpoint,
             headers: headers,
             body: requestData
@@ -122,6 +123,7 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
                     let requestData = try JSONEncoder().encode(streamRequest)
 
                     let dataStream = httpClient.streamPost(
+                        provider: providerType,
                         url: endpoint,
                         headers: headers,
                         body: requestData
@@ -321,6 +323,7 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
 
         // Make HTTP request
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: endpoint,
             headers: headers,
             body: requestData
@@ -350,6 +353,7 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
         let requestData = try JSONEncoder().encode(request)
 
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: endpoint,
             headers: headers,
             body: requestData
@@ -429,6 +433,7 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
         ]
 
         let responseData = try await httpClient.get(
+            provider: providerType,
             url: endpoint,
             headers: headers
         )
@@ -447,6 +452,7 @@ public struct GrokProvider: ProviderProtocol, ImageGenerationProvider {
         ]
 
         let responseData = try await httpClient.get(
+            provider: providerType,
             url: endpoint,
             headers: headers
         )
