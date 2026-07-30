@@ -338,7 +338,7 @@ public struct AnthropicProvider: ProviderProtocol {
             "bodySize": "\(body.count) bytes"
         ])
 
-        let responseData = try await httpClient.post(url: url, headers: headers, body: body, context: logContext)
+        let responseData = try await httpClient.post(provider: providerType, url: url, headers: headers, body: body, context: logContext)
 
         let decoder = JSONDecoder()
         // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
@@ -395,7 +395,7 @@ public struct AnthropicProvider: ProviderProtocol {
         // CodingKeys with snake_case raw values for cross-platform compatibility (macOS & Linux).
         let body = try encoder.encode(request)
 
-        let dataStream = httpClient.streamPost(url: url, headers: headers, body: body, context: logContext)
+        let dataStream = httpClient.streamPost(provider: providerType, url: url, headers: headers, body: body, context: logContext)
 
         return AsyncThrowingStream { continuation in
             Task {
@@ -452,7 +452,7 @@ public struct AnthropicProvider: ProviderProtocol {
         // CodingKeys with snake_case raw values for cross-platform compatibility (macOS & Linux).
         let body = try encoder.encode(request)
 
-        let responseData = try await httpClient.post(url: url, headers: headers, body: body)
+        let responseData = try await httpClient.post(provider: providerType, url: url, headers: headers, body: body)
 
         let decoder = JSONDecoder()
         // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
@@ -477,7 +477,7 @@ public struct AnthropicProvider: ProviderProtocol {
         // CodingKeys with snake_case raw values for cross-platform compatibility (macOS & Linux).
         let body = try encoder.encode(payload)
 
-        let responseData = try await httpClient.post(url: url, headers: headers, body: body)
+        let responseData = try await httpClient.post(provider: providerType, url: url, headers: headers, body: body)
 
         let decoder = JSONDecoder()
         // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
@@ -494,7 +494,7 @@ public struct AnthropicProvider: ProviderProtocol {
         let url = "\(baseURL)/messages/batches/\(batchId)"
         let headers = buildHeaders(apiKey: apiKey, stream: false)
 
-        let responseData = try await httpClient.get(url: url, headers: headers)
+        let responseData = try await httpClient.get(provider: providerType, url: url, headers: headers)
 
         let decoder = JSONDecoder()
         // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
@@ -511,7 +511,7 @@ public struct AnthropicProvider: ProviderProtocol {
         let url = "\(baseURL)/messages/batches/\(batchId)/cancel"
         let headers = buildHeaders(apiKey: apiKey, stream: false)
 
-        let responseData = try await httpClient.post(url: url, headers: headers, body: Data())
+        let responseData = try await httpClient.post(provider: providerType, url: url, headers: headers, body: Data())
 
         let decoder = JSONDecoder()
         // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
@@ -541,7 +541,7 @@ public struct AnthropicProvider: ProviderProtocol {
         }
 
         let headers = buildHeaders(apiKey: apiKey, stream: false)
-        let responseData = try await httpClient.get(url: urlComponents.url!.absoluteString, headers: headers)
+        let responseData = try await httpClient.get(provider: providerType, url: urlComponents.url!.absoluteString, headers: headers)
 
         let decoder = JSONDecoder()
         // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit
@@ -564,7 +564,7 @@ public struct AnthropicProvider: ProviderProtocol {
         let url = "\(baseURL)/messages/batches/\(batchId)/results"
         let headers = buildHeaders(apiKey: apiKey, stream: false)
 
-        let dataStream = httpClient.streamPost(url: url, headers: headers, body: Data())
+        let dataStream = httpClient.streamPost(provider: providerType, url: url, headers: headers, body: Data())
 
         return AsyncThrowingStream { continuation in
             Task {
@@ -606,7 +606,7 @@ public struct AnthropicProvider: ProviderProtocol {
         let url = "\(baseURL)/models"
         let headers = buildHeaders(apiKey: apiKey, stream: false)
 
-        let responseData = try await httpClient.get(url: url, headers: headers)
+        let responseData = try await httpClient.get(provider: providerType, url: url, headers: headers)
 
         let decoder = JSONDecoder()
         // NOTE: Do NOT use .convertFromSnakeCase here — it conflicts with explicit

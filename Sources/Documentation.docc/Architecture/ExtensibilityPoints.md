@@ -31,6 +31,7 @@ public struct CustomProvider: ProviderProtocol {
         let body = try JSONEncoder().encode(customRequest)
 
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: "https://custom-ai-api.com/v1/chat",
             headers: [
                 "Authorization": "Bearer \(apiKey)",
