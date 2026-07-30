@@ -121,6 +121,7 @@ public struct OpenRouterProvider: ProviderProtocol {
         let jsonData = try JSONEncoder().encode(openRouterRequest)
 
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: "\(baseURL)/chat/completions",
             headers: headers,
             body: jsonData
@@ -142,6 +143,7 @@ public struct OpenRouterProvider: ProviderProtocol {
                     let jsonData = try JSONEncoder().encode(openRouterRequest)
 
                     let stream = httpClient.streamPost(
+                        provider: providerType,
                         url: "\(baseURL)/chat/completions",
                         headers: headers,
                         body: jsonData
@@ -256,7 +258,7 @@ public struct OpenRouterProvider: ProviderProtocol {
     public func listModels(apiKey: String) async throws -> OpenRouterModelsResponse {
         let url = "\(baseURL)/models"
         let headers = buildHeaders(apiKey: apiKey, stream: false)
-        let responseData = try await httpClient.get(url: url, headers: headers)
+        let responseData = try await httpClient.get(provider: providerType, url: url, headers: headers)
         let decoder = JSONDecoder()
         // NOTE: Do NOT use .convertFromSnakeCase — mirrors OpenAIProvider.listModels;
         // explicit CodingKeys with snake_case raw values conflict with it on Linux Foundation.

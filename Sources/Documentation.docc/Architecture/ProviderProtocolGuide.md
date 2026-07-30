@@ -56,6 +56,7 @@ extension MyCustomProvider {
 
         // 3. Make HTTP request
         let responseData = try await httpClient.post(
+            provider: providerType,
             url: "\(baseURL)/chat/completions",
             headers: [
                 ("Authorization", "Bearer \(apiKey)"),
@@ -131,6 +132,7 @@ extension MyCustomProvider {
 
                     // 2. Stream POST
                     let stream = httpClient.streamPost(
+                        provider: providerType,
                         url: "\(baseURL)/chat/completions",
                         headers: [
                             ("Authorization", "Bearer \(apiKey)"),
@@ -211,6 +213,7 @@ extension MyCustomProvider {
     public func countTokens(_ request: AIRequest, apiKey: String) async throws -> Int? {
         // If provider has token counting API
         let response = try await httpClient.post(
+            provider: providerType,
             url: "\(baseURL)/tokenize",
             headers: [("Authorization", "Bearer \(apiKey)")],
             body: try JSONEncoder().encode(["text": request.messages.last?.textContent ?? ""])
@@ -240,6 +243,7 @@ extension MyCustomProvider {
         }
 
         let response = try await httpClient.post(
+            provider: providerType,
             url: "\(baseURL)/batches",
             headers: [("Authorization", "Bearer \(apiKey)")],
             body: try JSONEncoder().encode(batchRequests)

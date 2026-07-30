@@ -41,6 +41,18 @@ public struct CartesiaVoiceProvider: TextToSpeech, SpeechToText {
     static let defaultMP3BitRate = 128_000
 
     private let httpClient: HTTPClientManager
+
+    /// Provider label applied to HTTP-level failures raised by ``HTTPClientManager``.
+    ///
+    /// The chat `ProviderType` enum has no `cartesia` case on purpose — voice vendors
+    /// live in the separate `VoiceProviderType` enum so chat's exhaustive switches stay
+    /// untouched. This mirrors the voice layer's existing fallback in
+    /// `voiceErrorProviderType(for:)` (`Core/VoiceProvider.swift`), so Cartesia HTTP errors
+    /// are labelled "OpenAI" rather than being silently mislabelled "Anthropic".
+    ///
+    /// This is a known limitation, not the hardcoding bug fixed in 0.9.23: giving voice
+    /// vendors accurate labels needs a vendor-neutral provider field on `AIError`.
+    private static let httpErrorProvider: ProviderType = .openai
     private let baseURL: String
     private let apiVersion: String
 
@@ -92,6 +104,7 @@ public struct CartesiaVoiceProvider: TextToSpeech, SpeechToText {
     ) async throws -> SpeechSynthesisResponse {
         let body = try makeTTSRequestData(from: request)
         let audio = try await httpClient.post(
+            provider: Self.httpErrorProvider,
             url: "\(baseURL)/tts/bytes",
             headers: jsonHeaders(apiKey: apiKey),
             body: body
@@ -111,6 +124,7 @@ public struct CartesiaVoiceProvider: TextToSpeech, SpeechToText {
                     headers.append(("Accept", "text/event-stream"))
 
                     let dataStream = httpClient.streamPost(
+                        provider: Self.httpErrorProvider,
                         url: "\(baseURL)/tts/sse",
                         headers: headers,
                         body: body
@@ -141,7 +155,7 @@ public struct CartesiaVoiceProvider: TextToSpeech, SpeechToText {
         var headers = authHeaders(apiKey: apiKey)
         headers.append(("Content-Type", "multipart/form-data; boundary=\(boundary)"))
 
-        let data = try await httpClient.post(url: "\(baseURL)/stt", headers: headers, body: body)
+        let data = try await httpClient.post(provider: Self.httpErrorProvider, url: "\(baseURL)/stt", headers: headers, body: body)
         let decoded = try JSONDecoder().decode(CartesiaTranscriptionResponse.self, from: data)
         return mapTranscription(decoded)
     }
@@ -156,7 +170,7 @@ public struct CartesiaVoiceProvider: TextToSpeech, SpeechToText {
     /// - Parameter apiKey: A Cartesia API key.
     /// - Returns: The available voices.
     public func listVoices(apiKey: String) async throws -> [CartesiaVoice] {
-        let data = try await httpClient.get(url: "\(baseURL)/voices", headers: authHeaders(apiKey: apiKey))
+        let data = try await httpClient.get(provider: Self.httpErrorProvider, url: "\(baseURL)/voices", headers: authHeaders(apiKey: apiKey))
         return try JSONDecoder().decode(CartesiaVoicesResponse.self, from: data).data
     }
 
