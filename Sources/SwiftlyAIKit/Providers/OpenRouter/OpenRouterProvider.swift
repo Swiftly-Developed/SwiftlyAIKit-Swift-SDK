@@ -301,6 +301,18 @@ public struct OpenRouterProvider: ProviderProtocol {
 
         // Map AIMessage to OpenRouterMessage
         for message in request.messages {
+            // Tool results map to individual tool-role messages, one per result, in order
+            // (every tool call of the previous assistant turn is answered).
+            let toolResultMessages = message.content.compactMap { content -> OpenRouterMessage? in
+                if case .toolResult(let id, let result) = content {
+                    return OpenRouterMessage(role: .tool, content: .text(result), toolCallId: id)
+                }
+                return nil
+            }
+            if !toolResultMessages.isEmpty {
+                messages.append(contentsOf: toolResultMessages)
+                continue
+            }
             let openRouterMessage = try mapMessage(message)
             messages.append(openRouterMessage)
         }
@@ -345,20 +357,6 @@ public struct OpenRouterProvider: ProviderProtocol {
                 )
             }
             return nil
-        }
-
-        // Check if message is a tool result
-        if let toolResult = message.content.first(where: {
-            if case .toolResult = $0 { return true }
-            return false
-        }) {
-            if case .toolResult(let id, let result) = toolResult {
-                return OpenRouterMessage(
-                    role: .tool,
-                    content: .text(result),
-                    toolCallId: id
-                )
-            }
         }
 
         // If we have tool calls, return assistant message with tool calls

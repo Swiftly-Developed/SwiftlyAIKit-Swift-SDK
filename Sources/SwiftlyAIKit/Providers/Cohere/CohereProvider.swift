@@ -298,7 +298,7 @@ public struct CohereProvider: ProviderProtocol {
     }
 
     /// Map AIRequest to CohereRequest
-    private func mapToCohereRequest(_ request: AIRequest, stream: Bool) throws -> CohereRequest {
+    func mapToCohereRequest(_ request: AIRequest, stream: Bool) throws -> CohereRequest {
         // Map messages
         var cohereMessages: [CohereMessage] = []
 
@@ -312,6 +312,18 @@ public struct CohereProvider: ProviderProtocol {
 
         // Map request messages
         for message in request.messages {
+            // Tool results map to individual tool-role messages, one per result, in order
+            // (every tool call of the previous assistant turn is answered).
+            let toolResultMessages = message.content.compactMap { content -> CohereMessage? in
+                if case .toolResult(let id, let result) = content {
+                    return CohereMessage(role: .tool, content: .text(result), toolCallId: id)
+                }
+                return nil
+            }
+            if !toolResultMessages.isEmpty {
+                cohereMessages.append(contentsOf: toolResultMessages)
+                continue
+            }
             cohereMessages.append(try mapMessage(message))
         }
 
@@ -402,23 +414,6 @@ public struct CohereProvider: ProviderProtocol {
         // If we have tool calls, create message with tool calls
         if !toolCalls.isEmpty {
             return CohereMessage(role: role, content: nil, toolCalls: toolCalls)
-        }
-
-        // Check if message is a tool result
-        if let toolResult = message.content.first(where: {
-            if case .toolResult = $0 { return true }
-            return false
-        }) {
-            if case .toolResult(let id, let result) = toolResult {
-                // Cohere expects tool result in a specific format
-                // Since Cohere doesn't have a separate tool result structure in the models,
-                // we'll use the tool role with the result in content
-                return CohereMessage(
-                    role: .tool,
-                    content: .text(result),
-                    toolCallId: id
-                )
-            }
         }
 
         // Map content
