@@ -295,6 +295,18 @@ public struct DeepSeekProvider: ProviderProtocol {
 
         // Add conversation messages (text, assistant tool calls, and tool results)
         for message in request.messages {
+            // Tool results map to individual tool-role messages, one per result, in order
+            // (every tool call of the previous assistant turn is answered).
+            let toolResultMessages = message.content.compactMap { content -> DeepSeekMessage? in
+                if case .toolResult(let id, let result) = content {
+                    return DeepSeekMessage(role: "tool", content: result, tool_call_id: id)
+                }
+                return nil
+            }
+            if !toolResultMessages.isEmpty {
+                deepseekMessages.append(contentsOf: toolResultMessages)
+                continue
+            }
             deepseekMessages.append(mapMessage(message))
         }
 
@@ -329,14 +341,9 @@ public struct DeepSeekProvider: ProviderProtocol {
     }
 
     /// Map a neutral AIMessage into a DeepSeek wire message, preserving assistant
-    /// tool calls and tool results so multi-turn tool conversations round-trip.
+    /// tool calls so multi-turn tool conversations round-trip. Tool results never reach
+    /// here: `buildDeepSeekRequest` maps them first, one tool-role message per result.
     private func mapMessage(_ message: AIMessage) -> DeepSeekMessage {
-        // Tool result → dedicated tool-role message keyed by the originating call id.
-        if let toolResult = message.content.first(where: { if case .toolResult = $0 { return true }; return false }),
-           case .toolResult(let id, let result) = toolResult {
-            return DeepSeekMessage(role: "tool", content: result, tool_call_id: id)
-        }
-
         // Collect assistant tool calls, if any.
         let toolCalls = message.content.compactMap { content -> DeepSeekToolCall? in
             if case .toolCall(let call) = content {
